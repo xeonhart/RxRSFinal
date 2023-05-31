@@ -1,0 +1,139 @@
+.subscriptions-addon-details-main-content {
+    @extend .container;
+    padding-left: 0;
+    padding-right: 0;
+    padding-bottom: $sc-padding-lv6;
+    width: 100%;
+}
+.subscriptions-addon-details-row {
+    @extend .row;
+    margin: 0;
+}
+
+.subscriptions-addon-details-description {
+    margin: $sc-margin-lv3 0;
+    h3 {
+        margin-bottom: $sc-margin-lv2;
+    }
+}
+
+.subscriptions-addon-details-col {
+    @extend .col-md-8;
+    padding: 0;
+
+    @media (max-width: $screen-sm-min) {
+        width: 100%;
+    }
+    .subscriptions-addon-details-left-col {
+        @extend .col-xs-12;
+        @extend .col-md-6;
+        padding: 0;
+        @media (max-width: $screen-sm-max) {
+            margin-bottom: $sc-margin-lv3;
+    }
+    }
+    .subscriptions-addon-details-right-col {
+        @extend .col-xs-12;
+        @extend .col-md-6;
+        padding: 0;
+        @media (min-width: $screen-md-min) {
+            padding-left: $sc-padding-lv3;
+        }
+        .subscriptions-addon-details-price {
+            margin: 0 0 $sc-margin-lv2 0;
+
+            span.price-startingAt,
+            span.price-from {
+                display: block;
+                margin-bottom: $sc-margin-lv1;
+                margin-top: 0;
+                line-height: 1;
+            }
+
+            span.price-startingAt,
+            span.price-from,
+            span.price-unit {
+                @extend .sc-sku-label;
+            }
+
+            span.price-value {
+                @extend .large-price;
+                color: $sc-color-primary;
+            }
+        }
+
+        .quantity-pricing {
+            margin-top: $sc-margin-lv3;
+        }
+    }
+}
+
+.subscriptions-addon-details-content-header-wrapper {
+    display: flex;
+    justify-content: space-between;
+}
+
+.subscriptions-addon-details-content-header-title {
+    display: inline-block;
+    margin-bottom: $sc-margin-lv4;
+    @media (max-width: $screen-md-min) {
+        display: block;
+        margin-bottom: $sc-margin-lv2;
+    }
+}
+
+span[data-view="Status.View"] {
+    @media (max-width: $screen-md-min) {
+        display: block;
+        margin-bottom: $sc-margin-lv4;
+    }
+}
+
+.subscriptions-addon-details-summary {
+    padding: 0;
+    margin-top: $sc-margin-lv6;
+    @extend .col-md-4;
+    @media (min-width: $screen-md-min) {
+        padding: 0 $sc-padding-lv3;
+        margin: 0;
+    }
+}
+.subscriptions-addon-details-button-continue {
+    @extend .button-primary;
+    @extend .button-large;
+    font-weight: $sc-font-weight-semibold;
+    margin: $sc-margin-lv3 0;
+    width: 100%;
+}
+
+.subscriptions-addon-details-button-cancel {
+    @extend .button-link;
+    display: block;
+    margin: 0 auto;
+}
+
+.subscriptions-addon-details-summary .subscriptions-addon-quantity-amount {
+    margin-top: 0;
+}
+.subscriptions-addon-details-quantity-amount-label {
+    @extend .sc-sku-label;
+}
+
+.subscriptions-addon-details-quantity-remove {
+    @extend .quantity-input-button-remove;
+}
+
+.subscriptions-addon-details-quantity-add {
+    @extend .quantity-input-button-add;
+}
+
+.subscriptions-addon-details-quantity-container {
+    @extend .quantity-input-container;
+    display: flex;
+}
+
+.subscriptions-addon-details-summary-message-info {
+    @extend .message-info;
+    display: block;
+    margin: $sc-margin-lv3 0;
+}

@@ -1,0 +1,86 @@
+.payment-wizard-paymentmethod-ach-module {
+    .ach-edit {
+        padding-top: 0;
+        padding-bottom: 0;
+
+        bpayment-top: none;
+
+        .ach-edit-form {
+            clear: both;
+        }
+        @media (min-width: $screen-sm-min) {
+            padding-left: 0;
+        }
+    }
+
+    .paymentinstrument-ach-new {
+        height: 210px;
+    }
+
+    .paymentinstrument-ach-new-title {
+        margin-top: 50px;
+    }
+}
+
+.payment-wizard-paymentmethod-ach-module-learn-more {
+    margin: $sc-margin-lv3 0 0;
+    color: $sc-color-theme-700;
+    font-size: $sc-font-size-s;
+    width: 100%;
+    display: inline-block;
+}
+
+.payment-wizard-paymentmethod-ach-module-learn-more-icon {
+    @extend .icon-locked;
+}
+
+.payment-wizard-paymentmethod-ach-module-learn-more-link {
+    cursor: pointer;
+}
+.payment-wizard-paymentmethod-ach-module-selected-card {
+    @extend .col-md-6;
+    @extend .info-card;
+    margin-bottom: 0;
+    .ach {
+        margin-bottom: 15px;
+        width: 100%;
+        padding: 0;
+    }
+    .ach-content {
+        border: 0;
+        padding: 0;
+        height: auto;
+        min-height: inherit;
+    }
+}
+.payment-wizard-paymentmethod-ach-module-actions {
+    clear:both;
+}
+.payment-wizard-paymentmethod-ach-module-add-new-ach-button {
+    margin: $sc-margin-lv3 0;
+    @extend .button-secondary;
+    @extend .button-medium;
+}
+
+.payment-wizard-paymentmethod-ach-module-title{
+    margin-bottom: $sc-margin-lv2;
+}
+
+.payment-wizard-paymentmethod-ach-module-edit{
+    @extend .button-tertiary;
+    @extend .button-small;
+    margin-right:$sc-margin-lv4;
+}
+
+.payment-wizard-paymentmethod-ach-module-change{
+    @extend .button-tertiary;
+    @extend .button-small;
+    margin-top:$sc-margin-lv3;
+    @media (min-width: $screen-md-min) {
+        margin-top: 0;
+    }
+}
+
+.payment-wizard-paymentmethod-ach-module-list-placeholder{
+    @extend .creditcard-module-list-placeholder;
+}

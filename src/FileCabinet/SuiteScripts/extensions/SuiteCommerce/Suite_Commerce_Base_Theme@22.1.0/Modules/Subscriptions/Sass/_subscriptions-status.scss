@@ -1,0 +1,19 @@
+.subscriptions-status {
+    @extend .label;
+    text-transform: capitalize;
+
+    &.status-active,
+    &.status-not-included {
+        @extend .label-success;
+    }
+
+    &.status-processing {
+        @extend .label-warning;
+    }
+
+    &.status-cancelled,
+    &.status-suspended,
+    &.status-closed {
+        @extend .label-error;
+    }
+}

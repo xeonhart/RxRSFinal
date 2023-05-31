@@ -1,0 +1,121 @@
+.subscriptions-details {
+    padding-bottom: $sc-padding-lv3;
+	h2 {
+		display: inline-block;
+		vertical-align: middle;
+		max-width: 70%;
+		@media (min-width: $screen-md-min) {
+			max-width: 75%;
+		}
+	}
+    .subscriptions-details-label {
+        text-transform: capitalize;
+    }
+	.subscriptions-details-label-active {
+		@extend .label-success;
+	}
+	.subscriptions-details-label-suspended, .subscriptions-details-label-processing {
+		@extend .label-warning;
+	}
+	.subscriptions-details-label-closed {
+		@extend .label-error;
+	}
+}
+
+.subscriptions-details-top-header {
+    display: flex;
+    justify-content: space-between;
+}
+
+.subscriptions-details-top-info {
+	@extend .box-column;
+	margin: $sc-margin-lv6 0 0;
+    position: relative;
+}
+
+.subscriptions-details-plan-header,
+.subscriptions-details-lines-header {
+	margin-bottom: $sc-margin-lv3;
+	margin-top: $sc-margin-lv5;
+}
+
+.subscriptions-details-header-container{
+	display: inline-block;
+	margin-right: $sc-margin-lv6;
+}
+
+.subscriptions-details-end-date {
+    margin-bottom: $sc-margin-lv3;
+    @media (min-width: $screen-md-min) {
+        margin-bottom: 0;
+    }
+}
+
+.subscriptions-details-line-value {
+	@extend .large-price;
+    font-size: $sc-font-size-m;
+}
+.subscriptions-details-line-label {
+	@extend .sc-label;
+}
+.subscriptions-details-line-date {
+	@extend .sc-label;
+	color: $sc-color-copy-dark;
+	@media (max-width: $screen-sm-max) {
+		display: block;
+	}
+}
+
+.subscriptions-details-addons-button {
+	@extend .button-secondary;
+	@extend .button-small;
+	display: block;
+    width: 100%;
+	@media (max-width: $screen-xs-max) {
+		margin-bottom: 0;
+
+        & hr {
+            margin: 0;
+        }
+        &.subscriptions-details-cancel-button, .subscriptions-details-reactivate-button {
+            margin: $sc-margin-lv4 0;
+        }
+	}
+	@media (min-width: $screen-md-min) {
+		float: right;
+		margin-top: $sc-margin-lv1;
+        width: auto;
+	}
+}
+
+.subscriptions-details-buttons-container {
+	display: block;
+	margin-top: $sc-margin-lv6;
+
+    & hr {
+        margin-top: $sc-margin-lv8;
+        margin-bottom: $sc-margin-lv3;
+
+        @media (max-width: $screen-xs-max) {
+            margin-top: 0;
+        }
+    }
+}
+
+.subscriptions-details-cancel-button, .subscriptions-details-reactivate-button {
+	@extend .button-tertiary;
+    @extend .button-medium;
+	display: block;
+	margin: 0 auto;
+
+	@media (min-width: $screen-md-min) {
+        display: inline-block;
+        vertical-align: middle;
+    }
+    @media (max-width: $screen-xs-max) {
+        margin: $sc-margin-lv3 0;
+	}
+}
+
+
+

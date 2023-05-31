@@ -1,0 +1,49 @@
+.subscriptions-addons-list {
+    .subscriptions-addon-item-cell-view-span3 {
+        @extend .col-xs-6;
+        @extend .col-sm-4;
+        @media (max-width: $screen-xs-max) {
+            margin-bottom: $sc-margin-lv6;
+        }
+    }
+
+    .subscriptions-addon-item-cell-grid-image-wrapper {
+        position: relative;
+        text-align: center;
+
+        .subscriptions-addon-item-cell-grid-image {
+            @extend .item-cell-image;
+        }
+    }
+
+    .subscriptions-addon-item-cell-grid-title {
+        @extend .item-cell-title;
+        padding-bottom: 0;
+
+        .subscriptions-addon-item-cell-grid-title-link {
+            @extend .item-cell-title;
+            padding: 0;
+        }
+    }
+
+    .subscriptions-addon-item-cell-grid-price {
+
+        span {
+            font-weight: normal;
+            color: $sc-color-copy;
+        }
+
+        span.price-startingAt,
+        span.price-from,
+        span.price-frequency,
+        span.price-value{}
+
+        span.price-value {
+            font-weight: bold;
+        }
+    }
+
+    .subscriptions-addon-item-cell-grid-status-wrapper {
+        margin: $sc-margin-lv2 0;
+    }
+}

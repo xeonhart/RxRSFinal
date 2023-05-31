@@ -1,0 +1,61 @@
+.subscriptions-addon-quantity-amount {
+    margin: $sc-margin-lv2 0;
+    .subscriptions-addon-quantity-amount-quantity-input {
+        margin-bottom: $sc-margin-lv2;
+        overflow: auto;
+        .subscriptions-addon-quantity-amount-quantity-input-title {
+            @extend .sc-label;
+            color: $sc-neutral-shade-700;
+            font-weight: 600;
+        }
+        > div {
+            display: inline-block;
+            margin-right: $sc-margin-lv2;
+            @media (max-width: $screen-md-min) {
+                display: block;
+            }
+            .subscriptions-addon-quantity-amount-quantity-input-container {
+                @extend .quantity-input-container;
+                @media (min-width: $screen-md-min) {
+                    margin-left: $sc-margin-lv2;
+                }
+
+                .subscriptions-addon-quantity-amount-quantity-input-remove {
+                    @extend .quantity-input-button-remove;
+                }
+
+                .subscriptions-addon-quantity-amount-quantity-input-value {
+                    @extend .quantity-input;
+                }
+
+                .subscriptions-addon-quantity-amount-quantity-input-add {
+                    @extend .quantity-input-button-add;
+                }
+            }
+        }
+    }
+    .subscriptions-addon-quantity-amount-total-amount {
+        overflow: auto;
+        .subscriptions-addon-quantity-amount-total-amount-label,
+        .subscriptions-addon-quantity-amount-total-amount-value .product-views-price-lead {
+            color: $sc-neutral-shade;
+        }
+        .subscriptions-addon-quantity-amount-total-amount-label,
+        .subscriptions-addon-quantity-amount-total-amount-value {
+        }
+        .subscriptions-addon-quantity-amount-total-amount-label {
+            @extend .sc-label;
+            color: $sc-neutral-shade-700;
+            font-weight: 600;
+            margin-right: $sc-margin-lv2;
+        }
+        .subscriptions-addon-quantity-amount-total-amount-value {
+            display: inline-block;
+            .product-views-price-lead {
+                @extend .transaction-line-views-cell-actionable-amount;
+                font-weight: normal;
+                margin: 0;
+            }
+        }
+    }
+}

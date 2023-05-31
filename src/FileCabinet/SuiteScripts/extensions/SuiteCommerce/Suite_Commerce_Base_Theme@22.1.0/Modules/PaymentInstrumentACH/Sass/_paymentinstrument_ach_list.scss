@@ -1,0 +1,31 @@
+.paymentmethod-ach-list-button-back {
+    @extend .button-back;
+}
+
+.paymentmethod-ach-list {
+    @extend .clearfix;
+}
+
+.paymentmethod-ach-edit-button-back-icon {
+    @extend .button-back-icon;
+}
+
+.paymentmethod-ach-list-button-back-icon {
+    @extend .button-back-icon;
+}
+
+.paymentmethod-ach-list {
+    @extend .address-list;
+}
+
+.paymentmethod-ach-list-button-container {
+    @extend .address-list-button-container;
+}
+
+.paymentmethod-ach-list-button {
+    @extend .button-info-cards-new;
+}
+
+.paymentmethod-ach-list-collection .paymentmethod-ach-list-ach-collection {
+    @extend .row;
+}

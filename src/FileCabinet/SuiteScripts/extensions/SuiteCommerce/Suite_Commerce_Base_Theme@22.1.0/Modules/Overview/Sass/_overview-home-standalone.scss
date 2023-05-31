@@ -1,0 +1,112 @@
+.ProfileHomeStandaloneView {
+
+    h2 {
+      margin-bottom: $sc-margin-lv3;
+    }
+	.overview-home-invoices-header {
+
+		border-bottom: 1px solid $sc-color-theme-border-light;
+		border-top: 1px solid $sc-color-theme-border-light;
+		display: inline-block;
+		padding: $sc-padding-lv3 0;
+		width: 100%;
+
+		hr {
+			margin: $sc-margin-lv3 0;
+		}
+
+		h3 {
+			@media (min-width: $screen-sm-min) {
+				float: left;
+			}
+		}
+
+		.overview-home-anchor-invoices-list {
+			float: right;
+			margin-right: $sc-margin-lv3;
+		}
+	}
+
+	.overview-home-invoices-results-container {
+
+		.overview-home-invoices-list-table {
+
+			@extend .table-flex-record-navigable;
+
+			.overview-home-content-table {
+
+				@extend .recordviews-row-header;
+
+				.overview-home-content-table-header-row {
+
+					@extend .recordviews-table;
+
+					.overview-home-content-table-header-row-title {
+						text-align: left;
+						width: 50%;
+					}
+
+					.overview-home-content-table-header-row-date {
+						text-align: left;
+						width: 15%;
+					}
+
+					.overview-home-content-table-header-row-status {
+						text-align: left;
+						width: 15%;
+					}
+				}
+			}
+		}
+
+		@media (min-width: $screen-md-min) {
+
+			td {
+				text-align: left;
+				vertical-align: middle;
+			}
+
+
+			.overview-home-content-table-header-row-title {
+				width: 20%;
+			}
+
+			.overview-home-content-table-header-row-date {
+				width: 15%;
+			}
+
+			.overview-home-content-table-header-row-status {
+				width: 15%;
+			}
+		}
+	}
+
+	.overview-home-invoices-empty-list {
+		margin: $sc-margin-lv2 0 $sc-margin-lv4;
+	}
+
+	.overview-home-invoices-empty-section{
+		padding:$sc-padding-lv8 $sc-padding-lv3 $sc-padding-lv3 $sc-padding-lv3;
+		text-align:center;
+	}
+	.overview-home-mysettings {
+		@extend .address-edit;
+		margin-top: $sc-margin-lv1;
+		@extend .row;
+
+		@media (min-width: $screen-sm-min) {
+			margin: $sc-margin-lv5 0 0;
+		}
+	}
+	.overview-home-mysettings-row {
+		@extend .row;
+		margin-top: $sc-margin-lv3;
+	}
+
+	.overview-home-mysettings-profile,
+	.overview-home-mysettings-shipping,
+	.overview-home-mysettings-payment {
+		@extend .col-md-4;
+		@extend .col-sm-6;
+	}
+}

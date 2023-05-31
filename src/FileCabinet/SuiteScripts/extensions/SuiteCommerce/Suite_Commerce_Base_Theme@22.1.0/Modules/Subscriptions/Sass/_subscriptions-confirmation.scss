@@ -1,0 +1,31 @@
+.subscriptions-confirmation-details{
+	@extend .box-column;
+}
+
+
+.subscriptions-confirmation-details-items {
+	@extend .col-md-8;
+}
+
+.subscriptions-confirmation-details-body{
+	@extend .accordion-body;
+
+	.item-view-cell-navigable-item-image{
+		padding-left: 0;
+		width: 25%;
+	}
+	.transaction-line-views-cell-navigable-item-quantity-label,
+	.transaction-line-views-cell-navigable-item-unit-price-label,
+	.transaction-line-views-cell-navigable-item-amount-label,
+	.transaction-line-views-cell-navigable-item-quantity-label {
+		display: inline-block;
+		@media (min-width: $screen-md-min){
+			display: none;
+		}
+	}
+	.transaction-line-views-cell-navigable-item-image {
+		width: $img-small;
+	    min-width: $img-small;
+		padding-right: 0;
+	}
+}

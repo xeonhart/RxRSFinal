@@ -1,0 +1,36 @@
+.subscriptions-addon-summary-container {
+  @extend .summary-container;
+  margin-bottom: 0;
+
+  .subscriptions-addon-summary-title{@extend .summary-title;}
+  .subscriptions-addon-summary-subtotal{
+      @extend .summary-subtotal;
+      padding-right: $sc-padding-lv3;
+      text-align: right;
+  }
+  .subscriptions-addon-summary-subtotal,
+  .subscriptions-addon-summary-discount,
+  .subscriptions-addon-summary-discount-by-usage {
+      margin-bottom: $sc-margin-lv3;
+  }
+  .subscriptions-addon-summary-discount-by-usage {
+    .subscriptions-addon-summary-grid-left {
+      padding-left: $sc-padding-lv3;
+      padding-top: $sc-padding-lv3;
+      max-width: 100%;
+    }
+  }
+  .subscriptions-addon-summary-grid-float{@extend .summary-grid-float;}
+  .subscriptions-addon-summary-grid-right{@extend .summary-grid-right;}
+  .subscriptions-addon-summary-grid-left {
+    display: inline-block;
+    max-width: 50%;
+  }
+
+  .subscriptions-addon-summary-total{@extend .summary-total;}
+
+  .icon-info {
+    color: $sc-color-secondary;
+    margin-right: $sc-margin-lv1;
+  }
+}

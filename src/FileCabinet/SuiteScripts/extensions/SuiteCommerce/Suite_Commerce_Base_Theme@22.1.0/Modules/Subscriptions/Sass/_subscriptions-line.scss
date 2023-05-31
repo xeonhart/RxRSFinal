@@ -1,0 +1,110 @@
+.subscriptions-details-required-lines-list .subscriptions-line {
+    margin-bottom: 0;
+}
+.subscriptions-details-top-header {
+    h2 {
+        margin-right: $sc-margin-lv3;
+    }
+}
+.subscriptions-line {
+  @extend .row;
+  @extend .info-card;
+  margin: 0;
+  margin-bottom: $sc-margin-lv2;
+    overflow: auto;
+
+  .subscriptions-line-info-card-content {
+      @extend .info-card-content;
+      margin: 0;
+      vertical-align: top;
+
+        &.subscriptions-line-info-container {
+            .subscriptions-line-status {
+                float: right;
+                @media (max-width: $screen-md-min) {
+                    float: none;
+                    display: block;
+                    margin-top: $sc-margin-lv1;
+                }
+            }
+        }
+
+      &.subscriptions-line-date {
+          margin-top: $sc-margin-lv3;
+      }
+        @media (max-width: $screen-md-min) {
+            display: block;
+            clear: left;
+      }
+      @media (min-width: $screen-md-min) {
+          vertical-align: middle;
+
+          &.subscriptions-line-date {
+              width: 33.3%;
+              margin: 0;
+          }
+          &.subscriptions-line-button {
+              padding: 0;
+              margin-top: $sc-margin-lv3;
+          }
+      }
+          }
+    .label {
+        font-size: $sc-font-size-s;
+        font-weight: $sc-font-weight-normal;
+              }
+    .subscriptions-line-price {
+        .subscriptions-pricing-wrapper {
+            .subscriptions-pricing-title,
+            .subscriptions-pricing-price,
+            .subscriptions-pricing-type,
+            .subscriptions-pricing-frequency {
+                color: $sc-neutral-shade-500;
+          }
+      }
+  }
+  .subscriptions-line-label-active {
+      @extend .label-success;
+  }
+
+    .subscriptions-line-label-suspended,
+    .subscriptions-line-label-processing {
+      @extend .label-warning;
+  }
+
+  .subscriptions-line-label-closed {
+      @extend .label-error;
+  }
+
+  a.subscriptions-line-button-edit {
+      @extend .button-link;
+      margin: 0;
+      padding: 0;
+      font-weight: $sc-font-weight-bold;
+  }
+
+    .subscriptions-line-status {
+        float: right;
+    }
+
+    .subscriptions-line-type,
+    .subscriptions-line-added {
+        display: block;
+    }
+}
+
+.subscriptions-details-addons-button {
+    @media (max-width: $screen-md-min) {
+        width: 100%;
+    }
+}
+
+.subscriptions-details-required-lines-list {
+    .subscriptions-line:nth-child(even) {
+        border-bottom: none;
+        border-top: none;
+    }
+    .subscriptions-line:last-child {
+        border-bottom: 1px solid $sc-color-theme-border-light;
+    }
+}

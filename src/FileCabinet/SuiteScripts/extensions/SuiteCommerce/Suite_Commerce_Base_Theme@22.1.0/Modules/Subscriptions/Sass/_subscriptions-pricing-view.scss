@@ -1,0 +1,81 @@
+.subscriptions-pricing {
+    width: auto;
+    .subscriptions-pricing-wrapper {
+        .subscriptions-pricing-title {
+            @extend .sc-sku-label;
+            margin-bottom: $sc-margin-lv1;
+            margin-top: 0;
+            line-height: 1;
+        }
+        .subscriptions-pricing-type ,
+        .subscriptions-pricing-frequency {
+            text-transform: lowercase;
+        }
+    }
+
+    .subscriptons-pricing-minmax-wrapper {
+        margin: 0 0 $sc-margin-lv4 0;
+        overflow: auto;
+        width: 100%;
+        @media (max-width: $screen-sm-max) {
+            width: 60%;
+        }
+        .subscriptions-pricing-minimum,
+        .subscriptions-pricing-maximum {
+            float: left;
+            width: 50%;
+        }
+        .subscriptions-pricing-minimum .subscriptions-pricing-minimum-title,
+        .subscriptions-pricing-maximum .subscriptions-pricing-maximum-title {
+            @extend .sc-sku-label;
+            display: block;
+        }
+        .subscriptions-pricing-minimum .subscriptions-pricing-minimum-price,
+        .subscriptions-pricing-maximum .subscriptions-pricing-maximum-price {
+            @extend .middle-price;
+            color: $sc-color-copy-dark;
+            font-weight: bold;
+        }
+    }
+
+    &.fullMode {
+        float: none;
+        margin-bottom: 0;
+
+        .subscriptions-pricing-wrapper {
+            margin: $sc-margin-lv1;
+        }
+        .subscriptions-pricing-title {
+            display: block;
+        }
+
+        .subscriptions-pricing-price {
+            @extend .large-price;
+            color: $sc-color-primary;
+        }
+        .subscriptions-pricing-price {
+            color: $sc-color-primary;
+        }
+        table {
+            width: 100%;
+        }
+        .subscriptions-pricing-details-wrapper {
+            margin: $sc-margin-lv2 0;
+            .quantity-pricing-table-header-quantity,
+            .quantity-pricing-table-body-quantity,
+            .quantity-pricing-table-header-price,
+            .quantity-pricing-table-body-price {
+                padding: $sc-padding-lv1 0 0 0;
+            }
+            .quantity-pricing-table-header-quantity,
+            .quantity-pricing-table-body-quantity {
+                width: 40%;
+            }
+            .quantity-pricing-table-header-price,
+            .quantity-pricing-table-body-price {
+                text-align: left;
+                width: 60%;
+            }
+        }
+    }
+}

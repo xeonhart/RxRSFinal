@@ -1,0 +1,26 @@
+.label {
+  border-radius: $sc-border-radius;
+  display: inline;
+  padding: $sc-padding-lv1 $sc-padding-lv2;
+  text-align: center;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+.label-warning,
+.label-success,
+.label-error {
+  @extend .label;
+}
+.label-warning {
+  background-color: $sc-color-warning-background;
+  color: $sc-color-warning;
+}
+.label-success {
+  background-color: $sc-color-success-background;
+  color: $sc-color-success;
+}
+.label-error {
+  background-color: $sc-color-error-background;
+  color: $sc-color-error;
+}

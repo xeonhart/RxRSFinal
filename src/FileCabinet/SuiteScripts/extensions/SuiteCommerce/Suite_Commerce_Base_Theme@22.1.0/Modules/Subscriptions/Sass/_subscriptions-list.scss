@@ -1,0 +1,72 @@
+.subscriptions-list {
+    padding-bottom: $sc-padding-lv3;
+}
+
+.subscriptions-list-actionable-header{
+	@extend .recordviews-actionable-header;
+}
+
+.subscriptions-list-title {
+	padding: $sc-padding-lv3 0;
+	border-top: 1px solid $sc-color-theme-border-light;
+}
+
+.subscriptions-list-results-table{
+	width: 100%;
+
+	td{
+		padding: $sc-padding-lv3;
+		vertical-align: middle;
+
+		@media (max-width: $screen-md-min) {
+			display: block;
+			padding: 0;
+		}
+	}
+
+	th{
+		font-weight: $sc-font-weight-normal;
+
+		&.subscriptions-list-title-header-details {
+			width: 40%;
+		}
+        &.subscriptions-list-table-header-row-renewal {
+            text-align: right;
+	}
+    }
+
+	@media (max-width: $screen-md-min) {
+		.recordviews-title{
+			padding-top: $sc-padding-lv3;
+            .recordviews-title-anchor {
+                display: flex;
+                justify-content: space-between;
+                .subscriptions-status {
+                    font-size: $sc-font-size-base;
+                    font-weight: normal;
+                    text-transform: capitalize;
+                }
+            }
+		}
+		.recordviews-status {
+            padding-bottom: $sc-padding-lv3;
+        }
+	}
+}
+
+.subscriptions-list-title-header-status{
+	width: 20%;
+}
+
+.subscriptions-list-title-header-activation-date{
+	@extend .recordviews-date-header;
+	width: 20%;
+}
+
+.subscriptions-list-table-header-row-date {
+	@extend .recordviews-date-header;
+    text-align: right;
+	width: 15%;
+}
+
+

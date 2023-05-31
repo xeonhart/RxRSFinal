@@ -1,0 +1,63 @@
+.subscriptions-addon-review {
+
+  .subscriptions-addon-review-title {
+    margin-bottom: $sc-margin-lv4;
+  }
+
+  .subscriptions-addon-review-container {
+    @extend .row;
+    margin: 0;
+
+    .subscriptions-addon-review-left {
+      @extend .col-md-8;
+      @extend .box-column;
+      margin-left: 0;
+      margin-right: 0;
+      background: $sc-color-theme-100;
+      .subscriptions-addon-review-review {
+        @extend .address-card-container;
+        background: white;
+        .subscriptions-addon-review-review {
+          @extend .info-card;
+          overflow: auto;
+          .subscriptions-addon-review-review-image {
+            @extend .col-md-3;
+            float: left;
+          }
+          .subscriptions-addon-review-review-data {
+            @extend .col-md-9;
+            float: left;
+            p {
+              @extend .info-card-content;
+            }
+          }
+        }
+      }
+    }
+
+    .subscriptions-addon-review-right {
+      padding: 0;
+      @extend .col-md-4;
+      @media (min-width: $screen-md-min) {
+        padding: 0 $sc-padding-lv3;
+      }
+    }
+
+    .subscriptions-addon-review-button-continue {
+      @extend .button-primary;
+      @extend .button-large;
+      font-weight: $sc-font-weight-semibold;
+      margin-top: $sc-margin-lv3;
+      width: 100%;
+    }
+
+  }
+
+  .subscriptions-addon-review-summary-message-info{
+    @extend .message-info;
+    display: block;
+    margin: $sc-margin-lv3 0;
+  }
+
+
+}
