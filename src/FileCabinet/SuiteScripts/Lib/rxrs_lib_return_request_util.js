@@ -307,33 +307,33 @@ define([
         fieldId: "custrecord_kd_rp_customer",
         value: customer,
       });
-
+      let id = packageRec.save({ ignoreMandatoryFields: true })
       log.debug(
-        "Package Return Id" + packageRec.save({ ignoreMandatoryFields: true })
+        "Package Return Id" + id
       );
 
-      let url =
-        "https://aiworksdev.agiline.com/global/index?globalurlid=07640CE7-E9BA-4931-BB84-5AB74842AC99&param1=ship";
-
-      url = url + "&param2=" + id;
-
-      var env = runtime.envType;
-      if (env === runtime.EnvType.SANDBOX) {
-        env = "SANDB";
-      } else if (env === runtime.EnvType.PRODUCTION) {
-        env = "PROD";
-      }
-      url = url + "&param3=" + env + "&param4=CREATE";
-
-      log.debug("DEBUG", url);
-      var response = https.get({
-        url: url,
-      });
-
-      log.debug({
-        title: "Server Response Headers",
-        details: response.headers,
-      });
+      // let url =
+      //   "https://aiworksdev.agiline.com/global/index?globalurlid=07640CE7-E9BA-4931-BB84-5AB74842AC99&param1=ship";
+      //
+      // url = url + "&param2=" + id;
+      //
+      // var env = runtime.envType;
+      // if (env === runtime.EnvType.SANDBOX) {
+      //   env = "SANDB";
+      // } else if (env === runtime.EnvType.PRODUCTION) {
+      //   env = "PROD";
+      // }
+      // url = url + "&param3=" + env + "&param4=CREATE";
+      //
+      // log.debug("DEBUG", url);
+      // var response = https.get({
+      //   url: url,
+      // });
+      //
+      // log.debug({
+      //   title: "Server Response Headers",
+      //   details: response.headers,
+      // });
     } catch (e) {
       log.error("createReturnPackages", e.message);
     }
