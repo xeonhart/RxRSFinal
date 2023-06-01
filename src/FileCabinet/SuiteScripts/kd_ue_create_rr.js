@@ -9,6 +9,7 @@ define([
   "N/runtime",
   "N/email",
   "N/https",
+  "N/task",
   "./Lib/rxrs_lib_return_request_util",
 ]
 /**
@@ -19,7 +20,8 @@ define([
  * @param{record} email
  * @param https
  * @param rxrsUtil
- */, (file, record, search, runtime, email, https, rxrsUtil) => {
+ */, (file, record, search, runtime, email, https,task, rxrsUtil) => {
+
   // const sendEmail = (category, entity, status, tranid) => {
   //     var strSubject = '';
   //     var strBody = '';
@@ -269,12 +271,13 @@ define([
 
   const afterSubmit = (context) => {
     try {
-      if (context.type === context.UserEventType.CREATE) {
+      if (context.type === context.UserEventType.EDIT) {
         const masterRec = context.newRecord;
         const masterRecId = masterRec.id;
         const customer = masterRec.getValue({
-          fieldId: "custrecord_kod_customer",
+          fieldId: "custrecord_mrrentity",
         });
+        const planSelectionType = masterRec.getValue("custrecord_mrrplanselectiontype")
 
         const RXOTC = masterRec.getValue("custrecord_kd_rxotc");
         log.debug({ title: "RXOTC ", details: RXOTC });
@@ -312,6 +315,7 @@ define([
             customer: customer,
             isLicenseExpired: isLicenseExpired,
             isStateLicenseExpired: isStateLicenseExpired,
+            planSelectionType: planSelectionType
           });
 
           //  createReturnRequest(masterRecId, customer, 1, RXOTCFile, 626, requestedDate, isLicenseExpired, isStateLicenseExpired)
@@ -335,6 +339,7 @@ define([
             customer: customer,
             isLicenseExpired: isLicenseExpired,
             isStateLicenseExpired: isStateLicenseExpired,
+            planSelectionType: planSelectionType
           });
 
           // createReturnRequest(masterRecId, customer, 3, C2File, 628, requestedDate, isLicenseExpired, isStateLicenseExpired)
@@ -358,6 +363,7 @@ define([
             customer: customer,
             isLicenseExpired: isLicenseExpired,
             isStateLicenseExpired: isStateLicenseExpired,
+            planSelectionType: planSelectionType
           });
 
           //  createReturnRequest(masterRecId, customer, 4, C3to5File, 627, requestedDate, isLicenseExpired, isStateLicenseExpired)
@@ -366,12 +372,35 @@ define([
           (sum, { numOfLabels }) => sum + numOfLabels,
           0
         );
-        if (totalNumberOfLabels < 30) {
+        let returnPackage = []
+        if (totalNumberOfLabels < 50) {
           rrCategory.forEach((rrCategory) => {
-            rxrsUtil.createReturnRequest(rrCategory);
+
+            let packageObj = rxrsUtil.createReturnRequest(rrCategory);
+            log.debug("packageObj",packageObj)
+            for(let i = 0; i<packageObj.numOfLabels; i++){
+              rxrsUtil.createReturnPackages(packageObj)
+            }
+
           });
+        }else{
+          rrCategory.forEach((rrCategory) => {
+            returnPackage.push(rxrsUtil.createReturnRequest(rrCategory));
+          });
+          const mrTask = task.create({
+            taskType: task.TaskType.MAP_REDUCE,
+            scriptId: runtime.getCurrentScript().getParameter("custscript_rxrs_mr_script_id"),
+            deploymentId:runtime.getCurrentScript().getParameter("custscript_rxrs_mr_script_deployment"),
+            params: {
+              custscript_rxrs_category: returnPackage
+            }
+          });
+          const mrTaskId = mrTask.submit()
+          log.debug("mr TaskID", mrTaskId)
+
         }
-        log.audit("rrCreationObj", rrCategory);
+
+        log.audit("returnPackage", returnPackage);
       }
     } catch (e) {
       log.error("afterSubmit", e.message);
