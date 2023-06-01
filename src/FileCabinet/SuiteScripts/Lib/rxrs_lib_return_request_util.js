@@ -21,6 +21,8 @@ define([
     RXOTC: 1,
     C3TO5: 4,
   });
+  const QUICKCASH = 4
+  const DUMMYQUICKCASHCUSTOMER = 1178
 
   /**
    * Create Return Request and Return Packages
@@ -33,6 +35,7 @@ define([
    * @param {int} options.customer
    * @param {boolean} options.isLicenseExpired
    * @param {boolean} options.isStateLicenseExpired
+   * @param {int} options.planSelectionType
    */
   function createReturnRequest(options) {
     try {
@@ -56,6 +59,16 @@ define([
           fieldId: "transtatus",
           value: "A",
         });
+      }
+      if(options.planSelectionType === QUICKCASH){
+        rrRec.setValue({
+          fieldId: "entity",
+          value: DUMMYQUICKCASHCUSTOMER,
+        });custbody_kdvendor
+        rrRec.setValue({
+          fieldId: "custbody_kdvendor",
+          value: options.customer,
+        })
       }
       rrRec.setValue({
         fieldId: "entity",
@@ -150,27 +163,30 @@ define([
             options.category
         );
 
-        if (options.numOfLabels) {
-          log.debug("nummberofLabels " + options.numOfLabels);
-          for (let i = 0; i < options.numOfLabels; i++) {
-            createReturnPackages(
-              RRId,
-              options.masterRecId,
-              requestedDate,
-              cat,
-              customer,
-              isC2
-            );
-          }
-        }
+        // if (options.numOfLabels) {
+        //   log.debug("nummberofLabels " + options.numOfLabels);
+        //   for (let i = 0; i < options.numOfLabels; i++) {
+        //     createReturnPackages(
+        //       RRId,
+        //       options.masterRecId,
+        //       requestedDate,
+        //       cat,
+        //       customer,
+        //       isC2
+        //     );
+        //   }
+        // }
+
+        const numOfLabels = options.numOfLabels;
         const masterRecId = options.masterRecId;
         return {
-          RRId,
-          masterRecId,
-          requestedDate,
-          cat,
-          customer,
-          isC2,
+          rrId: RRId,
+          numOfLabels: numOfLabels,
+          mrrId: masterRecId,
+          requestedDate: requestedDate,
+          category:  cat,
+          customer:customer,
+          isC2:isC2,
         };
       }
     } catch (e) {
@@ -187,13 +203,14 @@ define([
    */
   const sendEmail = (options) => {
     try {
-      log.debug("sendEmail", options)
+      log.debug("sendEmail", options);
       let strSubject = "";
       let strBody = "";
       let recipient = "";
       if (options.category === RRCATEGORY.C2 && options.transtatus === "J") {
         recipient = options.entity;
-        strSubject = " Your Order #" + options.tranid + "  222 Kit is on the way";
+        strSubject =
+          " Your Order #" + options.tranid + "  222 Kit is on the way";
         strBody = " Your Order #" + options.tranid + "  222 Kit is on the way";
       } else {
         recipient = options.entity;
@@ -243,19 +260,12 @@ define([
         fieldId: "custevent_kd_ret_req",
         value: rrId,
       });
-      log.debug("task id ",taskRec.save());
+      log.debug("task id ", taskRec.save());
     } catch (e) {
       log.error("createTask", e.message);
     }
   };
-  const createReturnPackages = (
-    rrId,
-    mrrId,
-    requestedDate,
-    category,
-    customer,
-    isC2
-  ) => {
+  const createReturnPackages = (options) => {
     try {
       const rpIds = search
         .load("customsearch_kd_package_return_search_2")
@@ -270,7 +280,6 @@ define([
           })
         ) +
           parseInt(1));
-      log.debug("Return Packages Name", rpName);
 
       const packageRec = record.create({
         type: "customrecord_kod_mr_packages",
@@ -283,34 +292,32 @@ define([
       });
       packageRec.setValue({
         fieldId: "custrecord_kod_rtnpack_mr",
-        value: mrrId,
+        value: options.mrrId,
       });
-      // if (isC2 == true) {
-      //     packageRec.setValue({
-      //         fieldId: 'custrecord_kd_is_222_kit',
-      //         value: true
-      //     })
-      // }
+      if (options.isC2 === true) {
+        packageRec.setValue({
+          fieldId: "custrecord_kd_is_222_kit",
+          value: true,
+        });
+      }
       packageRec.setValue({
         fieldId: "custrecord_kod_packrtn_rtnrequest",
-        value: rrId,
+        value: options.rrId,
       });
       packageRec.setValue({
         fieldId: "custrecord_kod_packrtn_control",
-        value: category,
+        value: options.category,
       });
       packageRec.setValue({
         fieldId: "custrecord_kod_packrtn_reqpickup",
-        value: requestedDate,
+        value: options.requestedDate,
       });
       packageRec.setValue({
         fieldId: "custrecord_kd_rp_customer",
-        value: customer,
+        value: options.customer,
       });
-      let id = packageRec.save({ ignoreMandatoryFields: true })
-      log.debug(
-        "Package Return Id" + id
-      );
+      let id = packageRec.save({ ignoreMandatoryFields: true });
+      log.debug("Package Return Id" + id);
 
       // let url =
       //   "https://aiworksdev.agiline.com/global/index?globalurlid=07640CE7-E9BA-4931-BB84-5AB74842AC99&param1=ship";
@@ -340,5 +347,8 @@ define([
   };
   return {
     createReturnRequest,
+    createReturnPackages,
+    createTask,
+    sendEmail,
   };
 });
