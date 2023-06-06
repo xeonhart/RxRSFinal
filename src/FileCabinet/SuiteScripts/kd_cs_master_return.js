@@ -3,10 +3,9 @@
  * @NScriptType ClientScript
  * @NModuleScope SameAccount
  */
-define(["N/currentRecord", "N/record", "N/url", "N/search"]
-/**
+define(["N/currentRecord", "N/record", "N/url", "N/search"], /**
  * @param{currentRecord} currentRecord
- */, function (currentRecord, record, url, search) {
+ */ function (currentRecord, record, url, search) {
   /**
    * Function to be executed after page is initialized.
    *
@@ -147,44 +146,47 @@ define(["N/currentRecord", "N/record", "N/url", "N/search"]
    * @since 2015.2
    */
   function saveRecord(scriptContext) {
-    var curRec = scriptContext.currentRecord;
-    var rxNumberOfLabel = 0;
-    var c3to5NumberOfLabel = 0;
-    var c2NumberOfLabel = 0;
-    rxNumberOfLabel = curRec.getValue("custrecord_kd_mrr_rx_otc_no_labels");
-    c3to5NumberOfLabel = curRec.getValue("custrecord_kd_mrr_c3_5_no_labels");
-    c2NumberOfLabel = curRec.getValue("custrecord_kd_mrr_c2_no_labels");
-    var totalNumberOfLabels =
-      rxNumberOfLabel + c3to5NumberOfLabel + c2NumberOfLabel;
+    if (scriptContext.mode == "create") {
+      var curRec = scriptContext.currentRecord;
+      var rxNumberOfLabel = 0;
+      var c3to5NumberOfLabel = 0;
+      var c2NumberOfLabel = 0;
+      rxNumberOfLabel = curRec.getValue("custrecord_kd_mrr_rx_otc_no_labels");
+      c3to5NumberOfLabel = curRec.getValue("custrecord_kd_mrr_c3_5_no_labels");
+      c2NumberOfLabel = curRec.getValue("custrecord_kd_mrr_c2_no_labels");
+      var totalNumberOfLabels =
+        rxNumberOfLabel + c3to5NumberOfLabel + c2NumberOfLabel;
 
-    console.log("totalNumberOfLabels " + totalNumberOfLabels);
-    if (totalNumberOfLabels > 50) {
-      const scheduledscriptinstanceSearchObj = search.create({
-        type: "scheduledscriptinstance",
-        filters: [
-          [
-            "scriptdeployment.scriptid",
-            "is",
-            "customdeploy_rxrs_mr_create_rr_and_pack",
-          ], //script Id 2166
-          "AND",
-          ["status", "anyof", "PROCESSING"],
-        ],
-      });
-      const checkInstCount = scheduledscriptinstanceSearchObj.runPaged().count;
-      if (checkInstCount) {
-        alert(
-          "There's still a current process of creation of inbound packages. Please wait until the process is completed before saving record again."
-        );
-        return false;
-      } else {
-        alert(
-          "Creation of inbound packages will be processed in the backend. This may take some time. Please wait..."
-        );
-        return true;
+      console.log("totalNumberOfLabels " + totalNumberOfLabels);
+      if (totalNumberOfLabels > 50) {
+        const scheduledscriptinstanceSearchObj = search.create({
+          type: "scheduledscriptinstance",
+          filters: [
+            [
+              "scriptdeployment.scriptid",
+              "is",
+              "customdeploy_rxrs_mr_create_rr_and_pack",
+            ], //script Id 2166
+            "AND",
+            ["status", "anyof", "PROCESSING"],
+          ],
+        });
+        const checkInstCount =
+          scheduledscriptinstanceSearchObj.runPaged().count;
+        if (checkInstCount) {
+          alert(
+            "There's still a current process of creation of inbound packages. Please wait until the process is completed before saving record again."
+          );
+          return false;
+        } else {
+          alert(
+            "Creation of inbound packages will be processed in the backend. This may take some time. Please wait..."
+          );
+          return true;
+        }
       }
     }
-    return true
+    return true;
   }
 
   function generateFinalStatement(scriptContext) {
@@ -211,21 +213,21 @@ define(["N/currentRecord", "N/record", "N/url", "N/search"]
     });
     location.href = suiteletURL;
     /*record.submitFields({
-                    type: 'customrecord_kod_masterreturn',
-                    id: currentRecord.get().id,
-                    values: {
-                        'custrecord_kod_mr_status': 10
-                    },
-                    options: {
-                        enableSourcing: false,
-                        ignoreMandatoryFields : true
-                    }
-                });
-    
-                redirect.toRecord({
-                    type: 'customrecord_kod_masterreturn',
-                    id: currentRecord.get().id
-                });*/
+                            type: 'customrecord_kod_masterreturn',
+                            id: currentRecord.get().id,
+                            values: {
+                                'custrecord_kod_mr_status': 10
+                            },
+                            options: {
+                                enableSourcing: false,
+                                ignoreMandatoryFields : true
+                            }
+                        });
+            
+                        redirect.toRecord({
+                            type: 'customrecord_kod_masterreturn',
+                            id: currentRecord.get().id
+                        });*/
   }
 
   return {

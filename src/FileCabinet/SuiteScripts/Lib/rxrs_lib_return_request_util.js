@@ -39,9 +39,16 @@ define([
    */
   function createReturnRequest(options) {
     try {
+      let recordType = ""
+      if(options.planSelectionType == QUICKCASH){
+      recordType = "custompurchase_returnrequestpo"
+
+      }else{
+      recordType = "customsale_kod_returnrequest"
+      }
       log.debug("createReturnRequest", options);
       const rrRec = record.create({
-        type: "customsale_kod_returnrequest",
+        type: recordType,
         isDynamic: false,
       });
       if (
@@ -60,16 +67,7 @@ define([
           value: "A",
         });
       }
-      if(options.planSelectionType === QUICKCASH){
-        rrRec.setValue({
-          fieldId: "entity",
-          value: DUMMYQUICKCASHCUSTOMER,
-        });custbody_kdvendor
-        rrRec.setValue({
-          fieldId: "custbody_kdvendor",
-          value: options.customer,
-        })
-      }
+
       rrRec.setValue({
         fieldId: "entity",
         value: options.customer,
@@ -117,7 +115,7 @@ define([
       const RRId = rrRec.save({ ignoreMandatoryFields: true });
       if (RRId) {
         const rrRecSave = record.load({
-          type: "customsale_kod_returnrequest",
+          type: recordType,
           id: RRId,
         });
         if (options.category === RRCATEGORY.C2) {
