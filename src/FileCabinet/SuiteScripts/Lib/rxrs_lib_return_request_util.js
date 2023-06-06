@@ -40,11 +40,13 @@ define([
   function createReturnRequest(options) {
     try {
       let recordType = ""
+      let location = null
       if(options.planSelectionType == QUICKCASH){
       recordType = "custompurchase_returnrequestpo"
-
+      location = 103
       }else{
       recordType = "customsale_kod_returnrequest"
+        location = 1
       }
       log.debug("createReturnRequest", options);
       const rrRec = record.create({
@@ -83,7 +85,7 @@ define([
       });
       rrRec.setValue({
         fieldId: "location",
-        value: 1,
+        value: location,
       });
       rrRec.setValue({
         fieldId: "custbody_kd_file",
