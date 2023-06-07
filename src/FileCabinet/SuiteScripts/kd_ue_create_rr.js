@@ -21,7 +21,7 @@ define([
  * @param https
  * @param rxrsUtil
  */, (file, record, search, runtime, email, https,task, rxrsUtil) => {
-
+      const QUICKCASH = 4
   // const sendEmail = (category, entity, status, tranid) => {
   //     var strSubject = '';
   //     var strBody = '';
@@ -305,11 +305,12 @@ define([
           const requestedDate = masterRec.getValue(
             "custrecord_kd_mrr_rx_otc_pickup_date"
           );
+           let item = planSelectionType == QUICKCASH  ? 889 : 626
           rrCategory.push({
             category: 1,
             numOfLabels: numOfLabels,
             file: RXOTCFile,
-            item: 626,
+            item: item,
             requestedDate: requestedDate,
             masterRecId: masterRecId,
             customer: customer,
