@@ -11,8 +11,7 @@ define([
   "N/https",
   "N/task",
   "./Lib/rxrs_lib_return_request_util",
-]
-/**
+], /**
  * @param{file} file
  * @param{record} record
  * @param search
@@ -20,8 +19,8 @@ define([
  * @param{record} email
  * @param https
  * @param rxrsUtil
- */, (file, record, search, runtime, email, https,task, rxrsUtil) => {
-      const QUICKCASH = 4
+ */ (file, record, search, runtime, email, https, task, rxrsUtil) => {
+  const QUICKCASH = 4;
   // const sendEmail = (category, entity, status, tranid) => {
   //     var strSubject = '';
   //     var strBody = '';
@@ -277,7 +276,9 @@ define([
         const customer = masterRec.getValue({
           fieldId: "custrecord_mrrentity",
         });
-        const planSelectionType = masterRec.getValue("custrecord_mrrplanselectiontype")
+        const planSelectionType = masterRec.getValue(
+          "custrecord_mrrplanselectiontype"
+        );
 
         const RXOTC = masterRec.getValue("custrecord_kd_rxotc");
         log.debug({ title: "RXOTC ", details: RXOTC });
@@ -305,7 +306,7 @@ define([
           const requestedDate = masterRec.getValue(
             "custrecord_kd_mrr_rx_otc_pickup_date"
           );
-           let item = planSelectionType == QUICKCASH  ? 889 : 626
+          let item = planSelectionType == QUICKCASH ? 889 : 626;
           rrCategory.push({
             category: 1,
             numOfLabels: numOfLabels,
@@ -316,7 +317,7 @@ define([
             customer: customer,
             isLicenseExpired: isLicenseExpired,
             isStateLicenseExpired: isStateLicenseExpired,
-            planSelectionType: planSelectionType
+            planSelectionType: planSelectionType,
           });
 
           //  createReturnRequest(masterRecId, customer, 1, RXOTCFile, 626, requestedDate, isLicenseExpired, isStateLicenseExpired)
@@ -329,18 +330,18 @@ define([
           const requestedDate = masterRec.getValue(
             "custrecord_kd_mrr_c2_pickup_date"
           );
-
+          let item = planSelectionType == QUICKCASH ? 892 : 628;
           rrCategory.push({
             category: 3,
             numOfLabels: numOfLabels,
             file: C2File,
-            item: 628,
+            item: item,
             requestedDate: requestedDate,
             masterRecId: masterRecId,
             customer: customer,
             isLicenseExpired: isLicenseExpired,
             isStateLicenseExpired: isStateLicenseExpired,
-            planSelectionType: planSelectionType
+            planSelectionType: planSelectionType,
           });
 
           // createReturnRequest(masterRecId, customer, 3, C2File, 628, requestedDate, isLicenseExpired, isStateLicenseExpired)
@@ -353,18 +354,18 @@ define([
             "custrecord_kd_mrr_c3_5_pickup_date"
           );
           log.debug("numOfLabels " + numOfLabels);
-
+          let item = planSelectionType == QUICKCASH ? 893 : 627;
           rrCategory.push({
             category: 4,
             numOfLabels: numOfLabels,
             file: C3to5File,
-            item: 627,
+            item: item,
             requestedDate: requestedDate,
             masterRecId: masterRecId,
             customer: customer,
             isLicenseExpired: isLicenseExpired,
             isStateLicenseExpired: isStateLicenseExpired,
-            planSelectionType: planSelectionType
+            planSelectionType: planSelectionType,
           });
 
           //  createReturnRequest(masterRecId, customer, 4, C3to5File, 627, requestedDate, isLicenseExpired, isStateLicenseExpired)
@@ -373,32 +374,33 @@ define([
           (sum, { numOfLabels }) => sum + numOfLabels,
           0
         );
-        let returnPackage = []
+        let returnPackage = [];
         if (totalNumberOfLabels < 50) {
           rrCategory.forEach((rrCategory) => {
-
             let packageObj = rxrsUtil.createReturnRequest(rrCategory);
-            log.debug("packageObj",packageObj)
-            for(let i = 0; i<packageObj.numOfLabels; i++){
-              rxrsUtil.createReturnPackages(packageObj)
+            log.debug("packageObj", packageObj);
+            for (let i = 0; i < packageObj.numOfLabels; i++) {
+              rxrsUtil.createReturnPackages(packageObj);
             }
-
           });
-        }else{
+        } else {
           rrCategory.forEach((rrCategory) => {
             returnPackage.push(rxrsUtil.createReturnRequest(rrCategory));
           });
           const mrTask = task.create({
             taskType: task.TaskType.MAP_REDUCE,
-            scriptId: runtime.getCurrentScript().getParameter("custscript_rxrs_mr_script_id"),
-            deploymentId:runtime.getCurrentScript().getParameter("custscript_rxrs_mr_script_deployment"),
+            scriptId: runtime
+              .getCurrentScript()
+              .getParameter("custscript_rxrs_mr_script_id"),
+            deploymentId: runtime
+              .getCurrentScript()
+              .getParameter("custscript_rxrs_mr_script_deployment"),
             params: {
-              custscript_rxrs_category: returnPackage
-            }
+              custscript_rxrs_category: returnPackage,
+            },
           });
-          const mrTaskId = mrTask.submit()
-          log.debug("mr TaskID", mrTaskId)
-
+          const mrTaskId = mrTask.submit();
+          log.debug("mr TaskID", mrTaskId);
         }
 
         log.audit("returnPackage", returnPackage);
