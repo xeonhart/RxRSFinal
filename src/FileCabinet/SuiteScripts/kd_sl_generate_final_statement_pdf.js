@@ -267,14 +267,14 @@ function(render, record, file, search, redirect, format, email){
             var lookupRs = search.lookupFields({
                 type: REC_MRR,
                 id:  mrrId,
-                columns: ['name', 'custrecord_kod_mr_requestdt', 'custrecord_kod_customer', 'custrecord_kod_customer.billaddress']
+                columns: ['name', 'custrecord_kod_mr_requestdt', 'custrecord_mrrentity', 'custrecord_mrrentity.billaddress']
             });
 
             log.debug('getRecordFields', JSON.stringify(lookupRs));
             var mrrName = lookupRs.name;
             var reqDate = lookupRs.custrecord_kod_mr_requestdt;
-            var customer = lookupRs.custrecord_kod_customer[0].text;
-            var billAddr = lookupRs['custrecord_kod_customer.billaddress'];
+            var customer = lookupRs.custrecord_mrrentity[0].text;
+            var billAddr = lookupRs['custrecord_mrrentity.billaddress'];
             //lookupRs.custbody_kd_master_return_id[0].text;
             //mrr_id = lookupRs.custbody_kd_master_return_id[0].value;
 
@@ -429,13 +429,13 @@ function(render, record, file, search, redirect, format, email){
             var lookupRs = search.lookupFields({
                 type: REC_MRR,
                 id:  id,
-                columns: ['custrecord_kod_customer']
+                columns: ['custrecord_mrrentity']
             });
 
             log.debug('getting customer', JSON.stringify(lookupRs));
             email.send({
                 author: 9,//runtime.getCurrentUser(),
-                recipients: lookupRs.custrecord_kod_customer[0].value,
+                recipients: lookupRs.custrecord_mrrentity[0].value,
                 subject: recordFields.name + ' Final Statement',
                 body: 'Attached is the ' + recordFields.name + ' Final Statement',
                 attachments: [finalStatementPdf]/*,
