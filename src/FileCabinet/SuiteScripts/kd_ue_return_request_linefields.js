@@ -204,27 +204,27 @@ define(['N/currentRecord', 'N/search', 'N/record'],
                 if (entity) {
                     try {
 
-                    var weightBasedRate = search.lookupFields({
-                        type: record.Type.CUSTOMER,
-                        id: entity,
-                        columns: ['custentity_kd_based_destruction_fee', 'custentity_kd_price_per_pound', 'custentity_kd_free_of_chage_iw']
-                    })
-                    log.debug('weightBasedRate', weightBasedRate)
-                    basedDestructionFee = weightBasedRate['custentity_kd_based_destruction_fee']
-                    pricePerPound = weightBasedRate['custentity_kd_price_per_pound']
-                    freeOfChargeItemWeight = weightBasedRate['custentity_kd_free_of_chage_iw']
-                    total_item_weight = currentRecord.getValue('custbody_kd_total_item_weight')
-                    TOTALITEMWEIGHTFEE = calcaulateWeighBasedFee(basedDestructionFee, pricePerPound, total_item_weight, freeOfChargeItemWeight)
-                    log.debug('Before Submit TOTALITEMWEIGHTFEE', TOTALITEMWEIGHTFEE)
-                    currentRecord.setValue({
-                        fieldId: 'custbody_kd_total_non_returnable_fee_w',
-                        value: TOTALITEMWEIGHTFEE
-                    })
+                        var weightBasedRate = search.lookupFields({
+                            type: record.Type.CUSTOMER,
+                            id: entity,
+                            columns: ['custentity_kd_based_destruction_fee', 'custentity_kd_price_per_pound', 'custentity_kd_free_of_chage_iw']
+                        })
+                        log.debug('weightBasedRate', weightBasedRate)
+                        basedDestructionFee = weightBasedRate['custentity_kd_based_destruction_fee']
+                        pricePerPound = weightBasedRate['custentity_kd_price_per_pound']
+                        freeOfChargeItemWeight = weightBasedRate['custentity_kd_free_of_chage_iw']
+                        total_item_weight = currentRecord.getValue('custbody_kd_total_item_weight')
+                        TOTALITEMWEIGHTFEE = calcaulateWeighBasedFee(basedDestructionFee, pricePerPound, total_item_weight, freeOfChargeItemWeight)
+                        log.debug('Before Submit TOTALITEMWEIGHTFEE', TOTALITEMWEIGHTFEE)
+                        currentRecord.setValue({
+                            fieldId: 'custbody_kd_total_non_returnable_fee_w',
+                            value: TOTALITEMWEIGHTFEE
+                        })
                     } catch (e) {
                         log.error(e.message)
                     }
                 }
-            }else{
+            } else {
                 currentRecord.setValue({
                     fieldId: 'custbody_kd_total_non_returnable_fee_w',
                     value: 0
@@ -267,13 +267,25 @@ define(['N/currentRecord', 'N/search', 'N/record'],
                 // var PHARMACALC2 = 10
                 // var PHARMAPRICINGORDER;
                 var totalItemWeight = 0;
+                var curRec
+                const RRTYPE = Object.freeze({
+                    rrSalesType: "customsale_kod_returnrequest",
+                    rrPoType: "custompurchase_returnrequestpo"
+                })
+                try {
+                    curRec = record.load({
+                        type: RRTYPE.rrSalesType,
+                        id: rec.id,
+                        isDynamic: true,
+                    });
+                } catch (e) {
+                    curRec = record.load({
+                        type: RRTYPE.rrPoType,
+                        id: rec.id,
+                        isDynamic: true,
+                    });
+                }
 
-
-                var curRec = record.load({
-                    type: 'customsale_kod_returnrequest',
-                    id: rec.id,
-                    isDynamic: true,
-                });
                 log.debug('Cur Rec ', curRec)
                 var entity = curRec.getValue('entity')
                 var form222rateObj = search.lookupFields({

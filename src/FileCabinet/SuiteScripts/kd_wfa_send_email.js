@@ -19,7 +19,7 @@ define(['N/search', 'N/email', 'N/url', 'N/runtime','N/record'],
             switch (strType) {
                 case 'masterreturncreation':
 
-                    recipient = scriptContext.newRecord.getValue('custrecord_kod_customer')
+                    recipient = scriptContext.newRecord.getValue('custrecord_mrrentity')
                     strSubject = ' Your Order ' + scriptContext.newRecord.getValue('name') + ' Has Been Submitted'
                     strBody = ' Your Order ' + scriptContext.newRecord.getValue('name') + ' Has Been Submitted'
                     log.debug('Recipient', recipient)

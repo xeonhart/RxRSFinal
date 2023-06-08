@@ -8,6 +8,11 @@ function (record, url, redirect, serverWidget, search, runtime, task) {
     var SEA_RET_REQ_ITEMS = 'customsearch_kd_rr_items';
     var SCR_ID_GENERATE_FORM_222 = 626;
     var REC_RETURN_REQUEST = 'customsale_kod_returnrequest';
+    const RRTYPE = Object.freeze({
+        rrSalesType: "customsale_kod_returnrequest",
+        rrPoType: "custompurchase_returnrequestpo"
+    })
+    var recType = null
     var REC_RETURN_ITEM_REQUESTED = 'customrecord_kod_mr_item_request';
     var RETURN_PACKAGE_SEARCH = 'customsearch_kd_package_return_search'
     var SCR_FILE_NAME_CS_RR = 'kd_cs_form_ret_req.js';
@@ -526,7 +531,7 @@ function (record, url, redirect, serverWidget, search, runtime, task) {
         log.debug('TEST', 'hasItemForBatch' + hasItemForBatch)
         if (hasItemForBatch) {
             record.submitFields({
-                type: REC_RETURN_REQUEST,
+                type: recType,
                 id: returnRequestRec.id,
                 values: {
                     custbody_kd_for_so_batch: true
@@ -1129,7 +1134,7 @@ function (record, url, redirect, serverWidget, search, runtime, task) {
     function haveItemForBagLabel(recReturnRequest) {
         //var rrCategory = recReturnRequest.getValue(FLD_RETREQ_CATEGORY);
         var rrItemsSearch = search.create({
-            type: REC_RETURN_REQUEST,
+            type: recType,
             columns: [search.createColumn({
                 name: 'internalid',
                 summary: search.Summary.COUNT
@@ -1227,7 +1232,21 @@ function (record, url, redirect, serverWidget, search, runtime, task) {
         var returnRequestRec = context.newRecord;
         if (context.type == 'create')
             return;
-
+        try {
+            const rrRec = record.load({
+                type: RRTYPE.rrSalesType,
+                id: rrId,
+                isDynamic: true,
+            });
+            recType = RRTYPE.rrSalesType
+        } catch (e) {
+            const rrRec = record.load({
+                type: RRTYPE.rrPoType,
+                id: rrId,
+                isDynamic: true,
+            });
+            recType = RRTYPE.rrPoType
+        }
         if (parseInt(context.newRecord.getValue(FLD_RETREQ_CATEGORY)) == CATEGORY_C2) {
             if(returnRequestRec.getValue(FLD_RETREQ_MRR))
                 addC2ItemsReqSublist(context);
@@ -1532,7 +1551,7 @@ function (record, url, redirect, serverWidget, search, runtime, task) {
 
         var itemId, pharmaProcessing, itemPricingOrderAndPriceLevelAmounts, itemPricingOrder, pricingOrder, pricingOrderPriceLevel1, pricingOrderPriceLevel1, pricingOrderPriceLevel1, priceLevelToUse;
         var rrRec = record.load({
-            type: 'customsale_kod_returnrequest',
+            type: recType,
             id: returnRequestRec.id,
             isDynamic: true,
         });
@@ -1728,7 +1747,7 @@ function (record, url, redirect, serverWidget, search, runtime, task) {
             //added transition from C2 Kit to be mail to pending package receipt
         } else if (returnRequestRec.getValue('transtatus') == 'J' && returnRequestRec.getValue('custbody_kd_labels_generated') == true && returnRequestRec.getValue('custbody_kd_c2kit_mailed') == true) {
             var id = record.submitFields({
-                type: 'customsale_kod_returnrequest',
+                type: recType,
                 id: returnRequestRec.id,
                 values: {'transtatus': 'D'},
                 options: {
@@ -1759,7 +1778,7 @@ function (record, url, redirect, serverWidget, search, runtime, task) {
         }else{
             if(returnRequestRec.getValue('custbody_kd_rr_mrr_status') != 12 && returnRequestRec.getValue('custbody_kd_rr_mrr_status') != 10){
                 var rrRec = record.load({
-                    type: 'customsale_kod_returnrequest',
+                    type: recType,
                     id: returnRequestRec.id,
                     isDynamic: true,
                 });
@@ -1798,7 +1817,7 @@ function (record, url, redirect, serverWidget, search, runtime, task) {
     }
     function applyPaymentSchedule(returnRequestRec){
         var rrRec = record.load({
-            type: 'customsale_kod_returnrequest',
+            type: recType,
             id: returnRequestRec.id,
             isDynamic: true,
         });
@@ -1911,7 +1930,7 @@ function (record, url, redirect, serverWidget, search, runtime, task) {
     }
     function applyPaymentDueDate(returnRequestRec){
         var rrRec = record.load({
-            type: 'customsale_kod_returnrequest',
+            type: recType,
             id: returnRequestRec.id,
             isDynamic: true,
         });

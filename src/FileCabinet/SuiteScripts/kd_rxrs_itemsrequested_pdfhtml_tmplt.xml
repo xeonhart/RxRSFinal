@@ -23,7 +23,7 @@
                 </tr>
                 <tr>
                     <td colspan="2">&nbsp;</td>
-					<td rowspan="3">${record.custrecord_mrrentity.billaddress}<br/>${record.custrecord_mrrentity.custentity_kd_license_number}</td>
+					<td rowspan="3">${record.custrecord_mrrentity.billaddress1}<br/>${record.custrecord_mrrentity.custentity_kd_license_number}</td>
                 </tr>
                 <tr>
                     <td width="19%" padding-left="50px" style="vertical-align:top">Return No:</td>

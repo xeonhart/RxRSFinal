@@ -267,14 +267,14 @@ function(render, record, file, search, redirect, format, email){
             var lookupRs = search.lookupFields({
                 type: REC_MRR,
                 id:  mrrId,
-                columns: ['name', 'custrecord_kod_mr_requestdt', 'custrecord_mrrentity', 'custrecord_mrrentity.billaddress']
+                columns: ['name', 'custrecord_kod_mr_requestdt', 'custrecord_mrrentity', 'custrecord_mrrentity.billaddress1']
             });
 
             log.debug('getRecordFields', JSON.stringify(lookupRs));
             var mrrName = lookupRs.name;
             var reqDate = lookupRs.custrecord_kod_mr_requestdt;
             var customer = lookupRs.custrecord_mrrentity[0].text;
-            var billAddr = lookupRs['custrecord_mrrentity.billaddress'];
+            var billAddr = lookupRs['custrecord_mrrentity.billaddress1'];
             //lookupRs.custbody_kd_master_return_id[0].text;
             //mrr_id = lookupRs.custbody_kd_master_return_id[0].value;
 
