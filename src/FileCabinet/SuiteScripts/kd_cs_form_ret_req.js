@@ -68,7 +68,7 @@ define([
   function assign222Form() {
     try {
       record.submitFields({
-        type: REC_RET_REQ,
+        type: currentRecord.get().type,
         id: currentRecord.get().id,
         values: {
           custbody_kd_for_222_form_assignment: "T",
