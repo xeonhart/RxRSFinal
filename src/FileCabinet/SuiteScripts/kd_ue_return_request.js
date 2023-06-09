@@ -8,7 +8,7 @@ function (record, url, redirect, serverWidget, search, runtime, task) {
     var SEA_RET_REQ_ITEMS = 'customsearch_kd_rr_items';
     var SCR_ID_GENERATE_FORM_222 = 626;
     var REC_RETURN_REQUEST = 'customsale_kod_returnrequest';
-    const RRTYPE = Object.freeze({
+    var RRTYPE = Object.freeze({
         rrSalesType: "customsale_kod_returnrequest",
         rrPoType: "custompurchase_returnrequestpo"
     })
@@ -1233,16 +1233,16 @@ function (record, url, redirect, serverWidget, search, runtime, task) {
         if (context.type == 'create')
             return;
         try {
-            const rrRec = record.load({
+            var rrRec = record.load({
                 type: RRTYPE.rrSalesType,
-                id: rrId,
+                id: returnRequestRec.id,
                 isDynamic: true,
             });
             recType = RRTYPE.rrSalesType
         } catch (e) {
-            const rrRec = record.load({
+            var rrRec = record.load({
                 type: RRTYPE.rrPoType,
-                id: rrId,
+                id: returnRequestRec.id,
                 isDynamic: true,
             });
             recType = RRTYPE.rrPoType
@@ -1644,7 +1644,21 @@ function (record, url, redirect, serverWidget, search, runtime, task) {
             return;
         var returnRequestOldRec = context.oldRecord;
         var returnRequestRec = context.newRecord;
-
+        try {
+            var rrRec = record.load({
+                type: RRTYPE.rrSalesType,
+                id: returnRequestRec.id,
+                isDynamic: true,
+            });
+            recType = RRTYPE.rrSalesType
+        } catch (e) {
+            var rrRec = record.load({
+                type: RRTYPE.rrPoType,
+                id: returnRequestRec.id,
+                isDynamic: true,
+            });
+            recType = RRTYPE.rrPoType
+        }
         log.debug('afterSubmit', returnRequestRec.getValue(FLD_RETREQ_CATEGORY) + ' : ' + returnRequestRec.getText('transtatus').toUpperCase());
         log.debug('afterSubmit', JSON.stringify(returnRequestOldRec));
         log.debug('afterSubmit TEST', returnRequestRec.getValue('transtatus') + ' : ' + returnRequestRec.getValue('custbody_kd_rr_for_tag_label_gen'));
