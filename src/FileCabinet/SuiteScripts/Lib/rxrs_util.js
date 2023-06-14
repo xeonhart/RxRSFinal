@@ -21,8 +21,35 @@ define([
     RXOTC: 1,
     C3TO5: 4,
   });
+  const rrStatus = Object.freeze({
+    PendingReview: "A",
+    Rejected: "B",
+    Authorized: "C",
+    PendingPackageReceipt: "D",
+    ReceivedPendingProcessing: "E",
+    Processing: "F",
+    PendingApproval: "G",
+    Rejected_Resubmission: "H",
+    Approved: "I",
+    C2Kittobemailed: "J",
+    PendingVerification: "K",
+  });
+  const mrrStatus = Object.freeze({
+    CustomerSubmitted: 1,
+    New: 11,
+    WaitingForApproval: 8,
+    Approved: 10,
+    PriceLocked: 12,
+    Archived: 13,
+    InProgress: 14,
+  });
   const QUICKCASH = 4;
   const DUMMYQUICKCASHCUSTOMER = 1178;
+  const rxrsItem = Object.freeze({
+    RxOTC: 897,
+    C3To5: 896,
+    C2: 895,
+  });
 
   /**
    * Create Return Request and Return Packages
@@ -40,13 +67,11 @@ define([
   function createReturnRequest(options) {
     try {
       let recordType = "";
-      let location = null;
+      let location = 1;
       if (options.planSelectionType == QUICKCASH) {
         recordType = "custompurchase_returnrequestpo";
-        location = 103;
       } else {
         recordType = "customsale_kod_returnrequest";
-        location = 1;
       }
       log.debug("createReturnRequest", options);
       const rrRec = record.create({
@@ -60,12 +85,12 @@ define([
       ) {
         rrRec.setValue({
           fieldId: "transtatus",
-          value: "J",
+          value: rrStatus.C2Kittobemailed,
         });
       } else {
         rrRec.setValue({
           fieldId: "transtatus",
-          value: "A",
+          value: rrStatus.PendingReview,
         });
       }
 
@@ -119,20 +144,21 @@ define([
           type: recordType,
           id: RRId,
         });
+        let tranId = rrRecSave.getValue("tranid");
+        let tranStatus = rrRecSave.getValue("transtatus");
         if (options.category === RRCATEGORY.C2) {
-          var extId = rrRecSave.getValue("tranid");
-          createTask(extId, rrRecSave.id);
+          createTask(tranId, rrRecSave.id);
           if (
             rrRecSave.getValue("custbody_kd_state_license_expired") === false &&
             rrRecSave.getValue("custbody_kd_license_expired")
           ) {
-            const sendEmailObj = {
+            sendEmail({
               category: RRCATEGORY.C2,
-              entity: rrRecSave.getValue("entity"),
-              transtatus: rrRecSave.getValue("transtatus"),
-              tranid: rrRecSave.getValue("tranid"),
-            };
-            sendEmail(sendEmailObj);
+              entity: options.customer,
+              transtatus: tranStatus,
+              tranid: tranId,
+              internalId: rrRecSave.id,
+            });
           }
         }
         log.debug("RR ID " + RRId);
@@ -147,12 +173,13 @@ define([
           fieldId: "entity",
         });
         let isC2 = cat === RRCATEGORY.C2;
-        sendEmail(
-          0,
-          options.customer,
-          rrRecSave.getValue("transtatus"),
-          rrRecSave.getValue("tranid")
-        );
+        sendEmail({
+          category: options.category,
+          transtatus: tranStatus,
+          entity: options.customer,
+          tranid: tranId,
+          internalId: rrRecSave.id,
+        });
 
         const numOfLabels = options.numOfLabels;
         const masterRecId = options.masterRecId;
@@ -172,11 +199,12 @@ define([
   }
 
   /**
-   *
-   * @param {int} options.category
+   * Send email to the customer
+   * @param {number} options.category
    * @param {string} options.transtatus
-   * @param {int} options.entity
-   * @param {int} options.tranid
+   * @param {number} options.entity
+   * @param {number} options.tranid
+   * @param {number} options.internalId
    */
   const sendEmail = (options) => {
     try {
@@ -184,7 +212,10 @@ define([
       let strSubject = "";
       let strBody = "";
       let recipient = "";
-      if (options.category === RRCATEGORY.C2 && options.transtatus === "J") {
+      if (
+        options.category === RRCATEGORY.C2 &&
+        options.transtatus === rrStatus.C2Kittobemailed
+      ) {
         recipient = options.entity;
         strSubject =
           " Your Order #" + options.tranid + "  222 Kit is on the way";
@@ -202,6 +233,10 @@ define([
             recipients: recipient,
             subject: strSubject,
             body: strBody,
+            relatedRecords: {
+              entityId: options.entity,
+              transactionId: options.internalId,
+            },
           });
         } else {
           email.send({
@@ -209,6 +244,10 @@ define([
             recipients: recipient,
             subject: strSubject,
             body: strBody,
+            relatedRecords: {
+              entityId: options.entity,
+              transactionId: options.internalId,
+            },
           });
         }
       }
@@ -332,7 +371,10 @@ define([
       //   details: response.headers,
       // });
     } catch (e) {
-      log.error("createReturnPackages", e.message);
+      log.error("createReturnPackages", {
+        errorMessage: e.message,
+        parameters: options,
+      });
     }
   };
 
@@ -365,5 +407,9 @@ define([
     createTask,
     sendEmail,
     scriptInstanceChecker,
+    rxrsItem,
+    RRCATEGORY,
+    mrrStatus,
+    rrStatus,
   };
 });

@@ -10,7 +10,7 @@ define([
   "N/email",
   "N/https",
   "N/task",
-  "./Lib/rxrs_lib_return_request_util",
+  "./Lib/rxrs_util",
 ], /**
  * @param{file} file
  * @param{record} record
@@ -269,10 +269,12 @@ define([
   // }
 
   const afterSubmit = (context) => {
+    const masterRec = context.newRecord;
+    const masterRecId = masterRec.id;
+    let mrrStatus = masterRec.getValue("custrecord_kod_mr_status");
     try {
-      if (context.type === context.UserEventType.EDIT) {
-        const masterRec = context.newRecord;
-        const masterRecId = masterRec.id;
+      if (mrrStatus == rxrsUtil.mrrStatus.CustomerSubmitted) {
+
         const customer = masterRec.getValue({
           fieldId: "custrecord_mrrentity",
         });
@@ -288,9 +290,9 @@ define([
         const C2File = masterRec.getValue("custrecord_kd_mrr_c2_file");
 
         const C3to5 = masterRec.getValue("custrecord_kd_c3to5");
-        log.debug({ title: "C3to5 ", details: C3to5 });
+
         const C3to5File = masterRec.getValue("custrecord_kd_mrr_c3_5_file");
-        log.debug({ title: "C3to5File ", details: C3to5File });
+
         const isLicenseExpired = masterRec.getValue(
           "custrecord_kd_license_expired"
         );
@@ -306,12 +308,12 @@ define([
           const requestedDate = masterRec.getValue(
             "custrecord_kd_mrr_rx_otc_pickup_date"
           );
-          let item = planSelectionType == QUICKCASH ? 889 : 626;
+
           rrCategory.push({
-            category: 1,
+            category: rxrsUtil.RRCATEGORY.C3TO5,
             numOfLabels: numOfLabels,
             file: RXOTCFile,
-            item: item,
+            item: rxrsUtil.rxrsItem.RxOTC,
             requestedDate: requestedDate,
             masterRecId: masterRecId,
             customer: customer,
@@ -330,12 +332,12 @@ define([
           const requestedDate = masterRec.getValue(
             "custrecord_kd_mrr_c2_pickup_date"
           );
-          let item = planSelectionType == QUICKCASH ? 892 : 628;
+
           rrCategory.push({
-            category: 3,
+            category: rxrsUtil.RRCATEGORY.C2,
             numOfLabels: numOfLabels,
             file: C2File,
-            item: item,
+            item: rxrsUtil.rxrsItem.C2,
             requestedDate: requestedDate,
             masterRecId: masterRecId,
             customer: customer,
@@ -353,13 +355,12 @@ define([
           const requestedDate = masterRec.getValue(
             "custrecord_kd_mrr_c3_5_pickup_date"
           );
-          log.debug("numOfLabels " + numOfLabels);
-          let item = planSelectionType == QUICKCASH ? 893 : 627;
+
           rrCategory.push({
-            category: 4,
+            category: rxrsUtil.RRCATEGORY.C3TO5,
             numOfLabels: numOfLabels,
             file: C3to5File,
-            item: item,
+            item: rxrsUtil.rxrsItem.C3To5,
             requestedDate: requestedDate,
             masterRecId: masterRecId,
             customer: customer,
@@ -406,7 +407,7 @@ define([
             const mrTaskId = mrTask.submit();
             log.debug("mr TaskID", { mrTaskId, deploymentId });
           } catch (e) {
-            log.error("error",e.message)
+            log.error("error", e.message);
             //Use the second deployment if the first deployment is still in progress
             const secondDeploymentId =
               "customdeploy_rxrs_mr_create_rr_and_pack2";
