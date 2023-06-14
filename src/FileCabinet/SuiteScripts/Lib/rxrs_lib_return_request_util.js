@@ -58,7 +58,6 @@ define([
         options.isLicenseExpired === false &&
         options.isStateLicenseExpired === false
       ) {
-        log.audit("Category is 2");
         rrRec.setValue({
           fieldId: "transtatus",
           value: "J",
@@ -150,32 +149,10 @@ define([
         let isC2 = cat === RRCATEGORY.C2;
         sendEmail(
           0,
-          customer,
+          options.customer,
           rrRecSave.getValue("transtatus"),
           rrRecSave.getValue("tranid")
         );
-        log.debug(
-          "requested date" +
-            requestedDate +
-            "customer " +
-            customer +
-            "category " +
-            options.category
-        );
-
-        // if (options.numOfLabels) {
-        //   log.debug("nummberofLabels " + options.numOfLabels);
-        //   for (let i = 0; i < options.numOfLabels; i++) {
-        //     createReturnPackages(
-        //       RRId,
-        //       options.masterRecId,
-        //       requestedDate,
-        //       cat,
-        //       customer,
-        //       isC2
-        //     );
-        //   }
-        // }
 
         const numOfLabels = options.numOfLabels;
         const masterRecId = options.masterRecId;
@@ -236,7 +213,10 @@ define([
         }
       }
     } catch (e) {
-      log.error("sendEmail", e.message);
+      log.error("sendEmail", {
+        errorMessage: e.message,
+        parameters: options,
+      });
     }
   };
   const createTask = (exId, rrId) => {
@@ -326,8 +306,8 @@ define([
         fieldId: "custrecord_kd_rp_customer",
         value: options.customer,
       });
-      // let id = packageRec.save({ ignoreMandatoryFields: true });
-      // log.debug("Package Return Id" + id);
+      let id = packageRec.save({ ignoreMandatoryFields: true });
+      log.debug("Package Return Id" + id);
 
       // let url =
       //   "https://aiworksdev.agiline.com/global/index?globalurlid=07640CE7-E9BA-4931-BB84-5AB74842AC99&param1=ship";
@@ -358,26 +338,22 @@ define([
 
   /**
    * Check if there's a current deployment running in the background
-   * @param {string}options.scriptId Script Internal Id or script Id
-   * @param {string}options.deploymentId Deployment Id of the Script
+   * @param {string} deploymentId Deployment Id of the Script
    * @return {boolean}
    */
-  function scriptInstanceChecker(options) {
+  function scriptInstanceChecker(deploymentId) {
     try {
       var scheduledscriptinstanceSearchObj = search.create({
         type: "scheduledscriptinstance",
         filters: [
-          [
-            "scriptdeployment.scriptid",
-            "is",
-            "customdeploy_rxrs_mr_create_rr_and_pack",
-          ], //script Id 2166
+          ["scriptdeployment.scriptid", "is", deploymentId],
           "AND",
           ["status", "anyof", "PROCESSING"],
         ],
       });
-
-      return scheduledscriptinstanceSearchObj.runPaged().count > 1;
+      let count = scheduledscriptinstanceSearchObj.runPaged().count;
+      log.audit("count", { count, deploymentId });
+      return scheduledscriptinstanceSearchObj.runPaged().count != 0;
     } catch (e) {
       log.error("scriptInstanceChecker", e.message);
     }
@@ -388,6 +364,6 @@ define([
     createReturnPackages,
     createTask,
     sendEmail,
-    scriptInstanceChecker
+    scriptInstanceChecker,
   };
 });

@@ -147,7 +147,7 @@ define(["N/currentRecord", "N/record", "N/url", "N/search"], /**
    */
   function saveRecord(scriptContext) {
     try {
-      if (scriptContext.mode == "edit") {
+      if (scriptContext.mode == "create") {
         var curRec = scriptContext.currentRecord;
         var rxNumberOfLabel = 0;
         var c3to5NumberOfLabel = 0;
