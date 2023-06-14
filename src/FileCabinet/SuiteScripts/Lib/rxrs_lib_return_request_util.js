@@ -21,8 +21,8 @@ define([
     RXOTC: 1,
     C3TO5: 4,
   });
-  const QUICKCASH = 4
-  const DUMMYQUICKCASHCUSTOMER = 1178
+  const QUICKCASH = 4;
+  const DUMMYQUICKCASHCUSTOMER = 1178;
 
   /**
    * Create Return Request and Return Packages
@@ -39,14 +39,14 @@ define([
    */
   function createReturnRequest(options) {
     try {
-      let recordType = ""
-      let location = null
-      if(options.planSelectionType == QUICKCASH){
-      recordType = "custompurchase_returnrequestpo"
-      location = 103
-      }else{
-      recordType = "customsale_kod_returnrequest"
-        location = 1
+      let recordType = "";
+      let location = null;
+      if (options.planSelectionType == QUICKCASH) {
+        recordType = "custompurchase_returnrequestpo";
+        location = 103;
+      } else {
+        recordType = "customsale_kod_returnrequest";
+        location = 1;
       }
       log.debug("createReturnRequest", options);
       const rrRec = record.create({
@@ -184,9 +184,9 @@ define([
           numOfLabels: numOfLabels,
           mrrId: masterRecId,
           requestedDate: requestedDate,
-          category:  cat,
-          customer:customer,
-          isC2:isC2,
+          category: cat,
+          customer: customer,
+          isC2: isC2,
         };
       }
     } catch (e) {
@@ -265,8 +265,18 @@ define([
       log.error("createTask", e.message);
     }
   };
+  /**
+   * Create inbound packages
+   * @param {number} options.mrrId master return request number
+   * @param {number} options.rrId return request Id
+   * @param {string} options.requestedDate  requested date
+   * @param {number} options.category Return request category
+   * @param {boolean} options.isC2 Check if the category is C2
+   * @param {number} options.customer Customer indicated in the Master Return Request
+   */
   const createReturnPackages = (options) => {
     try {
+      log.audit("options", options);
       const rpIds = search
         .load("customsearch_kd_package_return_search_2")
         .run()
@@ -316,8 +326,8 @@ define([
         fieldId: "custrecord_kd_rp_customer",
         value: options.customer,
       });
-      let id = packageRec.save({ ignoreMandatoryFields: true });
-      log.debug("Package Return Id" + id);
+      // let id = packageRec.save({ ignoreMandatoryFields: true });
+      // log.debug("Package Return Id" + id);
 
       // let url =
       //   "https://aiworksdev.agiline.com/global/index?globalurlid=07640CE7-E9BA-4931-BB84-5AB74842AC99&param1=ship";
@@ -345,10 +355,39 @@ define([
       log.error("createReturnPackages", e.message);
     }
   };
+
+  /**
+   * Check if there's a current deployment running in the background
+   * @param {string}options.scriptId Script Internal Id or script Id
+   * @param {string}options.deploymentId Deployment Id of the Script
+   * @return {boolean}
+   */
+  function scriptInstanceChecker(options) {
+    try {
+      var scheduledscriptinstanceSearchObj = search.create({
+        type: "scheduledscriptinstance",
+        filters: [
+          [
+            "scriptdeployment.scriptid",
+            "is",
+            "customdeploy_rxrs_mr_create_rr_and_pack",
+          ], //script Id 2166
+          "AND",
+          ["status", "anyof", "PROCESSING"],
+        ],
+      });
+
+      return scheduledscriptinstanceSearchObj.runPaged().count > 1;
+    } catch (e) {
+      log.error("scriptInstanceChecker", e.message);
+    }
+  }
+
   return {
     createReturnRequest,
     createReturnPackages,
     createTask,
     sendEmail,
+    scriptInstanceChecker
   };
 });

@@ -1133,8 +1133,9 @@ function (record, url, redirect, serverWidget, search, runtime, task) {
 
     function haveItemForBagLabel(recReturnRequest) {
         //var rrCategory = recReturnRequest.getValue(FLD_RETREQ_CATEGORY);
+
         var rrItemsSearch = search.create({
-            type: recType,
+            type: recReturnRequest.type,
             columns: [search.createColumn({
                 name: 'internalid',
                 summary: search.Summary.COUNT
@@ -1400,7 +1401,7 @@ function (record, url, redirect, serverWidget, search, runtime, task) {
             log.debug('test', 'cs file id: ' + fileId[0].id);
             context.form.clientScriptFileId = fileId[0].id;
         } else if (returnRequestRec.getValue('transtatus') == 'K' && context.type == 'view') {
-
+                log.emergency("haveitemforBagLable", haveItemForBagLabel(returnRequestRec))
             if (haveItemForBagLabel(returnRequestRec)) {
 
                 context.form.addButton({
