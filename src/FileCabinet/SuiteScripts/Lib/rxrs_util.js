@@ -138,16 +138,21 @@ define([
         line: 0,
         value: 1,
       });
-      const RRId = rrRec.save({ ignoreMandatoryFields: true });
+      let RRId = rrRec.save({ ignoreMandatoryFields: true });
       if (RRId) {
         const rrRecSave = record.load({
           type: recordType,
           id: RRId,
         });
         let tranId = rrRecSave.getValue("tranid");
+        if(!tranId) tranId = rrRecSave.getValue("transactionnumber")
         let tranStatus = rrRecSave.getValue("transtatus");
+        log.audit("tranId", { tranId, tranStatus });
         if (options.category === RRCATEGORY.C2) {
-          createTask(tranId, rrRecSave.id);
+          createTask({
+            tranId: tranId,
+            rrId: RRId,
+          });
           if (
             rrRecSave.getValue("custbody_kd_state_license_expired") === false &&
             rrRecSave.getValue("custbody_kd_license_expired")
@@ -157,7 +162,7 @@ define([
               entity: options.customer,
               transtatus: tranStatus,
               tranid: tranId,
-              internalId: rrRecSave.id,
+              internalId: RRId,
             });
           }
         }
@@ -178,7 +183,7 @@ define([
           transtatus: tranStatus,
           entity: options.customer,
           tranid: tranId,
-          internalId: rrRecSave.id,
+          internalId: RRId,
         });
 
         const numOfLabels = options.numOfLabels;
@@ -216,12 +221,12 @@ define([
         options.category === RRCATEGORY.C2 &&
         options.transtatus === rrStatus.C2Kittobemailed
       ) {
-        recipient = options.entity;
+        recipient = +options.entity;
         strSubject =
           " Your Order #" + options.tranid + "  222 Kit is on the way";
         strBody = " Your Order #" + options.tranid + "  222 Kit is on the way";
       } else {
-        recipient = options.entity;
+        recipient = +options.entity;
         strSubject = " Your Order #" + options.tranid + "  Has Been Submitted";
         strBody = " Your Order #" + options.tranid + "  Has Been Submitted";
       }
@@ -234,7 +239,7 @@ define([
             subject: strSubject,
             body: strBody,
             relatedRecords: {
-              entityId: options.entity,
+              entityId: +options.entity,
               transactionId: options.internalId,
             },
           });
@@ -258,14 +263,20 @@ define([
       });
     }
   };
-  const createTask = (exId, rrId) => {
+  /**
+   * Create Tasks
+   * @param options.tranId
+   * @param options.rrId
+   */
+  const createTask = (options) => {
     try {
-      var taskRec = record.create({
+      log.debug("Create Tasks Params", options);
+      const taskRec = record.create({
         type: record.Type.TASK,
       });
       taskRec.setValue({
         fieldId: "title",
-        value: exId,
+        value: options.tranId,
       });
       taskRec.setValue({
         fieldId: "message",
@@ -277,7 +288,7 @@ define([
       });
       taskRec.setValue({
         fieldId: "custevent_kd_ret_req",
-        value: rrId,
+        value: options.rrId,
       });
       log.debug("task id ", taskRec.save());
     } catch (e) {
