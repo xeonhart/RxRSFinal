@@ -42,7 +42,7 @@ define([
     var PROCESSING_RETURNABLE = 2;
     var CUST_TYPE_PREPAID = 3;
     var CUST_TYPE_QUICK_CASH = 4;
-    var CUST_TYPE_DESTRUCTION = 5;
+    var CUST_TYPE_DESTRUCTION = 5
     var DAMAGE_TYPE_1 = 1;
     var DAMAGE_TYPE_2 = 2;
     var FULL_PACKAGE = 1;
@@ -66,6 +66,7 @@ define([
     }
 
     function assign222Form() {
+        console.log("assign222")
         try {
             record.submitFields({
                 type: currentRecord.get().type,

@@ -21,6 +21,21 @@ define([
     RXOTC: 1,
     C3TO5: 4,
   });
+
+  const priceLevel = [
+    { priceName: "Mfg ERV (SysCalc)", column: "price4" },
+    { priceName: "Non-Returnable", column: "price7" },
+    { priceName: "Non-scannable", column: "price11" },
+    { priceName: "Pharma - Credit (ERV SysCalc)", column: "price10" },
+    { priceName: "Pharma - Credit (UP SysCalc)", column: "price9" },
+    { priceName: "Pharma - Credit (input)", column: "price8" },
+    { priceName: "Unit Price (input)", column: "price2" },
+    { priceName: "Online Price", column: "price5" },
+    {
+      priceName: 'Wholesale Acquisition Price '+ '"WAC"' + ' (input)',
+      column: "baseprice",
+    },
+  ];
   const rrStatus = Object.freeze({
     PendingReview: "A",
     Rejected: "B",
@@ -44,11 +59,12 @@ define([
     InProgress: 14,
   });
   const QUICKCASH = 4;
-  const DUMMYQUICKCASHCUSTOMER = 1178;
+
   const rxrsItem = Object.freeze({
     RxOTC: 897,
     C3To5: 896,
     C2: 895,
+    NonScannableItem: 649,
   });
 
   /**
@@ -145,7 +161,7 @@ define([
           id: RRId,
         });
         let tranId = rrRecSave.getValue("tranid");
-        if(!tranId) tranId = rrRecSave.getValue("transactionnumber")
+        if (!tranId) tranId = rrRecSave.getValue("transactionnumber");
         let tranStatus = rrRecSave.getValue("transtatus");
         log.audit("tranId", { tranId, tranStatus });
         if (options.category === RRCATEGORY.C2) {
@@ -390,6 +406,42 @@ define([
   };
 
   /**
+   * Check if both deployments is currently in progress or pending
+   * @return {boolean} return if the both deployments is currently active
+   */
+  function checkInstanceInstnaceMR() {
+    const scheduledscriptinstanceSearchObj = search.create({
+      type: "scheduledscriptinstance",
+      filters: [
+        [
+          [
+            "scriptdeployment.scriptid",
+            "startswith",
+            "customdeploy_rxrs_mr_create_rr_and_pack",
+          ],
+          "OR",
+          [
+            "scriptdeployment.scriptid",
+            "startswith",
+            "customdeploy_rxrs_mr_create_rr_and_pack2",
+          ],
+        ],
+        "AND",
+        ["status", "anyof", "PENDING", "PROCESSING"],
+      ],
+      columns: [
+        search.createColumn({
+          name: "scriptid",
+          join: "scriptDeployment",
+          label: "Custom ID",
+        }),
+      ],
+    });
+    const searchResultCount = scheduledscriptinstanceSearchObj.runPaged().count;
+    return searchResultCount == 2;
+  }
+
+  /**
    * Check if there's a current deployment running in the background
    * @param {string} deploymentId Deployment Id of the Script
    * @return {boolean}
@@ -412,15 +464,19 @@ define([
     }
   }
 
+
+
   return {
+    rxrsItem,
+    RRCATEGORY,
+    mrrStatus,
+    rrStatus,
     createReturnRequest,
     createReturnPackages,
     createTask,
     sendEmail,
     scriptInstanceChecker,
-    rxrsItem,
-    RRCATEGORY,
-    mrrStatus,
-    rrStatus,
+    checkInstanceInstnaceMR,
+    getItemRate
   };
 });
