@@ -32,7 +32,7 @@ define([
     { priceName: "Unit Price (input)", column: "price2" },
     { priceName: "Online Price", column: "price5" },
     {
-      priceName: 'Wholesale Acquisition Price '+ '"WAC"' + ' (input)',
+      priceName: "Wholesale Acquisition Price " + '"WAC"' + " (input)",
       column: "baseprice",
     },
   ];
@@ -464,7 +464,30 @@ define([
     }
   }
 
-
+  function generateRRPODocumentNumber() {
+    let name = "RRPO";
+    const transactionSearchObj = search.create({
+      type: "transaction",
+      filters: [["type", "anyof", "CuTrPrch106"]],
+      columns: [
+        search.createColumn({
+          name: "transactionnumber",
+          summary: "COUNT",
+          label: "Transaction Number",
+        }),
+      ],
+    });
+    transactionSearchObj.run().each(function (result) {
+      name =
+        name +
+        (+result.getValue({
+          name: "transactionnumber",
+          summary: "COUNT",
+        }) +
+          1);
+    });
+    return name;
+  }
 
   return {
     rxrsItem,
@@ -477,6 +500,6 @@ define([
     sendEmail,
     scriptInstanceChecker,
     checkInstanceInstnaceMR,
-    getItemRate
+    generateRRPODocumentNumber
   };
 });
