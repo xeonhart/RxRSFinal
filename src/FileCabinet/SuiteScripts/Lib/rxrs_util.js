@@ -84,8 +84,10 @@ define([
     try {
       let recordType = "";
       let location = 1;
+      let rrpoName
       if (options.planSelectionType == QUICKCASH) {
         recordType = "custompurchase_returnrequestpo";
+         rrpoName = generateRRPODocumentNumber()
       } else {
         recordType = "customsale_kod_returnrequest";
       }
@@ -109,7 +111,10 @@ define([
           value: rrStatus.PendingReview,
         });
       }
-
+      rrpoName && rrRec.setValue({
+        fieldId: "tranid",
+        value: rrpoName
+      })
       rrRec.setValue({
         fieldId: "entity",
         value: options.customer,
