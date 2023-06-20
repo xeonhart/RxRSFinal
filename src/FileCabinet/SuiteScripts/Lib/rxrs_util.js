@@ -166,7 +166,7 @@ define([
           id: RRId,
         });
         let tranId = rrRecSave.getValue("tranid");
-        if (!tranId) tranId = rrRecSave.getValue("transactionnumber");
+
         let tranStatus = rrRecSave.getValue("transtatus");
         log.audit("tranId", { tranId, tranStatus });
         if (options.category === RRCATEGORY.C2) {
