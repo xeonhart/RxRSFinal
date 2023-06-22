@@ -12,12 +12,13 @@ define(['N/record', 'N/search', 'N/runtime', 'N/ui/serverWidget', 'N/url', 'N/ui
         var FLD_F2RN_RET_REQ = 'custrecord_kd_returnrequest';
         var FLD_F2RN_PAGE = 'custrecord_kd_form222_page';
         var form222Count = 0;
-        function updateReturnRequestForm222(rrId){
+
+        function updateReturnRequestForm222(rrId) {
             var customrecord_kd_222formrefnumSearchObj = search.create({
                 type: "customrecord_kd_222formrefnum",
                 filters:
                     [
-                        ["custrecord_kd_returnrequest","anyof",rrId]
+                        ["custrecord_kd_returnrequest", "anyof", rrId]
                     ],
                 columns:
                     [
@@ -32,26 +33,39 @@ define(['N/record', 'N/search', 'N/runtime', 'N/ui/serverWidget', 'N/url', 'N/ui
             });
             var searchResultCount = customrecord_kd_222formrefnumSearchObj.runPaged().count;
             log.debug('updateReturnRequestForm222 searchResultCount', searchResultCount);
-            if(searchResultCount){
-                var rrRecId = record.submitFields({
-                    type:'customsale_kod_returnrequest',
-                    id: rrId,
-                    values:{
-                        'custbody_kd_no_form_222' : searchResultCount
-                    }
-                })
-                log.debug('updateReturnRequestForm222','Updating RR ' +rrId+ ' form 222 Fields')
+            if (searchResultCount) {
+                var rrRecId
+                try {
+                    rrRecId = record.submitFields({
+                        type: 'customsale_kod_returnrequest',
+                        id: rrId,
+                        values: {
+                            'custbody_kd_no_form_222': searchResultCount
+                        }
+                    })
+                } catch (e) {
+                    rrRecId = record.submitFields({
+                        type: 'custompurchase_returnrequestpo',
+                        id: rrId,
+                        values: {
+                            'custbody_kd_no_form_222': searchResultCount
+                        }
+                    })
+                }
+
+                log.debug('updateReturnRequestForm222', 'Updating RR ' + rrRecId + ' form 222 Fields')
             }
         }
-        function updateTask(rrId){
-            log.debug('RRID' ,rrId)
+
+        function updateTask(rrId) {
+            log.debug('RRID', rrId)
             var taskId;
             var taskRec;
             var taskSearchObj = search.create({
                 type: "task",
                 filters:
                     [
-                        ["custevent_kd_ret_req","anyof",rrId]
+                        ["custevent_kd_ret_req", "anyof", rrId]
                     ],
                 columns:
                     [
@@ -59,31 +73,31 @@ define(['N/record', 'N/search', 'N/runtime', 'N/ui/serverWidget', 'N/url', 'N/ui
                     ]
             });
             var searchResultCount = taskSearchObj.runPaged().count;
-            log.debug("taskSearchObj result count",searchResultCount);
-            taskSearchObj.run().each(function(result){
+            log.debug("taskSearchObj result count", searchResultCount);
+            taskSearchObj.run().each(function (result) {
                 // .run().each has a limit of 4,000 results
                 taskId = result.getValue({name: 'internalid'})
                 return true;
             });
-            if(taskId) {
+            if (taskId) {
                 taskRec = record.load({
                     type: "task",
                     id: taskId,
                     isDynamic: true
                 })
-                log.debug('taskrec' , JSON.stringify(taskRec))
+                log.debug('taskrec', JSON.stringify(taskRec))
             }
             var all222FormFileSearch = search.load({
                 id: 'customsearch_kd_222_form_file_search_2'
             })
             all222FormFileSearch.filters.push(search.createFilter({
-                name:'custrecord_kd_returnrequest',
+                name: 'custrecord_kd_returnrequest',
                 operator: 'anyof',
                 values: rrId
             }));
             var searchResultCount = 0
             var form222FileCount = 0;
-            all222FormFileSearch.run().each(function(result){
+            all222FormFileSearch.run().each(function (result) {
                 form222FileCount = result.getValue({
                     name: 'custrecord_kd_2frn_222_form_pdf',
                     summary: "COUNT"
@@ -94,15 +108,16 @@ define(['N/record', 'N/search', 'N/runtime', 'N/ui/serverWidget', 'N/url', 'N/ui
                 })
                 return true;
             });
-            log.debug('Search Result Count ', searchResultCount )
+            log.debug('Search Result Count ', searchResultCount)
             log.debug('222 Form File Count', form222FileCount)
-            if(searchResultCount != form222FileCount){
+            if (searchResultCount != form222FileCount) {
                 taskRec.setValue({fieldId: 'custevent_kd_222_form_generated', value: false})
             }
             var taskIdRec = taskRec.save({ignoreMandatoryFields: true})
-            log.debug('Task rec has been update ',taskIdRec)
+            log.debug('Task rec has been update ', taskIdRec)
         }
-        function get222FormCurrentPage(rrId){
+
+        function get222FormCurrentPage(rrId) {
             var f2rnSearch = search.create({
                 type: REC_FORM_222_REF_NUM,
                 columns: [search.createColumn({
@@ -115,10 +130,11 @@ define(['N/record', 'N/search', 'N/runtime', 'N/ui/serverWidget', 'N/url', 'N/ui
                     values: [rrId]
                 }]
             });
-            var rs = f2rnSearch.run().getRange(0,1);
+            var rs = f2rnSearch.run().getRange(0, 1);
             var f2rnCount = rs[0].getValue({name: 'internalid', summary: search.Summary.COUNT});
             return f2rnCount;
         }
+
         function getItemsRequested(rrId, f2rnId) {
             var objSearch = search.load({
                 id: SEA_RETURN_ITEM_RQSTD
@@ -186,8 +202,9 @@ define(['N/record', 'N/search', 'N/runtime', 'N/ui/serverWidget', 'N/url', 'N/ui
             log.debug('getItemsRequested', 'object generated: ' + JSON.stringify(itemsRequested));
             return itemsRequested;
         }
+
         function addItemsRequestedSublist(context) {
-            if(context.newRecord.getValue('FLD_F2RN_RET_REQ') == '')
+            if (context.newRecord.getValue('FLD_F2RN_RET_REQ') == '')
                 return;
 
             context.form.addTab({
@@ -317,7 +334,7 @@ define(['N/record', 'N/search', 'N/runtime', 'N/ui/serverWidget', 'N/url', 'N/ui
                     value: itemsRequested[i].ndc,
                     line: i
                 });
-                if(itemsRequested[i].qty != ''){
+                if (itemsRequested[i].qty != '') {
                     objSublist.setSublistValue({
                         id: 'custpage_col_item_qty',
                         value: itemsRequested[i].qty,
@@ -345,12 +362,14 @@ define(['N/record', 'N/search', 'N/runtime', 'N/ui/serverWidget', 'N/url', 'N/ui
                 }
             }
         }
-        function beforeLoad(context){
-            if(context.type != context.UserEventType.CREATE && context.type != context.UserEventType.COPY)
+
+        function beforeLoad(context) {
+            if (context.type != context.UserEventType.CREATE && context.type != context.UserEventType.COPY)
                 addItemsRequestedSublist(context);
 
+
             var generate222FormLabel = 'Generate Form 222';
-            if(context.newRecord.getValue('custrecord_kd_2frn_for_222_regeneration')){
+            if (context.newRecord.getValue('custrecord_kd_2frn_for_222_regeneration')) {
                 generate222FormLabel = 'Regenerate Form 222';
                 context.form.addPageInitMessage({
 
@@ -362,10 +381,10 @@ define(['N/record', 'N/search', 'N/runtime', 'N/ui/serverWidget', 'N/url', 'N/ui
             }
 
 
-            if(context.newRecord.getValue('name') != '000000000' && context.newRecord.getLineCount('custpage_sublist_items_requested') > 0 && (context.newRecord.getValue('custrecord_kd_2frn_222_form_pdf') == '' || context.newRecord.getValue('custrecord_kd_2frn_for_222_regeneration')) && context.type != context.UserEventType.CREATE && context.type != context.UserEventType.COPY&& context.type != context.UserEventType.EDIT){
+            if (context.newRecord.getValue('name') != '000000000' && context.newRecord.getLineCount('custpage_sublist_items_requested') > 0 && (context.newRecord.getValue('custrecord_kd_2frn_222_form_pdf') == '' || context.newRecord.getValue('custrecord_kd_2frn_for_222_regeneration')) && context.type != context.UserEventType.CREATE && context.type != context.UserEventType.COPY && context.type != context.UserEventType.EDIT) {
                 context.form.addButton({
-                    id : 'custpage_btn_form222',
-                    label : generate222FormLabel,
+                    id: 'custpage_btn_form222',
+                    label: generate222FormLabel,
                     functionName: "generateForm222"
                 });
             }
@@ -375,13 +394,13 @@ define(['N/record', 'N/search', 'N/runtime', 'N/ui/serverWidget', 'N/url', 'N/ui
                 filters: [
                     ['name', 'is', 'kd_cs_form_222_ref_num.js']
                 ]
-            }).run().getRange({ start: 0, end: 1 });
+            }).run().getRange({start: 0, end: 1});
             log.debug('test', 'cs file id: ' + fileId[0].id);
             context.form.clientScriptFileId = fileId[0].id;
 
-            if (context.type == context.UserEventType.CREATE && runtime.executionContext == 'USERINTERFACE'){// === runtime.ContextType.USERINTERFACE
+            if (context.type == context.UserEventType.CREATE && runtime.executionContext == 'USERINTERFACE') {// === runtime.ContextType.USERINTERFACE
                 var rrId = context.request.parameters.custscript_rrid;
-                if(rrId !== '' && rrId !== null && rrId !== undefined){
+                if (rrId !== '' && rrId !== null && rrId !== undefined) {
                     var pageNo = String(parseInt(get222FormCurrentPage(rrId)) + parseInt(1));
                     context.newRecord.setValue(FLD_F2RN_PAGE, pageNo);
                     context.newRecord.setValue(FLD_F2RN_RET_REQ, rrId);
@@ -389,12 +408,13 @@ define(['N/record', 'N/search', 'N/runtime', 'N/ui/serverWidget', 'N/url', 'N/ui
                 context.newRecord.setValue('name', '000000000');
             }
         }
+
         function afterSubmit(context) {
             var form222Rec = context.newRecord;
             var rrId = form222Rec.getValue('custrecord_kd_returnrequest')
-            log.debug('AfterSubmit','RRID ')
-            if(rrId) {
-                log.debug('afterSubmit','updating form 222 count')
+            log.debug('AfterSubmit', 'RRID ')
+            if (rrId) {
+                log.debug('afterSubmit', 'updating form 222 count')
                 try {
                     updateReturnRequestForm222(rrId)
                 } catch (e) {
@@ -402,12 +422,12 @@ define(['N/record', 'N/search', 'N/runtime', 'N/ui/serverWidget', 'N/url', 'N/ui
                 }
             }
 
-            if (context.type == context.UserEventType.EDIT){
+            if (context.type == context.UserEventType.EDIT) {
                 var f2rnId = context.newRecord.id;
                 var newPageNo = context.newRecord.getValue(FLD_F2RN_PAGE);
                 log.debug('afterSubmit', 'F2RN ID: ' + f2rnId);
                 log.debug('afterSubmit', context.oldRecord.getValue(FLD_F2RN_PAGE) + ' : ' + newPageNo);
-                if(context.oldRecord.getValue(FLD_F2RN_PAGE) != newPageNo){
+                if (context.oldRecord.getValue(FLD_F2RN_PAGE) != newPageNo) {
                     var rirSearch = search.create({
                         type: REC_RETURN_ITEM_REQUESTED,
                         columns: [
@@ -421,9 +441,9 @@ define(['N/record', 'N/search', 'N/runtime', 'N/ui/serverWidget', 'N/url', 'N/ui
                             values: [f2rnId]
                         }]
                     });
-                    var rs = rirSearch.run().getRange(0,1000);//only getting range 0 - 1000 because there is a control on how many RIR can only be assigned to a Form 222 Ref No.
+                    var rs = rirSearch.run().getRange(0, 1000);//only getting range 0 - 1000 because there is a control on how many RIR can only be assigned to a Form 222 Ref No.
                     log.debug('afterSubmit', 'rir to update count: ' + rs.length);
-                    for(var i = 0; i < rs.length; i++){
+                    for (var i = 0; i < rs.length; i++) {
                         var rirId = rs[i].getValue('internalid');
                         log.debug('afterSubmit', 'rir to update: ' + rirId);
                         record.submitFields({
@@ -441,12 +461,13 @@ define(['N/record', 'N/search', 'N/runtime', 'N/ui/serverWidget', 'N/url', 'N/ui
             }
             var rec = context.newRecord
             var rrId = rec.getValue('custrecord_kd_returnrequest')
-            if(rrId){
+            if (rrId) {
                 updateTask(rrId)
             }
 
 
         }
+
         return {
             beforeLoad: beforeLoad,
             afterSubmit: afterSubmit

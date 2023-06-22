@@ -90,7 +90,7 @@ define(['N/record', 'N/search', 'N/ui/message', 'N/ui/serverWidget', 'N/url', 'N
                     type: widget.SublistType.INLINEEDITOR,
                     label: 'Return Item Requested'
                 })
-
+                var obj = context.request
 
                 var itemSub = sublist.addField({
                     id: 'itemlist',
@@ -179,6 +179,7 @@ define(['N/record', 'N/search', 'N/ui/message', 'N/ui/serverWidget', 'N/url', 'N
                     value: '2',
                     text: 'Partial Package'
                 })
+                log.debug("obj", obj)
                 form.clientScriptFileId = 18581;
                 form.addButton({
                     id: 'custpage_submit',
@@ -199,7 +200,7 @@ define(['N/record', 'N/search', 'N/ui/message', 'N/ui/serverWidget', 'N/url', 'N
 
                 context.response.writePage(createForm())
             } else if (context.request.method === 'POST') {
-
+                    try{
 
                 var req = context.request;
 
@@ -228,7 +229,6 @@ define(['N/record', 'N/search', 'N/ui/message', 'N/ui/serverWidget', 'N/url', 'N
 
                 for (var x = 0; x < lineCount; x++) {
                     try {
-
 
                         log.debug('mrrIdValue', mrrIdValue)
                         var rir = record.create({
@@ -349,6 +349,9 @@ define(['N/record', 'N/search', 'N/ui/message', 'N/ui/serverWidget', 'N/url', 'N
                 //     context.response.write('Invalid Operation')
                 // }
 
+                    }catch (e) {
+                        log.error("POST",e.message)
+                    }
 
             }
         }

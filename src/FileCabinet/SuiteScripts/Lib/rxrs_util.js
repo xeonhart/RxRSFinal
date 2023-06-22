@@ -198,7 +198,7 @@ define([
         const customer = rrRecSave.getValue({
           fieldId: "entity",
         });
-        let isC2 = cat === RRCATEGORY.C2;
+        let isC2 = cat == RRCATEGORY.C2;
         sendEmail({
           category: options.category,
           transtatus: tranStatus,
@@ -494,6 +494,25 @@ define([
     return name;
   }
 
+  /**
+   * Get the return request transaction type
+   * @param rrId
+   * @return {string} return request type
+   */
+  function getReturnRequestType(rrId) {
+    var type;
+    const transactionSearchObj = search.create({
+      type: "transaction",
+      filters: [["internalid", "anyof", rrId]],
+      columns: [
+        search.createColumn({ name: "recordtype", label: "Record Type" }),
+      ],
+    });
+    transactionSearchObj.run().each(function (result) {
+      type = result.getValue("recordtype");
+    });
+    return type;
+  }
   return {
     rxrsItem,
     RRCATEGORY,
@@ -505,6 +524,7 @@ define([
     sendEmail,
     scriptInstanceChecker,
     checkInstanceInstnaceMR,
-    generateRRPODocumentNumber
+    generateRRPODocumentNumber,
+    getReturnRequestType
   };
 });
