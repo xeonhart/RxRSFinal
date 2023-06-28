@@ -84,10 +84,10 @@ define([
     try {
       let recordType = "";
       let location = 1;
-      let rrpoName
+      let rrpoName;
       if (options.planSelectionType == QUICKCASH) {
         recordType = "custompurchase_returnrequestpo";
-         rrpoName = generateRRPODocumentNumber()
+        rrpoName = generateRRPODocumentNumber();
       } else {
         recordType = "customsale_kod_returnrequest";
       }
@@ -111,10 +111,11 @@ define([
           value: rrStatus.PendingReview,
         });
       }
-      rrpoName && rrRec.setValue({
-        fieldId: "tranid",
-        value: rrpoName
-      })
+      rrpoName &&
+        rrRec.setValue({
+          fieldId: "tranid",
+          value: rrpoName,
+        });
       rrRec.setValue({
         fieldId: "entity",
         value: options.customer,
@@ -251,6 +252,7 @@ define([
         strSubject = " Your Order #" + options.tranid + "  Has Been Submitted";
         strBody = " Your Order #" + options.tranid + "  Has Been Submitted";
       }
+      log.audit("send email info", { recipient, strSubject, strBody });
       if (recipient) {
         const userObj = runtime.getCurrentUser();
         if (userObj.id) {
@@ -327,7 +329,7 @@ define([
    */
   const createReturnPackages = (options) => {
     try {
-      log.audit("options", options);
+      log.audit("createReturnPackages", options);
       const rpIds = search
         .load("customsearch_kd_package_return_search_2")
         .run()
@@ -355,12 +357,12 @@ define([
         fieldId: "custrecord_kod_rtnpack_mr",
         value: options.mrrId,
       });
-      if (options.isC2 === true) {
-        packageRec.setValue({
-          fieldId: "custrecord_kd_is_222_kit",
-          value: true,
-        });
-      }
+      // if (options.isC2 === true) {
+      //   packageRec.setValue({
+      //     fieldId: "custrecord_kd_is_222_kit",
+      //     value: true,
+      //   });
+      // }
       packageRec.setValue({
         fieldId: "custrecord_kod_packrtn_rtnrequest",
         value: options.rrId,
@@ -513,6 +515,34 @@ define([
     });
     return type;
   }
+
+  function getEntityType(internalId) {
+    try {
+      let type;
+      const entitySearchObj = search.create({
+        type: "entity",
+        filters: [["internalid", "anyof", internalId]],
+        columns: [
+          search.createColumn({
+            name: "formulatext",
+            formula: "{type}",
+            label: "Formula (Text)",
+          }),
+        ],
+      });
+      entitySearchObj.run().each(function (result) {
+        type = result.getValue({
+          name: "formulatext",
+          formula: "{type}",
+        });
+        return true;
+      });
+      return type.toLowerCase();
+    } catch (e) {
+      log.error("getEntityType", e.message);
+    }
+  }
+
   return {
     rxrsItem,
     RRCATEGORY,
@@ -525,6 +555,7 @@ define([
     scriptInstanceChecker,
     checkInstanceInstnaceMR,
     generateRRPODocumentNumber,
-    getReturnRequestType
+    getReturnRequestType,
+    getEntityType
   };
 });

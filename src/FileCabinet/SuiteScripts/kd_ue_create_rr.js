@@ -310,7 +310,7 @@ define([
           );
 
           rrCategory.push({
-            category: rxrsUtil.RRCATEGORY.C3TO5,
+            category: rxrsUtil.RRCATEGORY.RXOTC,
             numOfLabels: numOfLabels,
             file: RXOTCFile,
             item: rxrsUtil.rxrsItem.RxOTC,
@@ -371,6 +371,7 @@ define([
 
           //  createReturnRequest(masterRecId, customer, 4, C3to5File, 627, requestedDate, isLicenseExpired, isStateLicenseExpired)
         }
+        log.audit("rrCategory",rrCategory)
         const totalNumberOfLabels = rrCategory.reduce(
           (sum, { numOfLabels }) => sum + numOfLabels,
           0
