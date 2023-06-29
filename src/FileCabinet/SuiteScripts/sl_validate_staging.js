@@ -116,7 +116,6 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
         //create sublist for Returnables
         log.audit(paramManufacturer);
         if (rxrs_vs_util.isEmpty(paramManufacturer)) {
-
           sublistFields = rxrs_vs_util.SUBLISTFIELDS.returnableSublist;
 
           createSublist({
@@ -172,25 +171,16 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
       let value = options.value;
       let scriptId = rxrs_vs_util.getFileId("rxrs_cs_verify_staging.js");
       form.clientScriptFileId = scriptId;
-      let sublist
-      let subType = ["STATICLIST"]
-      if (manuf) {
-        sublist = form.addSublist({
-          id: "custpage_items_sublist",
-          type: serverWidget.SublistType.LIST,
-          label: `RO ${RRNAME} - RXLINEITEMS`,
-        });
+      let sublist;
 
-        sublist.addMarkAllButtons();
+      sublist = form.addSublist({
+        id: "custpage_items_sublist",
+        type: serverWidget.SublistType.LIST,
+        label: `RO ${RRNAME} - RXLINEITEMS`,
+      });
 
-      }else{
-        sublist = form.addSublist({
-          id: "custpage_items_sublist",
-          type: serverWidget.SublistType.STATICLIST,
-          label: `RO ${RRNAME} - RXLINEITEMS`,
-        });
-      }
-
+      if (manuf) sublist.addMarkAllButtons();
+      // ADD mark all button if the sublist page is all of the return item page group by Manuf
       sublistFields.forEach((attri) => {
         fieldName.push(attri.id);
         sublist
@@ -245,7 +235,7 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
         let lineCount = 0;
         sublistFields.forEach((element) => {
           for (let i = 0; i < element.length; i++) {
-          //  if (element[i].fieldId === "custpage_verified") continue;
+            //  if (element[i].fieldId === "custpage_verified") continue;
             try {
               sublist.setSublistValue({
                 id: element[i].fieldId,
