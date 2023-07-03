@@ -3,12 +3,21 @@
  * @NScriptType ClientScript
  * @NModuleScope SameAccount
  */
-define(["N/runtime", "N/url", "N/currentRecord"], /**
+define([
+  "N/runtime",
+  "N/url",
+  "N/currentRecord",
+  "N/ui/message",
+  "N/record",
+], /**
  * @param{runtime} runtime
  * @param{url} url
  * @param currentRecord
- */ function (runtime, url, currentRecord) {
+ * @param message
+ * @param record
+ */ function (runtime, url, currentRecord, message, record) {
   let suitelet = null;
+  const RETURNABLESUBLIST = "custpage_items_sublist";
 
   /**
    * Function to be executed after page is initialized.
@@ -23,8 +32,6 @@ define(["N/runtime", "N/url", "N/currentRecord"], /**
     suitelet = scriptContext.currentRecord;
     let arrTemp = window.location.href.split("?");
     let urlParams = new URLSearchParams(arrTemp[1]);
-
-
   }
 
   /**
@@ -59,18 +66,97 @@ define(["N/runtime", "N/url", "N/currentRecord"], /**
         window.ischanged = false;
         window.open(stSuiteletUrl, "_self");
       }
-
     } catch (e) {
       console.error("fieldChanged", e.message);
     }
   }
 
+  /**
+   * Return to returnable page group by Manufacturer
+   */
+  function backToReturnable(){
+    let params = {};
+    params.selectionType = "Returnable";
+    params.isMainReturnable = true;
+    let stSuiteletUrl = url.resolveScript({
+      scriptId: "customscript_sl_returnable_page",
+      deploymentId: "customdeploy_sl_returnable_page",
+      returnExternalUrl: false,
+      params: params,
+    });
+    window.ischanged = false;
+    window.open(stSuiteletUrl, "_self");
+}
+  /**
+   * Check or Uncheck verify field in the item return scan record
+   */
+  function verify() {
+    const verifyMessage = message.create({
+      title: "Verifying",
+      message: "Updating verification of the Scanned Items. Please wait.",
+      type: message.Type.INFORMATION,
+    });
+    const completeMessage = message.create({
+      title: "Verifying",
+      message: "Update Complete. Refreshing the page",
+      type: message.Type.INFORMATION,
+    });
+    verifyMessage.show({duration: 3000});
+    let suitelet = currentRecord.get();
+    try {
 
+      for (
+        let i = 0;
+        i < suitelet.getLineCount("custpage_items_sublist");
+        i++
+      ) {
+
+        let internalId = suitelet.getSublistValue({
+          sublistId: RETURNABLESUBLIST,
+          fieldId: "custpage_internalid",
+          line: i,
+        });
+        let isVerify = suitelet.getSublistValue({
+          sublistId: RETURNABLESUBLIST,
+          fieldId: "custpage_verified",
+          line: i,
+        });
+
+      //  Update the verified status of the Item Return Scan
+        let itemReturnScanRec = record.load({
+          type: "customrecord_cs_item_ret_scan",
+          id: internalId,
+        })
+        itemReturnScanRec.setValue({
+          fieldId: "custrecord_is_verified",
+          value: isVerify
+        })
+        console.log({
+          title: `Record Has Been Updated`,
+          id: itemReturnScanRec.save({ "ignoreMandatoryFields": true }),
+        });
+      }
+      verifyMessage.hide()
+      setTimeout(function(){
+
+        completeMessage.show({
+          duration: 2000
+        })
+      },2000)
+
+      setTimeout(function(){
+        location.reload()
+      },2000)
+
+    } catch (e) {
+      console.error("verify", e.message);
+    }
+  }
 
   return {
     pageInit: pageInit,
     fieldChanged: fieldChanged,
-
-
+    verify: verify,
+    backToReturnable: backToReturnable
   };
 });

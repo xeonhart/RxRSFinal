@@ -8,73 +8,6 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
  * @param{search} search
  * @param{url} url
  */ (redirect, render, runtime, search, url) => {
-  /**
-   * Get the returnable item return scan group by manufacturer
-   * @param rrId
-   */
-  function getReturnableManufacturer(rrId) {
-    try {
-      let manufacturer = [];
-      const transactionSearchObj = search.create({
-        type: "transaction",
-        filters: [
-          ["type", "anyof", "CuTrSale102", "CuTrPrch106"],
-          "AND",
-          ["mainline", "is", "T"],
-          "AND",
-          [
-            "custrecord_cs_ret_req_scan_rrid.custrecord_cs__mfgprocessing",
-            "anyof",
-            "2",
-          ],
-          "AND",
-          [
-            "custrecord_cs_ret_req_scan_rrid.custrecord_cs_ret_req_scan_rrid",
-            "anyof",
-            "10807",
-          ],
-        ],
-        columns: [
-          search.createColumn({
-            name: "custrecord_cs_item_manufacturer",
-            join: "CUSTRECORD_CS_RET_REQ_SCAN_RRID",
-            summary: "GROUP",
-            sort: search.Sort.ASC,
-            label: "Manufacturer",
-          }),
-          search.createColumn({
-            name: "custrecord_is_verified",
-            join: "CUSTRECORD_CS_RET_REQ_SCAN_RRID",
-            summary: "MAX",
-            label: "Verified",
-          }),
-        ],
-      });
-
-      transactionSearchObj.run().each(function (result) {
-        let manufName = result.getValue({
-          name: "custrecord_cs_item_manufacturer",
-          join: "CUSTRECORD_CS_RET_REQ_SCAN_RRID",
-          summary: "GROUP",
-        });
-        let isVerified = result.getValue({
-          name: "custrecord_is_verified",
-          join: "CUSTRECORD_CS_RET_REQ_SCAN_RRID",
-        });
-        let url = `<a href="https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&selectionType=Returnable&manufacturer=${manufName}">${manufName}</a>`;
-        manufacturer.push({
-          manufName: url,
-          isVerified: isVerified,
-          name: manufName
-        });
-        return true;
-      });
-      return manufacturer;
-    } catch (e) {
-      log.error("getReturnableManufacturer", e.message);
-    }
-  }
-
   const SUBLISTFIELDS = {
     returnableSublist: [
       {
@@ -87,10 +20,22 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
         id: "custpage_verified",
         type: "CHECKBOX",
         label: "Verified",
-        updateDisplayType: "NORMAL",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_manuf",
+        type: "TEXT",
+        label: "MANUF NAME",
+        updateDisplayType: "HIDDEN",
       },
     ],
     returnableManufacturer: [
+      {
+        id: "custpage_internalid",
+        type: "TEXT",
+        label: "Internal Id",
+        updateDisplayType: "DISABLED",
+      },
       {
         id: "custpage_verified",
         type: "CHECKBOX",
@@ -155,6 +100,131 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
   };
 
   /**
+   * Get the returnable item return scan group by manufacturer
+   * @param rrId
+   */
+  function getReturnableManufacturer(rrId) {
+    try {
+      let manufacturer = [];
+      const transactionSearchObj = search.create({
+        type: "transaction",
+        filters: [
+          ["type", "anyof", "CuTrSale102", "CuTrPrch106"],
+          "AND",
+          ["mainline", "is", "T"],
+          "AND",
+          [
+            "custrecord_cs_ret_req_scan_rrid.custrecord_cs__mfgprocessing",
+            "anyof",
+            "2",
+          ],
+          "AND",
+          [
+            "custrecord_cs_ret_req_scan_rrid.custrecord_cs_ret_req_scan_rrid",
+            "anyof",
+            "10807",
+          ],
+        ],
+        columns: [
+          search.createColumn({
+            name: "custrecord_cs_item_manufacturer",
+            join: "CUSTRECORD_CS_RET_REQ_SCAN_RRID",
+            summary: "GROUP",
+            sort: search.Sort.ASC,
+            label: "Manufacturer",
+          }),
+        ],
+      });
+
+      transactionSearchObj.run().each(function (result) {
+        let manufName = result.getValue({
+          name: "custrecord_cs_item_manufacturer",
+          join: "CUSTRECORD_CS_RET_REQ_SCAN_RRID",
+          summary: "GROUP",
+        });
+
+        let url = `<a href="https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&selectionType=Returnable&manufacturer=${manufName}">${manufName}</a>`;
+        let isVerified = checkIfManufIsVerified(manufName);
+        isVerified = isVerified === true ? "T" : "F";
+        manufacturer.push({
+          manufName: url,
+          isVerified: isVerified,
+          name: manufName,
+        });
+        return true;
+      });
+      log.emergency("manuf test", manufacturer);
+      return manufacturer;
+    } catch (e) {
+      log.error("getReturnableManufacturer", e.message);
+    }
+  }
+
+  /**
+   * Check if the manufacturer is verified
+   * @param manufName
+   * @return {boolean}
+   */
+  function checkIfManufIsVerified(manufName) {
+    try {
+      let ISVERIFIED = true;
+      var transactionSearchObj = search.create({
+        type: "transaction",
+        filters: [
+          ["type", "anyof", "CuTrSale102", "CuTrPrch106"],
+          "AND",
+          ["mainline", "is", "T"],
+          "AND",
+          [
+            "custrecord_cs_ret_req_scan_rrid.custrecord_cs__mfgprocessing",
+            "anyof",
+            "2",
+          ],
+          "AND",
+          [
+            "custrecord_cs_ret_req_scan_rrid.custrecord_cs_ret_req_scan_rrid",
+            "anyof",
+            "10807",
+          ],
+          "AND",
+          [
+            "custrecord_cs_ret_req_scan_rrid.custrecord_cs_item_manufacturer",
+            "is",
+            manufName,
+          ],
+        ],
+        columns: [
+          search.createColumn({
+            name: "custrecord_cs_item_manufacturer",
+            join: "CUSTRECORD_CS_RET_REQ_SCAN_RRID",
+            summary: "GROUP",
+            sort: search.Sort.ASC,
+            label: "Item manufacturer",
+          }),
+          search.createColumn({
+            name: "custrecord_is_verified",
+            join: "CUSTRECORD_CS_RET_REQ_SCAN_RRID",
+            summary: "GROUP",
+            label: "Verified",
+          }),
+        ],
+      });
+      let column = transactionSearchObj.columns;
+      const searchResultCount = transactionSearchObj.runPaged().count;
+      transactionSearchObj.run().each(function (result) {
+        let isVerified = result.getValue(column[1]);
+        if (isVerified == false) {
+          ISVERIFIED = false;
+          return false;
+        }
+      });
+      return searchResultCount == 1 && ISVERIFIED == true;
+    } catch (e) {
+      log.error("checkIfManufIsVerified", e.message);
+    }
+  }
+
+  /**
    * Get the manufacturer ID
    * @param name
    */
@@ -188,7 +258,7 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
   function getItemScanByManufacturer(options) {
     try {
       let manufacturer = options.manufacturer;
-      log.emergency("getItemScanByManufacturer", getItemScanByManufacturer)
+      log.emergency("getItemScanByManufacturer", getItemScanByManufacturer);
 
       log.audit("getItemScanByManufacturer", manufacturer);
       let itemScanList = [];
@@ -247,9 +317,10 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
 
       let column = customrecord_cs_item_ret_scanSearchObj.columns;
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
-        let verified = result.getValue(column[0]) == true ? "T" : "F"
+        let verified = result.getValue(column[0]) == true ? "T" : "F";
 
         itemScanList.push({
+          internalId: result.id,
           verified: verified,
           ndc: result.getValue(column[1]),
           description: result.getValue(column[2]),

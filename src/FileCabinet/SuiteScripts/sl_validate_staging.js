@@ -107,7 +107,6 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
         ? (selectionType.defaultValue = paramSelectionType)
         : (selectionType.defaultValue = "Returnable");
       let manufacturer = rxrs_vs_util.getReturnableManufacturer();
-      log.emergency("manufacturer", manufacturer);
       let sublistFields;
       if (
         paramSelectionType == "Returnable" ||
@@ -176,11 +175,24 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
       sublist = form.addSublist({
         id: "custpage_items_sublist",
         type: serverWidget.SublistType.LIST,
-        label: `RO ${RRNAME} - RXLINEITEMS`,
+        label: `RO ${RRNAME} - RXLINEITEMS ${manuf}`,
       });
 
-      if (manuf) sublist.addMarkAllButtons();
-      // ADD mark all button if the sublist page is all of the return item page group by Manuf
+      if (manuf) {
+       //If the user is in the Manufacturing Group. Add the following UI context below
+        form.addButton({
+          id: "custpage_verify",
+          label: "Update Verification",
+          functionName: `verify()`
+        })
+        form.addButton({
+          id: "custpage_back",
+          label: "Back",
+          functionName: `backToReturnable()`
+        })
+        sublist.addMarkAllButtons();
+      }
+
       sublistFields.forEach((attri) => {
         fieldName.push(attri.id);
         sublist
@@ -235,7 +247,6 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
         let lineCount = 0;
         sublistFields.forEach((element) => {
           for (let i = 0; i < element.length; i++) {
-            //  if (element[i].fieldId === "custpage_verified") continue;
             try {
               sublist.setSublistValue({
                 id: element[i].fieldId,
@@ -243,14 +254,10 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
                 value: element[i].value ? element[i].value : " ",
               });
             } catch (e) {
-              log.error("SETSUBLIST", e.message);
+              log.emergency("SetSublist", e.message)
             }
           }
 
-          // if (options.isMainReturnable) {
-          //   value = `  // }
-
-          //
           lineCount++;
         });
       }
