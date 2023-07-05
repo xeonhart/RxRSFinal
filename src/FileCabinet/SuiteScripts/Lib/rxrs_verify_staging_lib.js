@@ -354,81 +354,47 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
           ["custrecord_cs_ret_req_scan_rrid", "anyof", rrId],
         ],
         columns: [
-          search.createColumn({
-            name: "custrecord_cs_ret_req_scan_rrid",
-            sort: search.Sort.ASC,
-            label: "Return Request",
-          }),
+
+          search.createColumn({name: "custrecord_is_verified", label: "Verified"}),
+          search.createColumn({name: "internalid", label: "Internal ID"}),
           search.createColumn({
             name: "itemid",
             join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-            label: "NDC",
+            label: "NDC"
           }),
           search.createColumn({
             name: "purchasedescription",
             join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-            label: "Description",
+            label: "Description"
           }),
-          search.createColumn({
-            name: "custrecord_scanmanufacturer",
-            label: "Manufacturer",
-          }),
-          search.createColumn({
-            name: "custrecord_cs_lotnum",
-            label: "Serial/Lot Number",
-          }),
-          search.createColumn({
-            name: "custrecord_scanorginallotnumber",
-            label: "Original Lot Number",
-          }),
-          search.createColumn({
-            name: "custrecord_cs_full_partial_package",
-            label: "Full/Partial Package",
-          }),
-          search.createColumn({ name: "custrecord_cs_qty", label: "Qty" }),
-          search.createColumn({
-            name: "custrecord_scanpartialcount",
-            label: "Partial Count",
-          }),
-          search.createColumn({
-            name: "custrecord_cs_expiration_date",
-            label: "Expiration Date",
-          }),
-          search.createColumn({
-            name: "custrecord_cs__rqstprocesing",
-            label: "Pharmacy Processing",
-          }),
-          search.createColumn({
-            name: "custrecord_cs__mfgprocessing",
-            label: "Mfg Processing",
-          }),
+          search.createColumn({name: "custrecord_scanmanufacturer", label: "Manufacturer"}),
+          search.createColumn({name: "custrecord_cs_lotnum", label: "Serial/Lot Number"}),
+          search.createColumn({name: "custrecord_scanorginallotnumber", label: "Original Lot Number"}),
+          search.createColumn({name: "custrecord_cs_full_partial_package", label: "Full/Partial Package"}),
+          search.createColumn({name: "custrecord_cs_qty", label: "Qty"}),
+          search.createColumn({name: "custrecord_scanpartialcount", label: "Partial Count"}),
+          search.createColumn({name: "custrecord_cs_expiration_date", label: "Expiration Date"}),
+          search.createColumn({name: "custrecord_cs__rqstprocesing", label: "Pharmacy Processing"}),
+          search.createColumn({name: "custrecord_cs__mfgprocessing", label: "Mfg Processing"})
         ],
       });
+      let column = customrecord_cs_item_ret_scanSearchObj.columns
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
+        let verified = result.getValue(column[0]) == true ? "T" : "F";
         hazardousList.push({
-          internalId: result.getValue({
-            name: "itemid",
-            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-          }),
-          ndc: result.getValue({
-            name: "itemid",
-            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-          }),
-          description: result.getValue({
-            name: "purchasedescription",
-            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-          }),
-          manufacturer: result.getValue("custrecord_scanmanufacturer"),
-          serialLotNumber: result.getValue("custrecord_cs_lotnum"),
-          originalLotNumber: result.getValue("custrecord_scanorginallotnumber"),
-          fullPartialPackage: result.getValue(
-            "custrecord_cs_full_partial_package"
-          ),
-          quantity: result.getValue("custrecord_cs_qty"),
-          partialCount: result.getValue("custrecord_scanpartialcount"),
-          expirationDate: result.getValue("custrecord_cs_expiration_date"),
-          pharmaProcessing: result.getValue("custrecord_cs__rqstprocesing"),
-          mfgProcessing: result.getValue("custrecord_cs__mfgprocessing"),
+          internalId: result.getValue(column[1]),
+          verified: verified,
+          ndc: result.getValue(column[2]),
+          description: result.getValue(column[3]),
+          manufacturer:result.getValue(column[4]),
+          serialLotNumber: result.getValue(column[5]),
+          originalLotNumber:result.getValue(column[6]),
+          fullPartialPackage: result.getText(column[7]),
+          quantity: result.getValue(column[8]),
+          partialCount: result.getValue(column[9]),
+          expirationDate: result.getValue(column[10]),
+          pharmaProcessing: result.getText(column[11]),
+          mfgProcessing: result.getText(column[12]),
         });
         return true;
       });
@@ -516,7 +482,7 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
           manufacturer: result.getValue(column[3]),
           dateCreated: result.getValue(column[4]),
           serialLotNumber: result.getValue(column[5]),
-          fullPartialPackage: result.getValue(column[6]),
+          fullPartialPackage: result.getText(column[6]),
           expirationDate: result.getValue(column[7]),
           mfgProcessing: result.getText(column[8]),
           pharmaProcessing: result.getText(column[9]),

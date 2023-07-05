@@ -165,6 +165,7 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
         }
       }else if(paramSelectionType == "Destruction"){
        let desctructionList = rxrs_vs_util.getDesctructionHazardous(rrId)
+        log.emergency("destructionlist",desctructionList)
        let sublistFields = rxrs_vs_util.SUBLISTFIELDS.descrutionField;
         createDestructioneSublist({
           form: form,
@@ -251,7 +252,7 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
         mainLineInfo.push(fieldInfo);
       });
 
-      populateReturnableSublist({
+      populateSublist({
         sublist: sublist,
         fieldInfo: mainLineInfo,
         isMainReturnable: options.isMainReturnable,
@@ -260,7 +261,40 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
       log.error("createReturnableSublist", e.message);
     }
   };
+  /**
+   * Populate the returnable sublist
+   * @param options.sublist
+   * @param options.fieldInfo
+   * @param options.isMainReturnable
+   */
+  const populateSublist = (options) => {
+    try {
+      log.audit("populateSublist", options);
+      let sublist = options.sublist;
+      let sublistFields = options.fieldInfo;
 
+      if (sublistFields.length > 0) {
+        let lineCount = 0;
+        sublistFields.forEach((element) => {
+          for (let i = 0; i < element.length; i++) {
+            try {
+              sublist.setSublistValue({
+                id: element[i].fieldId,
+                line: lineCount,
+                value: element[i].value ? element[i].value : " ",
+              });
+            } catch (e) {
+              log.emergency("SetSublist", e.message);
+            }
+          }
+
+          lineCount++;
+        });
+      }
+    } catch (e) {
+      log.error("populateSublist", e.message);
+    }
+  };
   /**
    * It creates a destruction sublist on the form and populates it with the items that are passed in
    * @param {object}options.form - The form object that we are adding the sublist to.
@@ -327,50 +361,22 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
         mainLineInfo.push(fieldInfo);
       });
       log.debug("mainlineInfo", {sublist,mainLineInfo})
-      // populateReturnableSublist({
-      //   sublist: sublist,
-      //   fieldInfo: mainLineInfo,
-      //   isMainReturnable: options.isMainReturnable,
-      // });
+      populateSublist({
+        sublist: sublist,
+        fieldInfo: mainLineInfo,
+        isMainReturnable: null,
+      });
     } catch (e) {
       log.error("createDestructioneSublist", e.message);
     }
   };
   /**
-     * Populate the returnable sublist
-     * @param options.sublist
-     * @param options.fieldInfo
-     * @param options.isMainReturnable
+   * Populate the returnable sublist
+   * @param options.sublist
+   * @param options.fieldInfo
+   * @param options.isMainReturnable
+   */
 
-     *
-     */
-  const populateReturnableSublist = (options) => {
-    try {
-      log.audit("populateReturnableSublist", options);
-      let sublist = options.sublist;
-      let sublistFields = options.fieldInfo;
 
-      if (sublistFields.length > 0) {
-        let lineCount = 0;
-        sublistFields.forEach((element) => {
-          for (let i = 0; i < element.length; i++) {
-            try {
-              sublist.setSublistValue({
-                id: element[i].fieldId,
-                line: lineCount,
-                value: element[i].value ? element[i].value : " ",
-              });
-            } catch (e) {
-              log.emergency("SetSublist", e.message);
-            }
-          }
-
-          lineCount++;
-        });
-      }
-    } catch (e) {
-      log.error("populateReturnableSublist", e.message);
-    }
-  };
   return { onRequest };
 });
