@@ -18,7 +18,7 @@ define([
  */ function (runtime, url, currentRecord, message, record) {
   let suitelet = null;
   const RETURNABLESUBLIST = "custpage_items_sublist";
-
+  let urlParams
   /**
    * Function to be executed after page is initialized.
    *
@@ -31,7 +31,8 @@ define([
   function pageInit(scriptContext) {
     suitelet = scriptContext.currentRecord;
     let arrTemp = window.location.href.split("?");
-    let urlParams = new URLSearchParams(arrTemp[1]);
+     urlParams = new URLSearchParams(arrTemp[1]);
+    console.log(urlParams)
   }
 
   /**
@@ -47,9 +48,14 @@ define([
    * @since 2015.2
    */
   function fieldChanged(scriptContext) {
+
+    let rrId = suitelet.getValue("custpage_rrid")
+
+    let tranId = suitelet.getValue("custpage_tranid")
     console.log("fieldChanged");
     console.log(scriptContext.fieldId);
     console.log(scriptContext.sublistId);
+    console.log(rrId+tranId)
     let params = {};
     try {
       if (scriptContext.fieldId == "custpage_radio") {
@@ -57,6 +63,9 @@ define([
         console.log(selection);
         params.selectionType = selection;
         params.isMainReturnable = true;
+        params.tranid = tranId
+        params.rrId = rrId
+        console.log(params)
         let stSuiteletUrl = url.resolveScript({
           scriptId: "customscript_sl_returnable_page",
           deploymentId: "customdeploy_sl_returnable_page",
@@ -76,6 +85,8 @@ define([
    */
   function backToReturnable(){
     let params = {};
+    params.rrId = urlParams.get("rrId")
+    params.tranid = urlParams.get('tranid')
     params.selectionType = "Returnable";
     params.isMainReturnable = true;
     let stSuiteletUrl = url.resolveScript({

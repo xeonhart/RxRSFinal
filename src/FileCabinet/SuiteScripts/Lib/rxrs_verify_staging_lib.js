@@ -97,14 +97,97 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
         updateDisplayType: "DISABLED",
       },
     ],
+    descrutionField: [
+      {
+        id: "custpage_internalid",
+        type: "TEXT",
+        label: "Internal Id",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_verified",
+        type: "CHECKBOX",
+        label: "Verified",
+        updateDisplayType: "NORMAL",
+      },
+      {
+        id: "custpage_ndc",
+        type: "TEXT",
+        label: "NDC",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_description",
+        type: "TEXT",
+        label: "Description",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_manufacturer",
+        type: "TEXT",
+        label: "Manufacturer",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_date_serial_lot",
+        type: "TEXT",
+        label: "Serial/Lot Number",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_original_lot_number",
+        type: "TEXT",
+        label: "Original Lot Number",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_fullpartialpackage",
+        type: "TEXT",
+        label: "Full/Partial Package",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_quantity",
+        type: "TEXT",
+        label: "Quantity",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_partial_count",
+        type: "TEXT",
+        label: "Partial Count",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_expiration_date",
+        type: "TEXT",
+        label: "Expiration Date",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_pharmaprocessing",
+        type: "TEXT",
+        label: "Pharma Processing",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_mfgprocessing",
+        type: "TEXT",
+        label: "Manuf Processing",
+        updateDisplayType: "DISABLED",
+      },
+    ],
   };
 
   /**
    * Get the returnable item return scan group by manufacturer
-   * @param rrId
+   * @param options.rrId
+   * @param options.tranId
    */
-  function getReturnableManufacturer(rrId) {
+  function getReturnableManufacturer(options) {
     try {
+      log.audit("getReturnableManufacturer", options);
+      let rrId = options.rrId;
       let manufacturer = [];
       const transactionSearchObj = search.create({
         type: "transaction",
@@ -122,7 +205,7 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
           [
             "custrecord_cs_ret_req_scan_rrid.custrecord_cs_ret_req_scan_rrid",
             "anyof",
-            "10807",
+            options.rrId,
           ],
         ],
         columns: [
@@ -143,8 +226,11 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
           summary: "GROUP",
         });
 
-        let url = `<a href="https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&selectionType=Returnable&manufacturer=${manufName}">${manufName}</a>`;
-        let isVerified = checkIfManufIsVerified(manufName);
+        let url = `<a href="https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&selectionType=Returnable&manufacturer=${manufName}&rrId=${rrId}&tranid=${options.tranId}">${manufName}</a>`;
+        let isVerified = checkIfManufIsVerified({
+          recId: rrId,
+          manufName: manufName,
+        });
         isVerified = isVerified === true ? "T" : "F";
         manufacturer.push({
           manufName: url,
@@ -162,10 +248,11 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
 
   /**
    * Check if the manufacturer is verified
-   * @param manufName
+   * @param {string} options.manufName Manufacturer Name
+   * @param {number} options.recId
    * @return {boolean}
    */
-  function checkIfManufIsVerified(manufName) {
+  function checkIfManufIsVerified(options) {
     try {
       let ISVERIFIED = true;
       var transactionSearchObj = search.create({
@@ -184,13 +271,13 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
           [
             "custrecord_cs_ret_req_scan_rrid.custrecord_cs_ret_req_scan_rrid",
             "anyof",
-            "10807",
+            options.recId,
           ],
           "AND",
           [
             "custrecord_cs_ret_req_scan_rrid.custrecord_cs_item_manufacturer",
             "is",
-            manufName,
+            options.manufName,
           ],
         ],
         columns: [
@@ -250,6 +337,108 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
   }
 
   /**
+   * Get all of the item return scan hazardous
+   * @param rrId
+   * @return {*[]} return hazardous item return scan list
+   */
+  function getDesctructionHazardous(rrId) {
+    try {
+      let hazardousList = [];
+      var customrecord_cs_item_ret_scanSearchObj = search.create({
+        type: "customrecord_cs_item_ret_scan",
+        filters: [
+          ["custrecord_cs__mfgprocessing", "anyof", "1"],
+          "AND",
+          ["custrecord_cs_return_req_scan_item.custitem1", "is", "T"],
+          "AND",
+          ["custrecord_cs_ret_req_scan_rrid", "anyof", rrId],
+        ],
+        columns: [
+          search.createColumn({
+            name: "custrecord_cs_ret_req_scan_rrid",
+            sort: search.Sort.ASC,
+            label: "Return Request",
+          }),
+          search.createColumn({
+            name: "itemid",
+            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+            label: "NDC",
+          }),
+          search.createColumn({
+            name: "purchasedescription",
+            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+            label: "Description",
+          }),
+          search.createColumn({
+            name: "custrecord_scanmanufacturer",
+            label: "Manufacturer",
+          }),
+          search.createColumn({
+            name: "custrecord_cs_lotnum",
+            label: "Serial/Lot Number",
+          }),
+          search.createColumn({
+            name: "custrecord_scanorginallotnumber",
+            label: "Original Lot Number",
+          }),
+          search.createColumn({
+            name: "custrecord_cs_full_partial_package",
+            label: "Full/Partial Package",
+          }),
+          search.createColumn({ name: "custrecord_cs_qty", label: "Qty" }),
+          search.createColumn({
+            name: "custrecord_scanpartialcount",
+            label: "Partial Count",
+          }),
+          search.createColumn({
+            name: "custrecord_cs_expiration_date",
+            label: "Expiration Date",
+          }),
+          search.createColumn({
+            name: "custrecord_cs__rqstprocesing",
+            label: "Pharmacy Processing",
+          }),
+          search.createColumn({
+            name: "custrecord_cs__mfgprocessing",
+            label: "Mfg Processing",
+          }),
+        ],
+      });
+      customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
+        hazardousList.push({
+          internalId: result.getValue({
+            name: "itemid",
+            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+          }),
+          ndc: result.getValue({
+            name: "itemid",
+            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+          }),
+          description: result.getValue({
+            name: "purchasedescription",
+            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+          }),
+          manufacturer: result.getValue("custrecord_scanmanufacturer"),
+          serialLotNumber: result.getValue("custrecord_cs_lotnum"),
+          originalLotNumber: result.getValue("custrecord_scanorginallotnumber"),
+          fullPartialPackage: result.getValue(
+            "custrecord_cs_full_partial_package"
+          ),
+          quantity: result.getValue("custrecord_cs_qty"),
+          partialCount: result.getValue("custrecord_scanpartialcount"),
+          expirationDate: result.getValue("custrecord_cs_expiration_date"),
+          pharmaProcessing: result.getValue("custrecord_cs__rqstprocesing"),
+          mfgProcessing: result.getValue("custrecord_cs__mfgprocessing"),
+        });
+        return true;
+      });
+      return hazardousList;
+    } catch (e) {
+      log.error("getDesctructionHazardous", e.message);
+    }
+  }
+
+  /**
    * Get the item return scan record based on Return request and Manufacturer
    * @param {number}options.rrId - Return Request Id
    * @param {string}options.manufacturer - Manufacturer Text Name
@@ -258,7 +447,7 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
   function getItemScanByManufacturer(options) {
     try {
       let manufacturer = options.manufacturer;
-      log.emergency("getItemScanByManufacturer", getItemScanByManufacturer);
+      log.emergency("getItemScanByManufacturer", options);
 
       log.audit("getItemScanByManufacturer", manufacturer);
       let itemScanList = [];
@@ -375,6 +564,7 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
     getFileId,
     getItemScanByManufacturer,
     isEmpty,
+    getDesctructionHazardous,
     SUBLISTFIELDS,
   };
 });
