@@ -25,7 +25,7 @@ define(["N/record", "N/search", "N/url"], /**
         context.form.addButton({
           id: "custpage_verify",
           label: "For Verification",
-          functionName: 'window.open("https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&rrId=' +id+ '&tranid='+tranid+'","_blank","width=1500,height=1200")'
+          functionName: 'window.open("https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&rrId=' +id+ '&tranid='+tranid+'","_blank","width=1700,height=1200")'
         });
       }
     } catch (e) {

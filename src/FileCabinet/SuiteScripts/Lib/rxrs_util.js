@@ -226,6 +226,27 @@ define([
   }
 
   /**
+   * Return the first employee that is checked as DEFAULT TASK ASSIGNEE FOR EXPIRED LICENSE
+   * @return {number} return the internal Id of the employee
+   */
+  function getDefaultTaskAssignee(){
+    let empId
+    const employeeSearchObj = search.create({
+      type: "employee",
+      filters:
+          [
+            ["custentity_def_task_assignee_for_exp_lic","is","T"]
+          ],
+  });
+    var searchResultCount = employeeSearchObj.runPaged().count;
+    log.debug("employeeSearchObj result count",searchResultCount);
+    employeeSearchObj.run().each(function(result){
+      empId = result.id
+      return true;
+    });
+    return empId
+  }
+  /**
    * Send email to the customer
    * @param {number} options.category
    * @param {string} options.transtatus
@@ -307,7 +328,7 @@ define([
       });
       taskRec.setValue({
         fieldId: "assigned",
-        value: runtime.getCurrentUser().id,
+        value: runtime.getCurrentUser().id || getDefaultTaskAssignee()
       });
       taskRec.setValue({
         fieldId: "custevent_kd_ret_req",
@@ -556,6 +577,7 @@ define([
     checkInstanceInstnaceMR,
     generateRRPODocumentNumber,
     getReturnRequestType,
-    getEntityType
+    getEntityType,
+    getDefaultTaskAssignee
   };
 });

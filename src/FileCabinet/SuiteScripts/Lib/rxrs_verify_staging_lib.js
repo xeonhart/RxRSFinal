@@ -97,6 +97,26 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
         updateDisplayType: "DISABLED",
       },
     ],
+    destructionSublist: [
+      {
+        id: "custpage_is_hazardous_name",
+        type: "TEXT",
+        label: "Group By",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_verified",
+        type: "CHECKBOX",
+        label: "Verified",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_is_hazardous",
+        type: "TEXT",
+        label: "Desctruction",
+        updateDisplayType: "HIDDEN",
+      },
+    ],
     descrutionField: [
       {
         id: "custpage_internalid",
@@ -239,7 +259,7 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
         });
         return true;
       });
-      log.emergency("manuf test", manufacturer);
+
       return manufacturer;
     } catch (e) {
       log.error("getReturnableManufacturer", e.message);
@@ -354,41 +374,69 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
           ["custrecord_cs_ret_req_scan_rrid", "anyof", rrId],
         ],
         columns: [
-
-          search.createColumn({name: "custrecord_is_verified", label: "Verified"}),
-          search.createColumn({name: "internalid", label: "Internal ID"}),
+          search.createColumn({
+            name: "custrecord_is_verified",
+            label: "Verified",
+          }),
+          search.createColumn({ name: "internalid", label: "Internal ID" }),
           search.createColumn({
             name: "itemid",
             join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-            label: "NDC"
+            label: "NDC",
           }),
           search.createColumn({
             name: "purchasedescription",
             join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-            label: "Description"
+            label: "Description",
           }),
-          search.createColumn({name: "custrecord_scanmanufacturer", label: "Manufacturer"}),
-          search.createColumn({name: "custrecord_cs_lotnum", label: "Serial/Lot Number"}),
-          search.createColumn({name: "custrecord_scanorginallotnumber", label: "Original Lot Number"}),
-          search.createColumn({name: "custrecord_cs_full_partial_package", label: "Full/Partial Package"}),
-          search.createColumn({name: "custrecord_cs_qty", label: "Qty"}),
-          search.createColumn({name: "custrecord_scanpartialcount", label: "Partial Count"}),
-          search.createColumn({name: "custrecord_cs_expiration_date", label: "Expiration Date"}),
-          search.createColumn({name: "custrecord_cs__rqstprocesing", label: "Pharmacy Processing"}),
-          search.createColumn({name: "custrecord_cs__mfgprocessing", label: "Mfg Processing"})
+          search.createColumn({
+            name: "custrecord_scanmanufacturer",
+            label: "Manufacturer",
+          }),
+          search.createColumn({
+            name: "custrecord_cs_lotnum",
+            label: "Serial/Lot Number",
+          }),
+          search.createColumn({
+            name: "custrecord_scanorginallotnumber",
+            label: "Original Lot Number",
+          }),
+          search.createColumn({
+            name: "custrecord_cs_full_partial_package",
+            label: "Full/Partial Package",
+          }),
+          search.createColumn({ name: "custrecord_cs_qty", label: "Qty" }),
+          search.createColumn({
+            name: "custrecord_scanpartialcount",
+            label: "Partial Count",
+          }),
+          search.createColumn({
+            name: "custrecord_cs_expiration_date",
+            label: "Expiration Date",
+          }),
+          search.createColumn({
+            name: "custrecord_cs__rqstprocesing",
+            label: "Pharmacy Processing",
+          }),
+          search.createColumn({
+            name: "custrecord_cs__mfgprocessing",
+            label: "Mfg Processing",
+          }),
         ],
       });
-      let column = customrecord_cs_item_ret_scanSearchObj.columns
+      let column = customrecord_cs_item_ret_scanSearchObj.columns;
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
         let verified = result.getValue(column[0]) == true ? "T" : "F";
+        let ndcName = result.getValue(column[2]);
+        let ndcLink = `https://6816904.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=436&custrecord_cs_ret_req_scan_rrid=${result.id} ,_blank`;
         hazardousList.push({
           internalId: result.getValue(column[1]),
           verified: verified,
-          ndc: result.getValue(column[2]),
+          ndc: `<a href =${ndcLink}> ${ndcName} </a>`,
           description: result.getValue(column[3]),
-          manufacturer:result.getValue(column[4]),
+          manufacturer: result.getValue(column[4]),
           serialLotNumber: result.getValue(column[5]),
-          originalLotNumber:result.getValue(column[6]),
+          originalLotNumber: result.getValue(column[6]),
           fullPartialPackage: result.getText(column[7]),
           quantity: result.getValue(column[8]),
           partialCount: result.getValue(column[9]),
@@ -473,11 +521,13 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
       let column = customrecord_cs_item_ret_scanSearchObj.columns;
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
         let verified = result.getValue(column[0]) == true ? "T" : "F";
-
+        let ndcName = result.getValue(column[1]);
+        let ndcLink = `https://6816904.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=436&custrecord_cs_ret_req_scan_rrid=${result.id} ,_blank`;
+        log.emergency("ndcLink", ndcLink);
         itemScanList.push({
           internalId: result.id,
           verified: verified,
-          ndc: result.getValue(column[1]),
+          ndc: `<a href=${ndcLink}>${ndcName}</a>`,
           description: result.getValue(column[2]),
           manufacturer: result.getValue(column[3]),
           dateCreated: result.getValue(column[4]),
@@ -501,14 +551,18 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
    * @returns {number}
    */
   function getFileId(fileName) {
-    const fileSearch = search
-      .create({
-        type: "file",
-        filters: [["name", "is", fileName]],
-      })
-      .run()
-      .getRange({ start: 0, end: 1 });
-    return fileSearch[0].id;
+    try {
+      const fileSearch = search
+        .create({
+          type: "file",
+          filters: [["name", "is", fileName]],
+        })
+        .run()
+        .getRange({ start: 0, end: 1 });
+      return fileSearch[0].id;
+    } catch (e) {
+      log.error("getFileId", e.message);
+    }
   }
 
   function isEmpty(stValue) {
@@ -525,12 +579,125 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
     );
   }
 
+  /**
+   * return the hazardous item return scan group by Hazardous
+   * @param {number}rrId return request Id
+   * @return {object} array object of the des destruction item return scan
+   */
+  function getItemScanByDescrutionType(rrId) {
+    try {
+      let destructionList = []
+      let rrId = options.rrId
+      const customrecord_cs_item_ret_scanSearchObj = search.create({
+        type: "customrecord_cs_item_ret_scan",
+        filters:  [
+          ["custrecord_cs__mfgprocessing","anyof","1"],
+          "AND",
+          ["custrecord_cs_ret_req_scan_rrid","anyof","10804"],
+          "AND",
+          ["custrecord_scanindated","is","F"]
+        ],
+        columns: [
+          search.createColumn({
+            name: "custitem1",
+            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+            summary: "GROUP",
+            sort: search.Sort.ASC,
+            label: "Hazardous Material",
+          }),
+        ],
+      });
+
+       let column = customrecord_cs_item_ret_scanSearchObj.columns
+      customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
+        let isHazardous = result.getValue(column[0])
+        let name = isHazardous == true ? "Destruction Hazardous" : "Destruction"
+        let url = `<a href="https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&selectionType=Returnable&isHazardous=${isHazardous}&rrId=${rrId}&tranid=${options.tranId}">${name}</a>`;
+        let isVerified = checkIfHazardousIsVerified({
+          recId: rrId,
+          isHazardous: isHazardous,
+        });
+        isVerified = isVerified === true ? "T" : "F";
+        destructionList.push({
+          destruction: url,
+          isVerified: isVerified,
+          name: name ,
+        });
+        return true;
+      });
+       log.emergency("getItemScanByDescrutionType des ",destructionList)
+    return destructionList
+    } catch (e) {
+      log.error("getItemScanByDescrutionType", e.message);
+    }
+  }
+
+  /**
+   * Check if the hazardous is verified or not
+   * @param {number} options.rrId Return request internal id
+   * @param {boolean} options.isHazardous Item Hazardous Material Field
+   * @return {boolean} return if the destruction or destruction hazardous is verified
+   */
+  function checkIfHazardousIsVerified(options) {
+    try {
+      let ISVERIFIED = true;
+      var customrecord_cs_item_ret_scanSearchObj = search.create({
+        type: "customrecord_cs_item_ret_scan",
+        filters: [
+          ["custrecord_cs__mfgprocessing", "anyof", options.rrId],
+          "AND",
+          ["custrecord_cs_ret_req_scan_rrid", "anyof", "10804"],
+          "AND",
+          [
+            "custrecord_cs_return_req_scan_item.custitem1",
+            "is",
+            options.isHazardous,
+          ],
+        ],
+        columns: [
+          search.createColumn({
+            name: "internalid",
+            summary: "GROUP",
+            label: "Internal ID",
+          }),
+          search.createColumn({
+            name: "custrecord_is_verified",
+            summary: "GROUP",
+            label: "Verified",
+          }),
+          search.createColumn({
+            name: "custitem1",
+            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+            summary: "GROUP",
+            sort: search.Sort.ASC,
+            label: "Hazardous Material",
+          }),
+        ],
+      });
+      const searchResultCount =
+        customrecord_cs_item_ret_scanSearchObj.runPaged().count;
+
+      customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
+        let isVerified = result.getValue(column[1]);
+        if (isVerified == false) {
+          ISVERIFIED = false;
+          return false;
+        }
+        return true;
+      });
+      return searchResultCount == 1 && ISVERIFIED == true;
+    } catch (e) {
+      log.error("checkIfHazardousIsVerified", e.message);
+    }
+  }
+
   return {
     getReturnableManufacturer,
     getFileId,
     getItemScanByManufacturer,
     isEmpty,
     getDesctructionHazardous,
+    getItemScanByDescrutionType,
     SUBLISTFIELDS,
   };
 });

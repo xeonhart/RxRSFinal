@@ -19,7 +19,7 @@ define([
   let suitelet = null;
   const RETURNABLESUBLIST = "custpage_items_sublist";
   let urlParams;
-
+  let lineTobeUpdated = []
   /**
    * Function to be executed after page is initialized.
    *
@@ -34,6 +34,16 @@ define([
     let arrTemp = window.location.href.split("?");
     urlParams = new URLSearchParams(arrTemp[1]);
     console.log(urlParams);
+    for(let i = 0; i< suitelet.getLineCount("custpage_items_sublist"); i++){
+      lineTobeUpdated.push({
+        line: i,
+        isVerified: suitelet.getSublistValue({
+          sublistId: "custpage_items_sublist",
+          fieldId: "custpage_verified",
+          line: i
+        })
+      })
+    }
   }
 
   /**
@@ -60,9 +70,12 @@ define([
     try {
       if (scriptContext.fieldId == "custpage_radio") {
         let selection = suitelet.getValue("custpage_radio");
-        console.log(selection);
+        if(selection ==="Returnable"){
+          params.isMainReturnable = true
+        }else if(selection ==="Destruction"){
+          params.isMainDestruction = true
+        }
         params.selectionType = selection;
-        params.isMainReturnable = true;
         params.tranid = tranId;
         params.rrId = rrId;
         console.log(params);
@@ -103,66 +116,102 @@ define([
    * Check or Uncheck verify field in the item return scan record
    */
   function verify() {
-    alert("Updating verification of the Scanned Items. Please wait.");
-    const completeMessage = message.create({
-      title: "Verifying",
-      message: "Update Complete. Refreshing the page",
-      type: message.Type.INFORMATION,
-    });
-
-    let suitelet = currentRecord.get();
     try {
-      for (
-        let i = 0;
-        i < suitelet.getLineCount("custpage_items_sublist");
-        i++
-      ) {
-        let internalId = suitelet.getSublistValue({
-          sublistId: RETURNABLESUBLIST,
-          fieldId: "custpage_internalid",
-          line: i,
-        });
-        let isVerify = suitelet.getSublistValue({
-          sublistId: RETURNABLESUBLIST,
-          fieldId: "custpage_verified",
-          line: i,
-        });
+    handleButtonClick();
 
-        //  Update the verified status of the Item Return Scan
-        // let Id = record.submitFields({
-        //   type: "customrecord_cs_item_ret_scan",
-        //   id: internalId,
-        //   values: {
-        //     custrecord_is_verified : isVerify
-        //   },
-        //   ignoreMandatoryFields: true,
-        //   enableSourcing: false
-        // })
-        let itemReturnScanRec = record.load({
-          type: "customrecord_cs_item_ret_scan",
-          id: internalId,
-        });
-        itemReturnScanRec.setValue({
-          fieldId: "custrecord_is_verified",
-          value: isVerify,
-        });
-        console.log({
-          title: `Record Has Been Updated`,
-          id: itemReturnScanRec.save({ignoreMandatoryFields: true}),
-        });
-      }
-      setTimeout(function () {
-        completeMessage.show({
-          duration: 2000,
-        });
-      }, 2000);
-
-      setTimeout(function () {
-        location.reload();
-      }, 2000);
     } catch (e) {
       console.error("verify", e.message);
     }
+  }
+
+function runAutomation(){
+  const completeMessage = message.create({
+    title: "Verifying",
+    message: "Update Complete. Refreshing the page",
+    type: message.Type.INFORMATION,
+  });
+
+  let suitelet = currentRecord.get();
+
+  for (
+      let i = 0;
+      i < suitelet.getLineCount("custpage_items_sublist");
+      i++
+  ) {
+    let internalId = suitelet.getSublistValue({
+      sublistId: RETURNABLESUBLIST,
+      fieldId: "custpage_internalid",
+      line: i,
+    });
+    let isVerify = suitelet.getSublistValue({
+      sublistId: RETURNABLESUBLIST,
+      fieldId: "custpage_verified",
+      line: i,
+    });
+   if(lineTobeUpdated[i].isVerified == isVerify) continue;
+    //  Update the verified status of the Item Return Scan
+    // let Id = record.submitFields({
+    //   type: "customrecord_cs_item_ret_scan",
+    //   id: internalId,
+    //   values: {
+    //     custrecord_is_verified : isVerify
+    //   },
+    //   ignoreMandatoryFields: true,
+    //   enableSourcing: false
+    // })
+    let itemReturnScanRec = record.load({
+      type: "customrecord_cs_item_ret_scan",
+      id: internalId,
+    });
+    itemReturnScanRec.setValue({
+      fieldId: "custrecord_is_verified",
+      value: isVerify,
+    });
+    console.log({
+      title: `Record Has Been Updated`,
+      id: itemReturnScanRec.save({ ignoreMandatoryFields: true }),
+    });
+  }
+
+  setTimeout(function () {
+    completeMessage.show({
+      duration: 2000,
+    });
+  }, 2000);
+
+  setTimeout(function () {
+    location.reload();
+  }, 2000);
+}
+  function handleButtonClick() {
+    try {
+      jQuery("#_loading_dialog").attr("title", "Updating Verify Status...");
+      jQuery("#_loading_dialog").html(
+        `<div style="text-align: center; margin-left:230px; font-style: italic;">Please wait.</div>
+        <br><br>
+        <div style="text-align: center; margin-left:110px; width:100%;">
+        <i class="fas fa-cog fa-spin" data-fa-transform="grow-20" ></i>
+        </div>`
+      );
+      jQuery("#_loading_dialog").dialog({
+        modal: true,
+        width: 10,
+        height: 150,
+        resizable: false,
+        closeOnEscape: false,
+        position: { my: "top", at: "top+160", of: "#main_form" },
+        open: function (evt, ui) {
+          // jQuery(".ui-dialog-titlebar-close").hide();
+          setTimeout(function() { runAutomation() }, 1000);
+        },
+      });
+    } catch (e) {
+      console.error("handleButtonClick", e.message);
+    }
+  }
+
+  function destroyModal() {
+    jQuery("#_loading_dialog").dialog("destroy");
   }
 
   return {

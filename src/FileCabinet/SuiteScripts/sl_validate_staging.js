@@ -2,11 +2,16 @@
  * @NApiVersion 2.1
  * @NScriptType Suitelet
  */
-define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
+define([
+  "N/ui/serverWidget",
+  "./Lib/rxrs_verify_staging_lib",
+  "N/cache",
+  "N/file",
+], /**
  * @param{serverWidget} serverWidget
  * @param rxrs_vs_util
  * @param cache
- */ (serverWidget, rxrs_vs_util, cache) => {
+ */ (serverWidget, rxrs_vs_util, cache, file) => {
   /**
    * Defines the Suitelet script trigger point.
    * @param {Object} scriptContext
@@ -14,7 +19,7 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
    * @param {ServerResponse} scriptContext.response - Suitelet response
    * @since 2015.2
    */
-  const RRNAME = "RR0001817";
+
   const onRequest = (context) => {
     let params = context.request.parameters;
     if (context.request.method === "GET") {
@@ -38,10 +43,12 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
       log.debug("objClientParams", params);
       let form = serverWidget.createForm({
         title: "Return Order Verification",
+        hideNavBar: true,
       });
       form.clientScriptFileId = rxrs_vs_util.getFileId(
         "rxrs_cs_verify_staging.js"
       );
+
       form = createHeaderFields({ form, params });
       return form;
     } catch (e) {
@@ -60,26 +67,45 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
       let rrId = options.params.rrId;
       let tranId = options.params.tranid;
       let form = options.form;
+      let paramIsHazardous = options.params.isHazardous;
       let paramSelectionType = options.params.selectionType;
       let paramManufacturer = options.params.manufacturer
         ? options.params.manufacturer
         : "";
-      let rrIdField = form.addField({
-        id: "custpage_rrid",
-        label: "Return Request Id",
-        type: serverWidget.FieldType.TEXT,
-      }).updateDisplayType({
-        displayType: serverWidget.FieldDisplayType.INLINE
-      })
+      let htmlFileId = rxrs_vs_util.getFileId("SL_loading_html.html");
+      log.error("htmlFileid", htmlFileId);
+      if (htmlFileId) {
+        const dialogHtmlField = form.addField({
+          id: "custpage_jqueryui_loading_dialog",
+          type: serverWidget.FieldType.INLINEHTML,
+          label: "Dialog HTML Field",
+        });
+        dialogHtmlField.defaultValue = file
+          .load({
+            id: htmlFileId,
+          })
+          .getContents();
+      }
+      let rrIdField = form
+        .addField({
+          id: "custpage_rrid",
+          label: "Return Request Id",
+          type: serverWidget.FieldType.TEXT,
+        })
+        .updateDisplayType({
+          displayType: serverWidget.FieldDisplayType.HIDDEN,
+        });
       rrId ? (rrIdField.defaultValue = rrId) : null;
 
-      let tranIdField = form.addField({
-        id: "custpage_tranid",
-        label: "Return Request",
-        type: serverWidget.FieldType.TEXT,
-      }).updateDisplayType({
-        displayType: serverWidget.FieldDisplayType.INLINE
-      })
+      let tranIdField = form
+        .addField({
+          id: "custpage_tranid",
+          label: "Return Request",
+          type: serverWidget.FieldType.TEXT,
+        })
+        .updateDisplayType({
+          displayType: serverWidget.FieldDisplayType.INLINE,
+        });
       tranId ? (tranIdField.defaultValue = tranId) : null;
       form.addFieldGroup({
         id: "fieldgroup_options",
@@ -123,9 +149,10 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
       paramSelectionType
         ? (selectionType.defaultValue = paramSelectionType)
         : (selectionType.defaultValue = "Returnable");
-      let manufacturer = rxrs_vs_util.getReturnableManufacturer(
-          {rrId: rrId,tranId: tranId}
-      );
+      let manufacturer = rxrs_vs_util.getReturnableManufacturer({
+        rrId: rrId,
+        tranId: tranId,
+      });
       let sublistFields;
       if (
         paramSelectionType == "Returnable" ||
@@ -139,6 +166,7 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
           createReturnableSublist({
             form: form,
             rrTranId: rrId,
+            rrName: tranId,
             sublistFields: sublistFields,
             value: manufacturer,
             isMainReturnable: false,
@@ -163,17 +191,30 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
             paramManufacturer: paramManufacturer,
           });
         }
-      }else if(paramSelectionType == "Destruction"){
-       let desctructionList = rxrs_vs_util.getDesctructionHazardous(rrId)
-        log.emergency("destructionlist",desctructionList)
-       let sublistFields = rxrs_vs_util.SUBLISTFIELDS.descrutionField;
-        createDestructioneSublist({
-          form: form,
-          rrTranId: rrId,
-          documentNumber: tranId,
-          sublistFields: sublistFields,
-          value: desctructionList,
-        })
+      } else if (paramSelectionType == "Destruction") {
+        if (rxrs_vs_util.isEmpty(paramIsHazardous)) {
+          sublistFields = rxrs_vs_util.SUBLISTFIELDS.destructionSublist;
+          let destructionList = rxrs_vs_util.getItemScanByDescrutionType(rrId);
+          log.emergency("fieldValue",destructionList)
+          createDestructioneSublist({
+            form: form,
+            rrTranId: rrId,
+            documentNumber: tranId,
+            sublistFields: sublistFields,
+            value: destructionList,
+          });
+        } else {
+          let desctructionList = rxrs_vs_util.getDesctructionHazardous(rrId);
+          log.emergency("destructionlist", desctructionList);
+          let sublistFields = rxrs_vs_util.SUBLISTFIELDS.descrutionField;
+          createDestructioneSublist({
+            form: form,
+            rrTranId: rrId,
+            documentNumber: tranId,
+            sublistFields: sublistFields,
+            value: desctructionList,
+          });
+        }
       }
 
       return form;
@@ -188,7 +229,7 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
    * @param {object}options.sublistFields SublistFields
    * @param {array} options.value
    * @param {boolean} options.isMainReturnable
-   * @param {string} options.documentNumber
+   * @param {string} options.rrName
    * @param {string} options.paramManufacturer
    * @returns The form is being returned.
    */
@@ -207,7 +248,7 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
       sublist = form.addSublist({
         id: "custpage_items_sublist",
         type: serverWidget.SublistType.LIST,
-        label: `RO ${options.documentNumber} - RXLINEITEMS :${manuf}`,
+        label: `RO ${options.rrName} - RXLINEITEMS :${manuf}`,
       });
 
       if (manuf) {
@@ -303,7 +344,7 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
    * @param {array} options.value
    * @param {boolean} options.isMainReturnable
    * @param {string} options.documentNumber
-   * @param {string} options.paramManufacturer
+   * @param {string} options.paramIsHazardous
    * @returns The form is being returned.
    */
   const createDestructioneSublist = (options) => {
@@ -323,30 +364,30 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
         label: `RO ${options.documentNumber} - Destruction Line Items :`,
       });
 
-        //If the user is in the Manufacturing Group. Add the following UI context below
-        form.addButton({
-          id: "custpage_verify",
-          label: "Update Verification",
-          functionName: `verify()`,
-        });
-        form.addButton({
-          id: "custpage_back",
-          label: "Back",
-          functionName: `backToReturnable()`,
-        });
-        sublist.addMarkAllButtons();
+      //If the user is in the Manufacturing Group. Add the following UI context below
+      form.addButton({
+        id: "custpage_verify",
+        label: "Update Verification",
+        functionName: `verify()`,
+      });
+      form.addButton({
+        id: "custpage_back",
+        label: "Back",
+        functionName: `backToReturnable()`,
+      });
+      sublist.addMarkAllButtons();
 
       sublistFields.forEach((attri) => {
         fieldName.push(attri.id);
         sublist
-            .addField({
-              id: attri.id,
-              type: serverWidget.FieldType[attri.type],
-              label: attri.label,
-            })
-            .updateDisplayType({
-              displayType: serverWidget.FieldDisplayType[attri.updateDisplayType],
-            });
+          .addField({
+            id: attri.id,
+            type: serverWidget.FieldType[attri.type],
+            label: attri.label,
+          })
+          .updateDisplayType({
+            displayType: serverWidget.FieldDisplayType[attri.updateDisplayType],
+          });
       });
       let mainLineInfo = [];
       value.forEach((val) => {
@@ -360,11 +401,11 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
         }
         mainLineInfo.push(fieldInfo);
       });
-      log.debug("mainlineInfo", {sublist,mainLineInfo})
+      log.debug("mainlineInfo", { sublist, mainLineInfo });
       populateSublist({
         sublist: sublist,
         fieldInfo: mainLineInfo,
-        isMainReturnable: null,
+        isMainDestruction: null,
       });
     } catch (e) {
       log.error("createDestructioneSublist", e.message);
@@ -376,7 +417,6 @@ define(["N/ui/serverWidget", "./Lib/rxrs_verify_staging_lib", "N/cache"], /**
    * @param options.fieldInfo
    * @param options.isMainReturnable
    */
-
 
   return { onRequest };
 });

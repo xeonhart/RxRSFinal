@@ -29,6 +29,9 @@ define(["N/record", "N/search", "N/email", "N/runtime", "./Lib/rxrs_util"], /**
     try {
       let currentScript = runtime.getCurrentScript();
       let userId = runtime.getCurrentUser().id
+      if(userId == -4) {
+        userId = rxrsUtil.getDefaultTaskAssignee()
+      }
       log.audit("userId", userId)
       let customer = currentScript.getParameter({
         name: "custscript_kd_customer",
@@ -86,6 +89,7 @@ define(["N/record", "N/search", "N/email", "N/runtime", "./Lib/rxrs_util"], /**
           id: data.id,
           isDynamic: true,
         });
+
         var isExpired = custRec.getValue("custentity_kd_license_expired");
         var stateLicenseExpired = custRec.getValue(
           "custentity_kd_stae_license_expired"
@@ -255,6 +259,7 @@ define(["N/record", "N/search", "N/email", "N/runtime", "./Lib/rxrs_util"], /**
           var strSubject = ' Your Order #' + rrRec.getValue('tranid') + ' 222 Kit is on the way'
           var strBody = ' Your Order #' + rrRec.getValue('tranid') + ' 222 Kit is on the way'
           var userObj = runtime.getCurrentUser()
+          if(!userObj) userObj = rxrsUtil.getDefaultTaskAssignee()
           email.send({
             author: userObj.id,
             recipients: recipient,
@@ -340,6 +345,11 @@ define(["N/record", "N/search", "N/email", "N/runtime", "./Lib/rxrs_util"], /**
 
   function createTask(customer, licenceType,userId) {
     try {
+      let user = userId
+      log.error("createtask",{customer,licenceType,userId})
+      if(userId == -4){
+        user =  rxrsUtil.getDefaultTaskAssignee()
+      }
       var taskRec = record.create({
         type: record.Type.TASK,
         isDynamic: true,
@@ -359,7 +369,7 @@ define(["N/record", "N/search", "N/email", "N/runtime", "./Lib/rxrs_util"], /**
 
       taskRec.setValue({
         fieldId: "assigned",
-        value: 1177,
+        value: user,
       });
 
       var taskId = taskRec.save();
@@ -377,7 +387,6 @@ define(["N/record", "N/search", "N/email", "N/runtime", "./Lib/rxrs_util"], /**
 
   return {
     getInputData,
-
     reduce,
     summarize,
   };
