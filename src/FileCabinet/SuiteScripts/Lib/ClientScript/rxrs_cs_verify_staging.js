@@ -60,8 +60,8 @@ define([
    */
   function fieldChanged(scriptContext) {
     let rrId = suitelet.getValue("custpage_rrid");
-
     let tranId = suitelet.getValue("custpage_tranid");
+
     console.log("fieldChanged");
     console.log(scriptContext.fieldId);
     console.log(scriptContext.sublistId);
@@ -74,6 +74,8 @@ define([
           params.isMainReturnable = true
         }else if(selection ==="Destruction"){
           params.isMainDestruction = true
+        }else{
+         params.isMainInDated = true
         }
         params.selectionType = selection;
         params.tranid = tranId;
@@ -98,10 +100,18 @@ define([
    */
   function backToReturnable() {
     let params = {};
+
     params.rrId = urlParams.get("rrId");
     params.tranid = urlParams.get("tranid");
-    params.selectionType = "Returnable";
-    params.isMainReturnable = true;
+    params.selectionType = suitelet.getValue("custpage_radio");
+    if( params.selectionType == "Returnable"){
+      params.isMainReturnable = true;
+    }else if(params.selectionType == "Desctruction"){
+      params.isMainDestruction = true
+    }else{
+      params.isMainInDated = true
+    }
+
     let stSuiteletUrl = url.resolveScript({
       scriptId: "customscript_sl_returnable_page",
       deploymentId: "customdeploy_sl_returnable_page",

@@ -139,7 +139,7 @@ define([
           id: "custpage_radio",
           label: "In Dated",
           type: serverWidget.FieldType.RADIO,
-          source: "In Dated",
+          source: "InDated",
           container: "fieldgroup_options",
         })
         .updateLayoutType({
@@ -149,20 +149,23 @@ define([
       paramSelectionType
         ? (selectionType.defaultValue = paramSelectionType)
         : (selectionType.defaultValue = "Returnable");
-      let manufacturer = rxrs_vs_util.getReturnableManufacturer({
-        rrId: rrId,
-        tranId: tranId,
-      });
+
       let sublistFields;
       if (
         paramSelectionType == "Returnable" ||
         rxrs_vs_util.isEmpty(paramSelectionType)
       ) {
+        let manufacturer = rxrs_vs_util.getReturnableManufacturer({
+          rrId: rrId,
+          tranId: tranId,
+          inDated: false,
+          selectionType: paramSelectionType
+        });
         //create sublist for Returnables
         log.audit(paramManufacturer);
         if (rxrs_vs_util.isEmpty(paramManufacturer)) {
           sublistFields = rxrs_vs_util.SUBLISTFIELDS.returnableSublist;
-
+          log.emergency("returnableSublist", sublistFields)
           createReturnableSublist({
             form: form,
             rrTranId: rrId,
@@ -179,6 +182,7 @@ define([
           let itemsReturnScan = rxrs_vs_util.getItemScanByManufacturer({
             rrId: rrId,
             manufacturer: paramManufacturer,
+            inDated: false
           });
           log.debug("itemsReturnScan", itemsReturnScan);
           createReturnableSublist({
@@ -194,17 +198,24 @@ define([
       } else if (paramSelectionType == "Destruction") {
         if (rxrs_vs_util.isEmpty(paramIsHazardous)) {
           sublistFields = rxrs_vs_util.SUBLISTFIELDS.destructionSublist;
-          let destructionList = rxrs_vs_util.getItemScanByDescrutionType(rrId);
-          log.emergency("fieldValue",destructionList)
+          let destructionList = rxrs_vs_util.getItemScanByDescrutionType({
+            rrId,
+            tranId,
+          });
+          log.emergency("fieldValue", destructionList);
           createDestructioneSublist({
             form: form,
             rrTranId: rrId,
             documentNumber: tranId,
             sublistFields: sublistFields,
             value: destructionList,
+            isMainDestruction: true,
           });
         } else {
-          let desctructionList = rxrs_vs_util.getDesctructionHazardous(rrId);
+          let desctructionList = rxrs_vs_util.getDesctructionHazardous({
+            rrId: rrId,
+            isHazardous: paramIsHazardous,
+          });
           log.emergency("destructionlist", desctructionList);
           let sublistFields = rxrs_vs_util.SUBLISTFIELDS.descrutionField;
           createDestructioneSublist({
@@ -213,6 +224,43 @@ define([
             documentNumber: tranId,
             sublistFields: sublistFields,
             value: desctructionList,
+            isMainDestruction: false,
+          });
+        }
+      } else {
+        if (rxrs_vs_util.isEmpty(paramManufacturer)) {
+          sublistFields = rxrs_vs_util.SUBLISTFIELDS.inDateSublist;
+          let manufByInDated = rxrs_vs_util.getReturnableManufacturer({
+            rrId: rrId,
+            tranId: tranId,
+            inDated: true,
+            selectionType: paramSelectionType
+          });
+          createReturnableSublist({
+            form: form,
+            rrTranId: rrId,
+            rrName: tranId,
+            sublistFields: sublistFields,
+            value: manufByInDated,
+            isMainInDated: true,
+            paramManufacturer: paramManufacturer,
+          });
+        } else {
+          sublistFields = rxrs_vs_util.SUBLISTFIELDS.returnableManufacturer;
+          let itemsReturnScan = rxrs_vs_util.getItemScanByManufacturer({
+            rrId: rrId,
+            manufacturer: paramManufacturer,
+            inDated: true
+
+          });
+          createReturnableSublist({
+            form: form,
+            rrTranId: rrId,
+            documentNumber: tranId,
+            sublistFields: sublistFields,
+            value: itemsReturnScan,
+            isMainInDated: true,
+            paramManufacturer: paramManufacturer,
           });
         }
       }
@@ -231,7 +279,7 @@ define([
    * @param {boolean} options.isMainReturnable
    * @param {string} options.rrName
    * @param {string} options.paramManufacturer
-   * @returns The form is being returned.
+   * @returns  Updated Form.
    */
   const createReturnableSublist = (options) => {
     try {
@@ -285,6 +333,7 @@ define([
         let value = Object.values(val);
         let fieldInfo = [];
         for (let i = 0; i < value.length; i++) {
+          if(rxrs_vs_util.isEmpty(fieldName[i])) continue
           fieldInfo.push({
             fieldId: fieldName[i],
             value: value[i],
@@ -364,18 +413,19 @@ define([
         label: `RO ${options.documentNumber} - Destruction Line Items :`,
       });
 
-      //If the user is in the Manufacturing Group. Add the following UI context below
-      form.addButton({
-        id: "custpage_verify",
-        label: "Update Verification",
-        functionName: `verify()`,
-      });
-      form.addButton({
-        id: "custpage_back",
-        label: "Back",
-        functionName: `backToReturnable()`,
-      });
-      sublist.addMarkAllButtons();
+      if (options.isMainDestruction == false) {
+        form.addButton({
+          id: "custpage_verify",
+          label: "Update Verification",
+          functionName: `verify()`,
+        });
+        form.addButton({
+          id: "custpage_back",
+          label: "Back",
+          functionName: `backToReturnable()`,
+        });
+        sublist.addMarkAllButtons();
+      }
 
       sublistFields.forEach((attri) => {
         fieldName.push(attri.id);
@@ -394,11 +444,13 @@ define([
         let value = Object.values(val);
         let fieldInfo = [];
         for (let i = 0; i < value.length; i++) {
+
           fieldInfo.push({
             fieldId: fieldName[i],
             value: value[i],
           });
         }
+
         mainLineInfo.push(fieldInfo);
       });
       log.debug("mainlineInfo", { sublist, mainLineInfo });

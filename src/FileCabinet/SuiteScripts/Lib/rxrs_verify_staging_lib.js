@@ -17,6 +17,38 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
         updateDisplayType: "DISABLED",
       },
       {
+        id: "custpage_in_date",
+        type: "TEXT",
+        label: "In Date",
+        updateDisplayType: "HIDDEN",
+      },
+      {
+        id: "custpage_verified",
+        type: "CHECKBOX",
+        label: "Verified",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_manuf",
+        type: "TEXT",
+        label: "MANUF NAME",
+        updateDisplayType: "HIDDEN",
+      },
+    ],
+    inDateSublist: [
+      {
+        id: "custpage_manuf_name",
+        type: "TEXT",
+        label: "Group By",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_in_date",
+        type: "TEXT",
+        label: "In Date",
+        updateDisplayType: "DISABLED",
+      },
+      {
         id: "custpage_verified",
         type: "CHECKBOX",
         label: "Verified",
@@ -201,65 +233,92 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
 
   /**
    * Get the returnable item return scan group by manufacturer
-   * @param options.rrId
-   * @param options.tranId
+   * @param {number}options.rrId - Return Request Id
+   * @param {number}options.tranId - Document Number
+   * @param {boolean} options.inDated - Returnable can be in Dated or not
+   * @param {string} options.selectionType - Returnable / Destruction / In Dated
+   * @since 07/11/2023
+   * @return {array} Return manufacturing list
    */
   function getReturnableManufacturer(options) {
     try {
       log.audit("getReturnableManufacturer", options);
       let rrId = options.rrId;
       let manufacturer = [];
-      const transactionSearchObj = search.create({
-        type: "transaction",
-        filters: [
-          ["type", "anyof", "CuTrSale102", "CuTrPrch106"],
-          "AND",
-          ["mainline", "is", "T"],
-          "AND",
-          [
-            "custrecord_cs_ret_req_scan_rrid.custrecord_cs__mfgprocessing",
-            "anyof",
-            "2",
-          ],
-          "AND",
-          [
-            "custrecord_cs_ret_req_scan_rrid.custrecord_cs_ret_req_scan_rrid",
-            "anyof",
-            options.rrId,
-          ],
-        ],
-        columns: [
+      let filters = [];
+
+      filters.push(
+        search.createFilter({
+          name: "custrecord_cs_ret_req_scan_rrid",
+          operator: "anyof",
+          values: options.rrId,
+        })
+      );
+      filters.push(
+        search.createFilter({
+          name: "custrecord_cs__mfgprocessing",
+          operator: "anyof",
+          values: 2,
+        })
+      );
+      filters.push(
+        search.createFilter({
+          name: "custrecord_scanindated",
+          operator: "anyof",
+          values: options.inDated,
+        })
+      );
+      let columns = [];
+      columns.push(
+        search.createColumn({
+          name: "custrecord_cs_item_manufacturer",
+          summary: "GROUP",
+        })
+      );
+      if (options.inDated == true) {
+        columns.push(
           search.createColumn({
-            name: "custrecord_cs_item_manufacturer",
-            join: "CUSTRECORD_CS_RET_REQ_SCAN_RRID",
-            summary: "GROUP",
-            sort: search.Sort.ASC,
-            label: "Manufacturer",
-          }),
-        ],
+            name: "custrecord_scanindate",
+            summary: "MAX",
+          })
+        );
+      }
+      log.audit("columns", columns);
+      const transactionSearchObj = search.create({
+        type: "customrecord_cs_item_ret_scan",
+        filters: filters,
+        columns: columns,
       });
 
       transactionSearchObj.run().each(function (result) {
         let manufName = result.getValue({
           name: "custrecord_cs_item_manufacturer",
-          join: "CUSTRECORD_CS_RET_REQ_SCAN_RRID",
           summary: "GROUP",
         });
-
-        let url = `<a href="https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&selectionType=Returnable&manufacturer=${manufName}&rrId=${rrId}&tranid=${options.tranId}">${manufName}</a>`;
+        let inDate;
+        if (options.inDated == true) {
+          inDate = result.getValue({
+            name: "custrecord_scanindate",
+            summary: "MAX",
+          });
+        }
+        let url = `<a href="https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&selectionType=${options.selectionType}&manufacturer=${manufName}&rrId=${rrId}&tranid=${options.tranId}">${manufName}</a>`;
         let isVerified = checkIfManufIsVerified({
           recId: rrId,
           manufName: manufName,
+          inDated: options.inDated,
         });
         isVerified = isVerified === true ? "T" : "F";
         manufacturer.push({
           manufName: url,
+          inDate: inDate,
           isVerified: isVerified,
           name: manufName,
         });
+        if (options.inDated == false) delete manufacturer[0].inDated;
         return true;
       });
-
+      log.emergency("manufacturer", manufacturer);
       return manufacturer;
     } catch (e) {
       log.error("getReturnableManufacturer", e.message);
@@ -270,47 +329,50 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
    * Check if the manufacturer is verified
    * @param {string} options.manufName Manufacturer Name
    * @param {number} options.recId
+   * @param {boolean} options.inDated
    * @return {boolean}
    */
   function checkIfManufIsVerified(options) {
     try {
+      let manuf = options.manufName;
+      log.audit("checkIfManufIsVerified", options);
       let ISVERIFIED = true;
-      var transactionSearchObj = search.create({
-        type: "transaction",
-        filters: [
-          ["type", "anyof", "CuTrSale102", "CuTrPrch106"],
-          "AND",
-          ["mainline", "is", "T"],
-          "AND",
-          [
-            "custrecord_cs_ret_req_scan_rrid.custrecord_cs__mfgprocessing",
-            "anyof",
-            "2",
-          ],
-          "AND",
-          [
-            "custrecord_cs_ret_req_scan_rrid.custrecord_cs_ret_req_scan_rrid",
-            "anyof",
-            options.recId,
-          ],
-          "AND",
-          [
-            "custrecord_cs_ret_req_scan_rrid.custrecord_cs_item_manufacturer",
-            "is",
-            options.manufName,
-          ],
-        ],
+      let filters = [];
+      filters.push(
+        search.createFilter({
+          name: "custrecord_cs_ret_req_scan_rrid",
+          operator: "anyof",
+          values: options.recId,
+        })
+      );
+      filters.push(
+        search.createFilter({
+          name: "custrecord_cs__mfgprocessing",
+          operator: "anyof",
+          values: 2,
+        })
+      );
+      filters.push(
+        search.createFilter({
+          name: "custrecord_scanindated",
+          operator: "is",
+          values: options.inDated,
+        })
+      );
+      filters.push(
+        search.createFilter({
+          name: "custrecord_cs_item_manufacturer",
+          operator: "is",
+          values: options.manufName,
+        })
+      );
+      const transactionSearchObj = search.create({
+        type: "customrecord_cs_item_ret_scan",
+        filters: filters,
+
         columns: [
           search.createColumn({
-            name: "custrecord_cs_item_manufacturer",
-            join: "CUSTRECORD_CS_RET_REQ_SCAN_RRID",
-            summary: "GROUP",
-            sort: search.Sort.ASC,
-            label: "Item manufacturer",
-          }),
-          search.createColumn({
             name: "custrecord_is_verified",
-            join: "CUSTRECORD_CS_RET_REQ_SCAN_RRID",
             summary: "GROUP",
             label: "Verified",
           }),
@@ -319,12 +381,14 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
       let column = transactionSearchObj.columns;
       const searchResultCount = transactionSearchObj.runPaged().count;
       transactionSearchObj.run().each(function (result) {
-        let isVerified = result.getValue(column[1]);
+        let isVerified = result.getValue(column[0]);
+        log.audit("isVerified", { manuf, isVerified });
         if (isVerified == false) {
           ISVERIFIED = false;
           return false;
         }
       });
+      log.audit("results", { manuf, searchResultCount, ISVERIFIED });
       return searchResultCount == 1 && ISVERIFIED == true;
     } catch (e) {
       log.error("checkIfManufIsVerified", e.message);
@@ -358,20 +422,24 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
 
   /**
    * Get all of the item return scan hazardous
-   * @param rrId
+   * @param options.isHazardous
+   * @param options.rrId
    * @return {*[]} return hazardous item return scan list
    */
-  function getDesctructionHazardous(rrId) {
+  function getDesctructionHazardous(options) {
     try {
+      log.emergency("getDesctructionHazardous", options);
+      let ISHAZARDOUS = options.isHazardous == "true" ? "T" : "F";
+      log.emergency("ISHAZARDOUS", ISHAZARDOUS);
       let hazardousList = [];
       var customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
         filters: [
           ["custrecord_cs__mfgprocessing", "anyof", "1"],
           "AND",
-          ["custrecord_cs_return_req_scan_item.custitem1", "is", "T"],
+          ["custrecord_cs_return_req_scan_item.custitem1", "is", ISHAZARDOUS],
           "AND",
-          ["custrecord_cs_ret_req_scan_rrid", "anyof", rrId],
+          ["custrecord_cs_ret_req_scan_rrid", "anyof", options.rrId],
         ],
         columns: [
           search.createColumn({
@@ -453,29 +521,53 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
   }
 
   /**
-   * Get the item return scan record based on Return request and Manufacturer
+   * Get the item return scan record based on Return request and Manufacturer and In Dated Status
    * @param {number}options.rrId - Return Request Id
    * @param {string}options.manufacturer - Manufacturer Text Name
+   * @param {boolean} options.inDated - Check If In dated
    * @returns {object} returns the item scanlist
    */
-  function getItemScanByManufacturer(options) {
+  function getItemScanReturnbleByManufacturer(options) {
     try {
       let manufacturer = options.manufacturer;
+
       log.emergency("getItemScanByManufacturer", options);
 
       log.audit("getItemScanByManufacturer", manufacturer);
       let itemScanList = [];
+      let filters = [];
+      filters.push(
+        search.createFilter({
+          name: "custrecord_cs_ret_req_scan_rrid",
+          operator: "anyof",
+          values: options.rrId,
+        })
+      );
+      filters.push(
+        search.createFilter({
+          name: "custrecord_cs_item_manufacturer",
+          operator: "is",
+          values: manufacturer,
+        })
+      );
+      filters.push(
+        search.createFilter({
+          name: "custrecord_cs__mfgprocessing",
+          operator: "anyof",
+          values: 2,
+        })
+      );
+      filters.push(
+        search.createFilter({
+          name: "custrecord_scanindated",
+          operator: "is",
+          values: options.inDated,
+        })
+      );
+
       const customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
-        filters: [
-          ["custrecord_cs_ret_req_scan_rrid", "anyof", options.rrId],
-          "AND",
-          ["custrecord_cs_item_manufacturer", "is", manufacturer],
-          "AND",
-          ["custrecord_cs__mfgprocessing", "anyof", "2"],
-          "AND",
-          ["custrecord_scanindated", "is", "F"],
-        ],
+        filters: filters,
         columns: [
           search.createColumn({
             name: "custrecord_is_verified",
@@ -581,21 +673,22 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
 
   /**
    * return the hazardous item return scan group by Hazardous
-   * @param {number}rrId return request Id
+   * @param {number} options.rrId return request Id
+   * @param {string} options.tranId transaction of the return request
    * @return {object} array object of the des destruction item return scan
    */
-  function getItemScanByDescrutionType(rrId) {
+  function getItemScanByDescrutionType(options) {
     try {
-      let destructionList = []
-      let rrId = options.rrId
+      let destructionList = [];
+      let rrId = options.rrId;
       const customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
-        filters:  [
-          ["custrecord_cs__mfgprocessing","anyof","1"],
+        filters: [
+          ["custrecord_cs__mfgprocessing", "anyof", "1"],
           "AND",
-          ["custrecord_cs_ret_req_scan_rrid","anyof","10804"],
+          ["custrecord_cs_ret_req_scan_rrid", "anyof", rrId],
           "AND",
-          ["custrecord_scanindated","is","F"]
+          ["custrecord_scanindated", "is", "F"],
         ],
         columns: [
           search.createColumn({
@@ -608,11 +701,12 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
         ],
       });
 
-       let column = customrecord_cs_item_ret_scanSearchObj.columns
+      let column = customrecord_cs_item_ret_scanSearchObj.columns;
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
-        let isHazardous = result.getValue(column[0])
-        let name = isHazardous == true ? "Destruction Hazardous" : "Destruction"
-        let url = `<a href="https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&selectionType=Returnable&isHazardous=${isHazardous}&rrId=${rrId}&tranid=${options.tranId}">${name}</a>`;
+        let isHazardous = result.getValue(column[0]);
+        let name =
+          isHazardous == true ? "Destruction Hazardous" : "Destruction";
+        let url = `<a href="https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&selectionType=Destruction&isHazardous=${isHazardous}&rrId=${rrId}&tranid=${options.tranId}">${name}</a>`;
         let isVerified = checkIfHazardousIsVerified({
           recId: rrId,
           isHazardous: isHazardous,
@@ -621,12 +715,12 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
         destructionList.push({
           destruction: url,
           isVerified: isVerified,
-          name: name ,
+          name: name,
         });
         return true;
       });
-       log.emergency("getItemScanByDescrutionType des ",destructionList)
-    return destructionList
+      log.emergency("getItemScanByDescrutionType des ", destructionList);
+      return destructionList;
     } catch (e) {
       log.error("getItemScanByDescrutionType", e.message);
     }
@@ -634,57 +728,45 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
 
   /**
    * Check if the hazardous is verified or not
-   * @param {number} options.rrId Return request internal id
+   * @param {number} options.recId Return request internal id
    * @param {boolean} options.isHazardous Item Hazardous Material Field
    * @return {boolean} return if the destruction or destruction hazardous is verified
    */
   function checkIfHazardousIsVerified(options) {
     try {
+      log.emergency("checkIfHazardousIsVerified", options);
       let ISVERIFIED = true;
+      let ISHAZARDOUS = options.isHazardous == true ? "T" : "F";
       var customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
         filters: [
-          ["custrecord_cs__mfgprocessing", "anyof", options.rrId],
+          ["custrecord_cs__mfgprocessing", "anyof", "1"],
           "AND",
-          ["custrecord_cs_ret_req_scan_rrid", "anyof", "10804"],
+          ["custrecord_cs_return_req_scan_item.custitem1", "is", ISHAZARDOUS],
           "AND",
-          [
-            "custrecord_cs_return_req_scan_item.custitem1",
-            "is",
-            options.isHazardous,
-          ],
+          ["custrecord_cs_ret_req_scan_rrid", "anyof", options.recId],
         ],
+
         columns: [
-          search.createColumn({
-            name: "internalid",
-            summary: "GROUP",
-            label: "Internal ID",
-          }),
           search.createColumn({
             name: "custrecord_is_verified",
             summary: "GROUP",
             label: "Verified",
           }),
-          search.createColumn({
-            name: "custitem1",
-            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-            summary: "GROUP",
-            sort: search.Sort.ASC,
-            label: "Hazardous Material",
-          }),
         ],
       });
       const searchResultCount =
         customrecord_cs_item_ret_scanSearchObj.runPaged().count;
-
+      let column = customrecord_cs_item_ret_scanSearchObj.columns;
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
-        let isVerified = result.getValue(column[1]);
+        let isVerified = result.getValue(column[0]);
         if (isVerified == false) {
           ISVERIFIED = false;
           return false;
         }
         return true;
       });
+      log.audit("checkifVerified", { searchResultCount, ISVERIFIED });
       return searchResultCount == 1 && ISVERIFIED == true;
     } catch (e) {
       log.error("checkIfHazardousIsVerified", e.message);
@@ -693,11 +775,11 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
 
   return {
     getReturnableManufacturer,
-    getFileId,
-    getItemScanByManufacturer,
-    isEmpty,
+    getItemScanByManufacturer: getItemScanReturnbleByManufacturer,
     getDesctructionHazardous,
     getItemScanByDescrutionType,
+    getFileId,
+    isEmpty,
     SUBLISTFIELDS,
   };
 });
