@@ -67,13 +67,13 @@ define([
       let rrId = options.params.rrId;
       let tranId = options.params.tranid;
       let form = options.form;
+      let paramInDate = options.params.inDate
       let paramIsHazardous = options.params.isHazardous;
       let paramSelectionType = options.params.selectionType;
       let paramManufacturer = options.params.manufacturer
         ? options.params.manufacturer
         : "";
       let htmlFileId = rxrs_vs_util.getFileId("SL_loading_html.html");
-      log.error("htmlFileid", htmlFileId);
       if (htmlFileId) {
         const dialogHtmlField = form.addField({
           id: "custpage_jqueryui_loading_dialog",
@@ -256,11 +256,12 @@ define([
           createReturnableSublist({
             form: form,
             rrTranId: rrId,
-            documentNumber: tranId,
+            rrName: tranId,
             sublistFields: sublistFields,
             value: itemsReturnScan,
-            isMainInDated: true,
+            isMainInDated: false,
             paramManufacturer: paramManufacturer,
+            paramInDate: paramInDate
           });
         }
       }
@@ -279,11 +280,13 @@ define([
    * @param {boolean} options.isMainReturnable
    * @param {string} options.rrName
    * @param {string} options.paramManufacturer
+   * @param {string} options.paramInDate
    * @returns  Updated Form.
    */
   const createReturnableSublist = (options) => {
     try {
       log.debug("createReturnableSublist", options);
+      let inDate = options.paramInDate ? " : " + options.paramInDate : ""
       let manuf = options.paramManufacturer;
       let fieldName = [];
       let form = options.form;
@@ -296,7 +299,7 @@ define([
       sublist = form.addSublist({
         id: "custpage_items_sublist",
         type: serverWidget.SublistType.LIST,
-        label: `RO ${options.rrName} - RXLINEITEMS :${manuf}`,
+        label: `RO ${options.rrName} - RXLINEITEMS :${manuf} ${inDate}`,
       });
 
       if (manuf) {

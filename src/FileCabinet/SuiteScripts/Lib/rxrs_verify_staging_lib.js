@@ -129,6 +129,80 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
         updateDisplayType: "DISABLED",
       },
     ],
+    returnableInDatedManufacturer: [
+      {
+        id: "custpage_internalid",
+        type: "TEXT",
+        label: "Internal Id",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_verified",
+        type: "CHECKBOX",
+        label: "Verified",
+        updateDisplayType: "NORMAL",
+      },
+      {
+        id: "custpage_in_dated",
+        type: "TEXT",
+        label: "In Date",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_ndc",
+        type: "TEXT",
+        label: "NDC",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_description",
+        type: "TEXT",
+        label: "Description",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_manufacturer",
+        type: "TEXT",
+        label: "Manufacturer",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_date_created",
+        type: "TEXT",
+        label: "Scanned On",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_date_serial_lot",
+        type: "TEXT",
+        label: "Serial/Lot Number",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_fullpartialpackage",
+        type: "TEXT",
+        label: "Full/Partial Package",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_expiration_date",
+        type: "TEXT",
+        label: "Expiration Date",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_mfgprocessing",
+        type: "TEXT",
+        label: "Manuf Processing",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_pharmaprocessing",
+        type: "TEXT",
+        label: "Pharma Processing",
+        updateDisplayType: "DISABLED",
+      },
+    ],
     destructionSublist: [
       {
         id: "custpage_is_hazardous_name",
@@ -243,6 +317,7 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
   function getReturnableManufacturer(options) {
     try {
       log.audit("getReturnableManufacturer", options);
+      let inDated = options.inDated == false ? "F" : "T"
       let rrId = options.rrId;
       let manufacturer = [];
       let filters = [];
@@ -264,8 +339,8 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
       filters.push(
         search.createFilter({
           name: "custrecord_scanindated",
-          operator: "anyof",
-          values: options.inDated,
+          operator: "is",
+          values: inDated,
         })
       );
       let columns = [];
@@ -283,13 +358,14 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
           })
         );
       }
-      log.audit("columns", columns);
+
       const transactionSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
         filters: filters,
         columns: columns,
       });
-
+      const searchResultCount = transactionSearchObj.runPaged().count;
+      log.audit(" getReturnableManufacturer Search Result",searchResultCount )
       transactionSearchObj.run().each(function (result) {
         let manufName = result.getValue({
           name: "custrecord_cs_item_manufacturer",
@@ -302,11 +378,11 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
             summary: "MAX",
           });
         }
-        let url = `<a href="https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&selectionType=${options.selectionType}&manufacturer=${manufName}&rrId=${rrId}&tranid=${options.tranId}">${manufName}</a>`;
+        let url = `<a href="https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&selectionType=${options.selectionType}&manufacturer=${manufName}&rrId=${rrId}&tranid=${options.tranId}&inDate=${inDate}">${manufName}</a>`;
         let isVerified = checkIfManufIsVerified({
           recId: rrId,
           manufName: manufName,
-          inDated: options.inDated,
+          inDated: inDated,
         });
         isVerified = isVerified === true ? "T" : "F";
         manufacturer.push({
@@ -490,13 +566,21 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
             name: "custrecord_cs__mfgprocessing",
             label: "Mfg Processing",
           }),
+          search.createColumn({
+            name: "internalid",
+            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+          })
         ],
       });
       let column = customrecord_cs_item_ret_scanSearchObj.columns;
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
         let verified = result.getValue(column[0]) == true ? "T" : "F";
         let ndcName = result.getValue(column[2]);
-        let ndcLink = `https://6816904.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=436&custrecord_cs_ret_req_scan_rrid=${result.id} ,_blank`;
+        let itemId = result.getValue({
+          name: "internalid",
+          join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+        })
+        let ndcLink = `https://6816904.app.netsuite.com/app/common/item/item.nl?id=${itemId} ,_blank`;
         hazardousList.push({
           internalId: result.getValue(column[1]),
           verified: verified,
@@ -607,6 +691,11 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
             name: "custrecord_cs__rqstprocesing",
             label: "Pharmacy Processing",
           }),
+          search.createColumn({
+            name: "internalid",
+            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+            label: "Internal ID"
+          })
         ],
       });
 
@@ -614,8 +703,11 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
         let verified = result.getValue(column[0]) == true ? "T" : "F";
         let ndcName = result.getValue(column[1]);
-        let ndcLink = `https://6816904.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=436&custrecord_cs_ret_req_scan_rrid=${result.id} ,_blank`;
-        log.emergency("ndcLink", ndcLink);
+        let itemId = result.getValue({
+          name: "internalid",
+          join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+        })
+        let ndcLink = `https://6816904.app.netsuite.com/app/common/item/item.nl?id=${itemId} ,_blank`;
         itemScanList.push({
           internalId: result.id,
           verified: verified,
