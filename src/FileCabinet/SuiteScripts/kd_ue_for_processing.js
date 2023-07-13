@@ -22,10 +22,11 @@ define(["N/record", "N/search", "N/url"], /**
         const rec = context.newRecord;
         const id = rec.id;
         const tranid = rec.getValue("tranid");
+        const mrrId = rec.getValue("custbody_kd_master_return_id")
         context.form.addButton({
           id: "custpage_verify",
           label: "For Verification",
-          functionName: 'window.open("https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&rrId=' +id+ '&tranid='+tranid+'&selectionType=Returnable","_blank","width=1700,height=1200")'
+          functionName: 'window.open("https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&rrId=' +id+ '&tranid='+tranid+ '&mrrId='+ mrrId+'&selectionType=Returnable","_blank","width=1700,height=1200")'
         });
       }
     } catch (e) {
