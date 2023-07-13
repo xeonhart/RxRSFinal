@@ -34,16 +34,16 @@ define([
     let arrTemp = window.location.href.split("?");
     urlParams = new URLSearchParams(arrTemp[1]);
     console.log(urlParams);
-    for(let i = 0; i< suitelet.getLineCount("custpage_items_sublist"); i++){
-      lineTobeUpdated.push({
-        line: i,
-        isVerified: suitelet.getSublistValue({
-          sublistId: "custpage_items_sublist",
-          fieldId: "custpage_verified",
-          line: i
-        })
-      })
-    }
+    // for(let i = 0; i< suitelet.getLineCount("custpage_items_sublist"); i++){
+    //   lineTobeUpdated.push({
+    //     line: i,
+    //     isVerified: suitelet.getSublistValue({
+    //       sublistId: "custpage_items_sublist",
+    //       fieldId: "custpage_verified",
+    //       line: i
+    //     })
+    //   })
+    // }
   }
 
   /**
@@ -125,15 +125,26 @@ define([
   /**
    * Check or Uncheck verify field in the item return scan record
    */
-  function verify() {
-    try {
-    handleButtonClick();
-
-    } catch (e) {
-      console.error("verify", e.message);
-    }
+  // function verify() {
+  //   try {
+  //   handleButtonClick();
+  //
+  //   } catch (e) {
+  //     console.error("verify", e.message);
+  //   }
+  // }
+function saveRecord(){
+    const submitMessage = message.create({
+      title: "Processing",
+      message: "Updating verification status and creating Bag Label",
+      type: message.Type.INFORMATION,
+    });
+    setTimeout(function () {
+      submitMessage.show({
+        duration: 2000,
+      });
+    }, 2000);
   }
-
 function runAutomation(){
   const completeMessage = message.create({
     title: "Verifying",
@@ -158,7 +169,7 @@ function runAutomation(){
       fieldId: "custpage_verified",
       line: i,
     });
-   if(lineTobeUpdated[i].isVerified == isVerify) continue;
+  // if(lineTobeUpdated[i].isVerified == isVerify) continue;
     //  Update the verified status of the Item Return Scan
     // let Id = record.submitFields({
     //   type: "customrecord_cs_item_ret_scan",
@@ -227,7 +238,7 @@ function runAutomation(){
   return {
     pageInit: pageInit,
     fieldChanged: fieldChanged,
-    verify: verify,
+    saveRecord: saveRecord,
     backToReturnable: backToReturnable,
   };
 });
