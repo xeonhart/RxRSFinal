@@ -1,13 +1,28 @@
 /**
  * @NApiVersion 2.1
  */
-define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
+
+//TODO Include Amount in the Sublist
+//TODO Source MRR and RR information in the creation of Bag Label
+//TODO display manufacturer so maximum amount in the manufacturer record
+//TODO disregard the check of the item return scan in the Suitelet
+//TODO Move the creation of the submit instead of via Client Script
+
+define([
+  "N/redirect",
+  "N/render",
+  "N/runtime",
+  "N/search",
+  "N/url",
+  "N/record",
+], /**
  * @param{redirect} redirect
  * @param{render} render
  * @param{runtime} runtime
  * @param{search} search
  * @param{url} url
- */ (redirect, render, runtime, search, url) => {
+ * @param record
+ */ (redirect, render, runtime, search, url, record) => {
   const SUBLISTFIELDS = {
     returnableSublist: [
       {
@@ -316,8 +331,8 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
    */
   function getReturnableManufacturer(options) {
     try {
-      log.audit("getReturnableManufacturer", options);
-      let inDated = options.inDated == false ? "F" : "T"
+      //log.audit("getReturnableManufacturer", options);
+      let inDated = options.inDated == false ? "F" : "T";
       let rrId = options.rrId;
       let manufacturer = [];
       let filters = [];
@@ -364,13 +379,15 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
         filters: filters,
         columns: columns,
       });
-      const searchResultCount = transactionSearchObj.runPaged().count;
-      log.audit(" getReturnableManufacturer Search Result",searchResultCount )
       transactionSearchObj.run().each(function (result) {
         let manufName = result.getValue({
           name: "custrecord_cs_item_manufacturer",
           summary: "GROUP",
         });
+        /*
+                                fixed issue in the URL when there is an ampersand symbol in Manuf Name
+                                 */
+        let manufURLName = manufName.replaceAll("&", "_");
         let inDate;
         if (options.inDated == true) {
           inDate = result.getValue({
@@ -378,7 +395,7 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
             summary: "MAX",
           });
         }
-        let url = `<a href="https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&selectionType=${options.selectionType}&manufacturer=${manufName}&rrId=${rrId}&tranid=${options.tranId}&inDate=${inDate}">${manufName}</a>`;
+        let url = `<a href="https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&selectionType=${options.selectionType}&manufacturer=${manufURLName}&rrId=${rrId}&tranid=${options.tranId}&inDate=${inDate}">${manufName}</a>`;
         let isVerified = checkIfManufIsVerified({
           recId: rrId,
           manufName: manufName,
@@ -411,7 +428,7 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
   function checkIfManufIsVerified(options) {
     try {
       let manuf = options.manufName;
-      log.audit("checkIfManufIsVerified", options);
+      //log.audit("checkIfManufIsVerified", options);
       let ISVERIFIED = true;
       let filters = [];
       filters.push(
@@ -458,7 +475,7 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
       const searchResultCount = transactionSearchObj.runPaged().count;
       transactionSearchObj.run().each(function (result) {
         let isVerified = result.getValue(column[0]);
-        log.audit("isVerified", { manuf, isVerified });
+        // log.audit("isVerified", { manuf, isVerified });
         if (isVerified == false) {
           ISVERIFIED = false;
           return false;
@@ -569,7 +586,7 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
           search.createColumn({
             name: "internalid",
             join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-          })
+          }),
         ],
       });
       let column = customrecord_cs_item_ret_scanSearchObj.columns;
@@ -579,8 +596,10 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
         let itemId = result.getValue({
           name: "internalid",
           join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-        })
-        let ndcLink = `https://6816904.app.netsuite.com/app/common/item/item.nl?id=${itemId} ,_blank`;
+        });
+
+        let ndcLink = `https://6816904.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=436&id=${result.id}&e=T&pf=CUSTRECORD_CS_RET_REQ_SCAN_RRID&pi=10798&pr=-30`;
+
         hazardousList.push({
           internalId: result.getValue(column[1]),
           verified: verified,
@@ -615,9 +634,7 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
     try {
       let manufacturer = options.manufacturer;
 
-      log.emergency("getItemScanByManufacturer", options);
-
-      log.audit("getItemScanByManufacturer", manufacturer);
+      //log.audit("getItemScanByManufacturer", options);
       let itemScanList = [];
       let filters = [];
       filters.push(
@@ -694,8 +711,8 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
           search.createColumn({
             name: "internalid",
             join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-            label: "Internal ID"
-          })
+            label: "Internal ID",
+          }),
         ],
       });
 
@@ -706,12 +723,13 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
         let itemId = result.getValue({
           name: "internalid",
           join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-        })
-        let ndcLink = `https://6816904.app.netsuite.com/app/common/item/item.nl?id=${itemId} ,_blank`;
+        });
+        let ndcLink = `https://6816904.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=436&id=${result.id}&e=T&pf=CUSTRECORD_CS_RET_REQ_SCAN_RRID&pi=10798&pr=-30`;
         itemScanList.push({
           internalId: result.id,
           verified: verified,
           ndc: `<a href=${ndcLink}>${ndcName}</a>`,
+
           description: result.getValue(column[2]),
           manufacturer: result.getValue(column[3]),
           dateCreated: result.getValue(column[4]),
@@ -770,6 +788,7 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
    * @return {object} array object of the des destruction item return scan
    */
   function getItemScanByDescrutionType(options) {
+    // log.audit("getItemScanByDescrutionType", options);
     try {
       let destructionList = [];
       let rrId = options.rrId;
@@ -858,12 +877,39 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
         }
         return true;
       });
-      log.audit("checkifVerified", { searchResultCount, ISVERIFIED });
+      //log.audit("checkifVerified", { searchResultCount, ISVERIFIED });
       return searchResultCount == 1 && ISVERIFIED == true;
     } catch (e) {
       log.error("checkIfHazardousIsVerified", e.message);
     }
   }
+  /**
+   * Update the status of the item return scan
+   * @param {number} options.ids Internal Id of the return item scan
+   * @param {boolean} options.isVerify
+   * @return {number} item return scan Id
+   */
+  function updateVerificationStatus(options) {
+    try {
+      let ids = options.ids;
+      for (let i = 0; i < ids.length; i++) {
+        record.submitFields.promise({
+          type: "customrecord_cs_item_ret_scan",
+          id: +ids[i],
+          values: {
+            custrecord_is_verified: options.isVerify,
+          },
+        });
+      }
+
+
+
+    } catch (e) {
+      log.error("updateVerificationStatus", e.message);
+    }
+  }
+
+
 
   return {
     getReturnableManufacturer,
@@ -872,6 +918,7 @@ define(["N/redirect", "N/render", "N/runtime", "N/search", "N/url"], /**
     getItemScanByDescrutionType,
     getFileId,
     isEmpty,
+    updateVerificationStatus,
     SUBLISTFIELDS,
   };
 });

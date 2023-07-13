@@ -7,11 +7,13 @@ define([
   "./Lib/rxrs_verify_staging_lib",
   "N/cache",
   "N/file",
+  "N/record",
+    "N/redirect"
 ], /**
  * @param{serverWidget} serverWidget
  * @param rxrs_vs_util
  * @param cache
- */ (serverWidget, rxrs_vs_util, cache, file) => {
+ */ (serverWidget, rxrs_vs_util, cache, file, record,redirect) => {
   /**
    * Defines the Suitelet script trigger point.
    * @param {Object} scriptContext
@@ -30,7 +32,10 @@ define([
         log.error("GET", e.message);
       }
     }
+
   };
+
+
 
   /**
    * It creates a form, adds a client script to it, creates header fields, and then creates a sublist of
@@ -66,13 +71,17 @@ define([
     try {
       let rrId = options.params.rrId;
       let tranId = options.params.tranid;
+      let mrrId = options.params.mrrId;
       let form = options.form;
-      let paramInDate = options.params.inDate
+      let paramInDate = options.params.inDate;
       let paramIsHazardous = options.params.isHazardous;
       let paramSelectionType = options.params.selectionType;
       let paramManufacturer = options.params.manufacturer
         ? options.params.manufacturer
         : "";
+      paramManufacturer = paramManufacturer.includes("_")
+        ? paramManufacturer.replaceAll("_", "&")
+        : paramManufacturer;
       let htmlFileId = rxrs_vs_util.getFileId("SL_loading_html.html");
       if (htmlFileId) {
         const dialogHtmlField = form.addField({
@@ -86,6 +95,16 @@ define([
           })
           .getContents();
       }
+      let mrrIdField = form
+        .addField({
+          id: "custpage_mrrid",
+          label: "Return Request Id",
+          type: serverWidget.FieldType.TEXT,
+        })
+        .updateDisplayType({
+          displayType: serverWidget.FieldDisplayType.HIDDEN,
+        });
+      mrrId ? (mrrIdField.defaultValue = mrrId) : null;
       let rrIdField = form
         .addField({
           id: "custpage_rrid",
@@ -159,13 +178,13 @@ define([
           rrId: rrId,
           tranId: tranId,
           inDated: false,
-          selectionType: paramSelectionType
+          selectionType: paramSelectionType,
         });
         //create sublist for Returnables
         log.audit(paramManufacturer);
         if (rxrs_vs_util.isEmpty(paramManufacturer)) {
           sublistFields = rxrs_vs_util.SUBLISTFIELDS.returnableSublist;
-          log.emergency("returnableSublist", sublistFields)
+          log.emergency("returnableSublist", sublistFields);
           createReturnableSublist({
             form: form,
             rrTranId: rrId,
@@ -182,7 +201,7 @@ define([
           let itemsReturnScan = rxrs_vs_util.getItemScanByManufacturer({
             rrId: rrId,
             manufacturer: paramManufacturer,
-            inDated: false
+            inDated: false,
           });
           log.debug("itemsReturnScan", itemsReturnScan);
           createReturnableSublist({
@@ -234,7 +253,7 @@ define([
             rrId: rrId,
             tranId: tranId,
             inDated: true,
-            selectionType: paramSelectionType
+            selectionType: paramSelectionType,
           });
           createReturnableSublist({
             form: form,
@@ -250,8 +269,7 @@ define([
           let itemsReturnScan = rxrs_vs_util.getItemScanByManufacturer({
             rrId: rrId,
             manufacturer: paramManufacturer,
-            inDated: true
-
+            inDated: true,
           });
           createReturnableSublist({
             form: form,
@@ -261,7 +279,7 @@ define([
             value: itemsReturnScan,
             isMainInDated: false,
             paramManufacturer: paramManufacturer,
-            paramInDate: paramInDate
+            paramInDate: paramInDate,
           });
         }
       }
@@ -286,7 +304,7 @@ define([
   const createReturnableSublist = (options) => {
     try {
       log.debug("createReturnableSublist", options);
-      let inDate = options.paramInDate ? " : " + options.paramInDate : ""
+      let inDate = options.paramInDate ? " : " + options.paramInDate : "";
       let manuf = options.paramManufacturer;
       let fieldName = [];
       let form = options.form;
@@ -336,7 +354,7 @@ define([
         let value = Object.values(val);
         let fieldInfo = [];
         for (let i = 0; i < value.length; i++) {
-          if(rxrs_vs_util.isEmpty(fieldName[i])) continue
+          if (rxrs_vs_util.isEmpty(fieldName[i])) continue;
           fieldInfo.push({
             fieldId: fieldName[i],
             value: value[i],
@@ -362,7 +380,7 @@ define([
    */
   const populateSublist = (options) => {
     try {
-      log.audit("populateSublist", options);
+      //log.audit("populateSublist", options);
       let sublist = options.sublist;
       let sublistFields = options.fieldInfo;
 
@@ -447,7 +465,6 @@ define([
         let value = Object.values(val);
         let fieldInfo = [];
         for (let i = 0; i < value.length; i++) {
-
           fieldInfo.push({
             fieldId: fieldName[i],
             value: value[i],
