@@ -143,6 +143,30 @@ define([
         label: "Pharma Processing",
         updateDisplayType: "DISABLED",
       },
+      {
+        id: "custpage_amount",
+        type: "CURRENCY",
+        label: "Amount",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_bag_tag_label",
+        type: "TEXT",
+        label: "Bag Tag Label",
+        updateDisplayType: "INLINE",
+      },
+      {
+        id: "custpage_item_id",
+        type: "TEXT",
+        label: "Item Id",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_manuf_id",
+        type: "TEXT",
+        label: "Manuf Id",
+        updateDisplayType: "DISABLED",
+      },
     ],
     returnableInDatedManufacturer: [
       {
@@ -384,9 +408,8 @@ define([
           name: "custrecord_cs_item_manufacturer",
           summary: "GROUP",
         });
-        /*
-                                fixed issue in the URL when there is an ampersand symbol in Manuf Name
-                                 */
+        //fixed issue in the URL when there is an ampersand symbol in Manuf Name
+
         let manufURLName = manufName.replaceAll("&", "_");
         let inDate;
         if (options.inDated == true) {
@@ -713,23 +736,40 @@ define([
             join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
             label: "Internal ID",
           }),
+          search.createColumn({ name: "custrecord_scanrate", label: "Rate" }),
+          search.createColumn({
+            name: "custrecord_isc_overriderate",
+            label: "Override Rate",
+          }),
+          search.createColumn({ name: "custrecord_cs_qty", label: "Qty" }),
+          search.createColumn({
+            name: "custrecord_scanbagtaglabel",
+            label: "Bag Tag Label",
+          }),
+          search.createColumn({
+            name: "custrecord_isc_inputrate",
+            label: "Input Rate",
+          }),
         ],
       });
 
       let column = customrecord_cs_item_ret_scanSearchObj.columns;
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
+        let inputRate = result.getValue("custrecord_isc_inputrate");
+        let isOverrideRate = result.getValue("custrecord_isc_overriderate");
+        let rate = result.getValue("custrecord_scanrate") || 0;
+        let qty = result.getValue("custrecord_cs_qty") || 0;
+        let bagTagLabel = result.getValue("custrecord_scanbagtaglabel");
+
+        let amount = isOverrideRate == true ? inputRate : +rate * +qty;
+
         let verified = result.getValue(column[0]) == true ? "T" : "F";
         let ndcName = result.getValue(column[1]);
-        let itemId = result.getValue({
-          name: "internalid",
-          join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-        });
         let ndcLink = `https://6816904.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=436&id=${result.id}&e=T&pf=CUSTRECORD_CS_RET_REQ_SCAN_RRID&pi=10798&pr=-30`;
         itemScanList.push({
           internalId: result.id,
           verified: verified,
           ndc: `<a href=${ndcLink}>${ndcName}</a>`,
-
           description: result.getValue(column[2]),
           manufacturer: result.getValue(column[3]),
           dateCreated: result.getValue(column[4]),
@@ -738,6 +778,13 @@ define([
           expirationDate: result.getValue(column[7]),
           mfgProcessing: result.getText(column[8]),
           pharmaProcessing: result.getText(column[9]),
+          amount: amount || 0,
+          bagTagLabel: `<a href ="https://6816904.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=401&id=${bagTagLabel}" target="_blank">${bagTagLabel}</a>`,
+          itemId: result.getValue({
+            name: "internalid",
+            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+          }),
+          manufId: getManufactuerId(result.getValue(column[3]))
         });
         return true;
       });
@@ -883,6 +930,7 @@ define([
       log.error("checkIfHazardousIsVerified", e.message);
     }
   }
+
   /**
    * Update the status of the item return scan
    * @param {number} options.ids Internal Id of the return item scan
@@ -901,15 +949,10 @@ define([
           },
         });
       }
-
-
-
     } catch (e) {
       log.error("updateVerificationStatus", e.message);
     }
   }
-
-
 
   return {
     getReturnableManufacturer,

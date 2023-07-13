@@ -115,17 +115,7 @@ define([
         window.open(stSuiteletUrl, "_self");
     }
 
-    /**
-     * Check or Uncheck verify field in the item return scan record
-     */
-    // function verify() {
-    //   try {
-    //   handleButtonClick();
-    //
-    //   } catch (e) {
-    //     console.error("verify", e.message);
-    //   }
-    // }
+
     function verify() {
 
         let returnItemScanIds = []
@@ -164,27 +154,6 @@ define([
 
     }
 
-    function runAutomation() {
-        const completeMessage = message.create({
-            title: "Verifying",
-            message: "Update Complete. Refreshing the page",
-            type: message.Type.INFORMATION,
-        });
-
-        let suitelet = currentRecord.get();
-
-
-        setTimeout(function () {
-            completeMessage.show({
-                duration: 2000,
-            });
-        }, 2000);
-
-        setTimeout(function () {
-            location.reload();
-        }, 2000);
-    }
-
     function handleButtonClick() {
         try {
             jQuery("#_loading_dialog").attr("title", "Updating Verify Status and Creating Bag Label");
@@ -205,8 +174,8 @@ define([
                 open: function (evt, ui) {
                     // jQuery(".ui-dialog-titlebar-close").hide();
                     setTimeout(function () {
-                        runAutomation()
-                    }, 15000);
+
+                    }, 100);
                 },
             });
         } catch (e) {
