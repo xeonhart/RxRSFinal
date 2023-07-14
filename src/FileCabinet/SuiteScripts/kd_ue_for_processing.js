@@ -33,6 +33,7 @@ define(["N/record", "N/search", "N/url"], /**
             rrId: id,
             tranid:tranid,
             mrrId: mrrId,
+            rrType: rec.type
           },
         });
         let output = url.resolveDomain({

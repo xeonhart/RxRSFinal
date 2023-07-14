@@ -113,7 +113,7 @@ define([
               type: serverWidget.FieldType.CURRENCY,
             })
             .updateDisplayType({
-              displayType: "DISABLED",
+              displayType: "INLINE",
             });
           manufMaximumSOAmountField.defaultValue =
             rxrs_vs_util.getManufMaxSoAmount(manufId);
