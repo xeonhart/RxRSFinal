@@ -349,13 +349,15 @@ define([
    * @param {number}options.rrId - Return Request Id
    * @param {number}options.tranId - Document Number
    * @param {boolean} options.inDated - Returnable can be in Dated or not
+   * @param {string} options.rrType - return request rec type
+   * @param {number} options.mrrId - master return request Id
    * @param {string} options.selectionType - Returnable / Destruction / In Dated
    * @since 07/11/2023
    * @return {array} Return manufacturing list
    */
   function getReturnableManufacturer(options) {
     try {
-      //log.audit("getReturnableManufacturer", options);
+      log.error("getReturnableManufacturer", options);
       let inDated = options.inDated == false ? "F" : "T";
       let rrId = options.rrId;
       let manufacturer = [];
@@ -372,7 +374,7 @@ define([
         search.createFilter({
           name: "custrecord_cs__mfgprocessing",
           operator: "anyof",
-          values: 2,
+          values: 2, // returnable = true
         })
       );
       filters.push(
@@ -418,7 +420,21 @@ define([
             summary: "MAX",
           });
         }
-        let url = `<a href="https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&selectionType=${options.selectionType}&manufacturer=${manufURLName}&rrId=${rrId}&tranid=${options.tranId}&inDate=${inDate}">${manufName}</a>`;
+
+        let stSuiteletUrl = url.resolveScript({
+          scriptId: "customscript_sl_returnable_page",
+          deploymentId: "customdeploy_sl_returnable_page",
+          returnExternalUrl: false,
+          params: {
+            selectionType: options.selectionType,
+            manufacturer: manufURLName,
+            rrId: rrId,
+            tranid: options.tranId,
+            inDate: inDate,
+            rrType: options.rrType,
+            mrrId: options.mrrId,
+          },
+        });
         let isVerified = checkIfManufIsVerified({
           recId: rrId,
           manufName: manufName,
@@ -426,7 +442,7 @@ define([
         });
         isVerified = isVerified === true ? "T" : "F";
         manufacturer.push({
-          manufName: url,
+          manufName: `<a href="${stSuiteletUrl}">${manufName}</a>`,
           inDate: inDate,
           isVerified: isVerified,
           name: manufName,
@@ -434,7 +450,7 @@ define([
         if (options.inDated == false) delete manufacturer[0].inDated;
         return true;
       });
-      log.emergency("manufacturer", manufacturer);
+      log.error("manufacturer", manufacturer);
       return manufacturer;
     } catch (e) {
       log.error("getReturnableManufacturer", e.message);
@@ -620,7 +636,10 @@ define([
           name: "internalid",
           join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
         });
-        let ndcLink = generateRedirectLink({type:"customrecord_cs_item_ret_scan",id: result.id})
+        let ndcLink = generateRedirectLink({
+          type: "customrecord_cs_item_ret_scan",
+          id: result.id,
+        });
         hazardousList.push({
           internalId: result.getValue(column[1]),
           verified: verified,
@@ -649,6 +668,8 @@ define([
    * @param {number}options.rrId - Return Request Id
    * @param {string}options.manufacturer - Manufacturer Text Name
    * @param {boolean} options.inDated - Check If In dated
+   * @param {string} options.rrType - Return Request Type
+   * @param {number} options.mrrId - Master Return Request Id
    * @returns {object} returns the item scanlist
    */
   function getItemScanReturnbleByManufacturer(options) {
@@ -763,8 +784,14 @@ define([
 
         let verified = result.getValue(column[0]) == true ? "T" : "F";
         let ndcName = result.getValue(column[1]);
-        let ndcLink = generateRedirectLink({type:"customrecord_cs_item_ret_scan",id: result.id})
-
+        let ndcLink = generateRedirectLink({
+          type: "customrecord_cs_item_ret_scan",
+          id: result.id,
+        });
+        let bagLabelURL = generateRedirectLink({
+          type: "customrecord_kd_taglabel",
+          id: bagTagLabel,
+        });
         itemScanList.push({
           internalId: result.id,
           verified: verified,
@@ -778,7 +805,7 @@ define([
           mfgProcessing: result.getText(column[8]),
           pharmaProcessing: result.getText(column[9]),
           amount: amount || 0,
-          bagTagLabel: `<a href ="https://6816904.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=401&id=${bagTagLabel}" target="_blank">${bagTagLabel}</a>`,
+          bagTagLabel: `<a href ="${bagLabelURL}" target="_blank">${bagTagLabel}</a>`,
           itemId: result.getValue({
             name: "internalid",
             join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
@@ -831,6 +858,9 @@ define([
    * return the hazardous item return scan group by Hazardous
    * @param {number} options.rrId return request Id
    * @param {string} options.tranId transaction of the return request
+   * @param {string} options.rrType - return request type
+   * @param {number} options.mrrId - master return request id
+   * @param {string} options.selectionType - In Dated/Returnable/Destruction
    * @return {object} array object of the des destruction item return scan
    */
   function getItemScanByDescrutionType(options) {
@@ -863,14 +893,26 @@ define([
         let isHazardous = result.getValue(column[0]);
         let name =
           isHazardous == true ? "Destruction Hazardous" : "Destruction";
-        let url = `<a href="https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&selectionType=Destruction&isHazardous=${isHazardous}&rrId=${rrId}&tranid=${options.tranId}">${name}</a>`;
-        let isVerified = checkIfHazardousIsVerified({
+        let stSuiteletUrl = url.resolveScript({
+          scriptId: "customscript_sl_returnable_page",
+          deploymentId: "customdeploy_sl_returnable_page",
+          returnExternalUrl: false,
+          params: {
+            selectionType: options.selectionType,
+            isHazardous: isHazardous,
+            rrId: rrId,
+            tranid: options.tranId,
+            rrType: options.rrType,
+            mrrId: options.mrrId,
+          },
+        });
+       let isVerified = checkIfHazardousIsVerified({
           recId: rrId,
           isHazardous: isHazardous,
         });
         isVerified = isVerified === true ? "T" : "F";
         destructionList.push({
-          destruction: url,
+          destruction: `<a href="${stSuiteletUrl}">${name}</a>`,
           isVerified: isVerified,
           name: name,
         });
@@ -988,10 +1030,10 @@ define([
    */
   function generateRedirectLink(options) {
     try {
-     return url.resolveRecord({
+      return url.resolveRecord({
         recordType: options.type,
         recordId: options.id,
-        isEditMode: false
+        isEditMode: false,
       });
     } catch (e) {
       log.error("generateRedirectLink", e.message);

@@ -64,17 +64,18 @@ define([
    * @return {*}
    */
   const createHeaderFields = (options) => {
+    let rrId = options.params.rrId;
+    let tranId = options.params.tranid;
+    let mrrId = options.params.mrrId;
+    let form = options.form;
+    let paramInDate = options.params.inDate;
+    let paramIsHazardous = options.params.isHazardous;
+    let paramSelectionType = options.params.selectionType;
+    let paramManufacturer = options.params.manufacturer
+      ? options.params.manufacturer
+      : "";
+    let rrType = options.params.rrType;
     try {
-      let rrId = options.params.rrId;
-      let tranId = options.params.tranid;
-      let mrrId = options.params.mrrId;
-      let form = options.form;
-      let paramInDate = options.params.inDate;
-      let paramIsHazardous = options.params.isHazardous;
-      let paramSelectionType = options.params.selectionType;
-      let paramManufacturer = options.params.manufacturer
-        ? options.params.manufacturer
-        : "";
       paramManufacturer = paramManufacturer.includes("_")
         ? paramManufacturer.replaceAll("_", "&")
         : paramManufacturer;
@@ -148,36 +149,57 @@ define([
           .updateDisplayType({
             displayType: serverWidget.FieldDisplayType.INLINE,
           }).defaultValue = `<a href = ${mrrLink}>MRR${mrrId}</a>`;
-        let mrrIdFieldId = (form
+        (form
           .addField({
             id: "custpage_mrrid",
             label: "MRR ID",
             type: serverWidget.FieldType.TEXT,
           })
           .updateDisplayType({
-            displayType: serverWidget.FieldDisplayType.INLINE,
+            displayType: serverWidget.FieldDisplayType.HIDDEN,
           }).defaultValue = mrrId);
       }
       if (rrId) {
+        let rrLink = rxrs_vs_util.generateRedirectLink({
+          type: rrType,
+          id: rrId,
+        });
+        form
+            .addField({
+              id: "custpage_tranid",
+              label: "Return Request",
+              type: serverWidget.FieldType.TEXT,
+            })
+            .updateDisplayType({
+              displayType: serverWidget.FieldDisplayType.HIDDEN,
+            }).defaultValue =  tranId
         form
           .addField({
-            id: "custpage_rrid",
-            label: "Return Request Id",
+            id: "custpage_rr_type",
+            label: "Return Request Type",
             type: serverWidget.FieldType.TEXT,
           })
           .updateDisplayType({
             displayType: serverWidget.FieldDisplayType.HIDDEN,
-          }).defaultValue = rrId;
-
-        let tranIdField = form
+          }).defaultValue = rrType;
+        form
           .addField({
-            id: "custpage_tranid",
-            label: "Return Request",
+            id: "custpage_rr_link",
+            label: "Return Request Id",
             type: serverWidget.FieldType.TEXT,
           })
           .updateDisplayType({
             displayType: serverWidget.FieldDisplayType.INLINE,
-          });
+          }).defaultValue = `<a href=${rrLink}>${tranId}</a>`;
+        form
+            .addField({
+              id: "custpage_rrid",
+              label: "Return Request Id",
+              type: serverWidget.FieldType.TEXT,
+            })
+            .updateDisplayType({
+              displayType: serverWidget.FieldDisplayType.HIDDEN,
+            }).defaultValue = rrId;
       }
       form.addFieldGroup({
         id: "fieldgroup_options",
@@ -230,6 +252,8 @@ define([
         let manufacturer = rxrs_vs_util.getReturnableManufacturer({
           rrId: rrId,
           tranId: tranId,
+          mrrId: mrrId,
+          rrType: rrType,
           inDated: false,
           selectionType: paramSelectionType,
         });
@@ -242,6 +266,8 @@ define([
             form: form,
             rrTranId: rrId,
             rrName: tranId,
+            rrType: rrType,
+            mrrId: mrrId,
             sublistFields: sublistFields,
             value: manufacturer,
             isMainReturnable: false,
@@ -254,6 +280,8 @@ define([
           let itemsReturnScan = rxrs_vs_util.getItemScanReturnbleByManufacturer(
             {
               rrId: rrId,
+              mrrId: mrrId,
+              rrType: rrType,
               manufacturer: paramManufacturer,
               inDated: false,
             }
@@ -275,6 +303,9 @@ define([
           let destructionList = rxrs_vs_util.getItemScanByDescrutionType({
             rrId,
             tranId,
+            selectionType: paramSelectionType,
+            mrrId: mrrId,
+            rrType: rrType
           });
           log.emergency("fieldValue", destructionList);
           createDestructioneSublist({
@@ -307,6 +338,8 @@ define([
           let manufByInDated = rxrs_vs_util.getReturnableManufacturer({
             rrId: rrId,
             tranId: tranId,
+            mrrId: mrrId,
+            rrType: rrType,
             inDated: true,
             selectionType: paramSelectionType,
           });
@@ -314,6 +347,8 @@ define([
             form: form,
             rrTranId: rrId,
             rrName: tranId,
+            mrrId: mrrId,
+            rrType: rrType,
             sublistFields: sublistFields,
             value: manufByInDated,
             isMainInDated: true,
@@ -324,6 +359,8 @@ define([
           let itemsReturnScan = rxrs_vs_util.getItemScanReturnbleByManufacturer(
             {
               rrId: rrId,
+              mrrId: mrrId,
+              rrType: rrType,
               manufacturer: paramManufacturer,
               inDated: true,
             }
@@ -356,6 +393,8 @@ define([
    * @param {boolean} options.isMainReturnable
    * @param {string} options.rrName
    * @param {string} options.paramManufacturer
+   * @param {number} options.mrrId
+   * @param {string} options.rrType
    * @param {string} options.paramInDate
    * @returns  Updated Form.
    */
@@ -364,6 +403,8 @@ define([
       log.debug("createReturnableSublist", options);
       let inDate = options.paramInDate ? " : " + options.paramInDate : "";
       let manuf = options.paramManufacturer;
+      let mrrId = options.mrrId
+      let rrType = options.rrType
       let fieldName = [];
       let form = options.form;
       let sublistFields = options.sublistFields;
@@ -380,6 +421,7 @@ define([
 
       if (manuf) {
         //If the user is in the Manufacturing Group. Add the following UI context below
+
         form.addButton({
           id: "custpage_verify",
           label: "Update Verification",

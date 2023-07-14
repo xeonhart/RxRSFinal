@@ -54,6 +54,8 @@ define([
     function fieldChanged(scriptContext) {
         let rrId = suitelet.getValue("custpage_rrid");
         let tranId = suitelet.getValue("custpage_tranid");
+        let rrType = suitelet.getValue("custpage_rr_type")
+        let mrrId  = suitelet.getValue("custpage_mrrid")
 
         console.log("fieldChanged");
         console.log(scriptContext.fieldId);
@@ -73,6 +75,8 @@ define([
                 params.selectionType = selection;
                 params.tranid = tranId;
                 params.rrId = rrId;
+                params.rrType = rrType
+                params.mrrId = mrrId
                 console.log(params);
                 let stSuiteletUrl = url.resolveScript({
                     scriptId: "customscript_sl_returnable_page",
