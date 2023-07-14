@@ -8,12 +8,12 @@ define([
   "N/cache",
   "N/file",
   "N/record",
-    "N/redirect"
+  "N/redirect",
 ], /**
  * @param{serverWidget} serverWidget
  * @param rxrs_vs_util
  * @param cache
- */ (serverWidget, rxrs_vs_util, cache, file, record,redirect) => {
+ */ (serverWidget, rxrs_vs_util, cache, file, record, redirect) => {
   /**
    * Defines the Suitelet script trigger point.
    * @param {Object} scriptContext
@@ -32,14 +32,10 @@ define([
         log.error("GET", e.message);
       }
     }
-
   };
 
-
-
   /**
-   * It creates a form, adds a client script to it, creates header fields, and then creates a sublist of
-   * items
+   * Creates a form, adds a client script to it, creates header fields, and then creates a sublist of
    * @param params - parameters
    * @returns The form object is being returned.
    */
@@ -82,7 +78,48 @@ define([
       paramManufacturer = paramManufacturer.includes("_")
         ? paramManufacturer.replaceAll("_", "&")
         : paramManufacturer;
-      let htmlFileId = rxrs_vs_util.getFileId("SL_loading_html.html");
+      if (paramManufacturer) {
+        let manufId = rxrs_vs_util.getManufactuerId(paramManufacturer);
+        form
+          .addField({
+            id: "custpage_manuf_id",
+            label: "Manufacturer",
+            type: serverWidget.FieldType.TEXT,
+          })
+          .updateDisplayType({
+            displayType: "HIDDEN",
+          }).defaultValue = manufId;
+
+        let manufLinkField = form
+          .addField({
+            id: "custpage_manuf_link",
+            label: "Manufacturer",
+            type: serverWidget.FieldType.TEXT,
+          })
+          .updateDisplayType({
+            displayType: "INLINE",
+          });
+        let manufURL = rxrs_vs_util.generateRedirectLink({
+          type: "customrecord_csegmanufacturer",
+          id: manufId,
+        });
+        manufLinkField.defaultValue = `<a href ="${manufURL}">${paramManufacturer}</a>`;
+        if (manufId) {
+          let manufMaximumSOAmountField = form
+            .addField({
+              id: "custpage_manuf_max_so_amt",
+              label: "Maximum SO Amount",
+              type: serverWidget.FieldType.CURRENCY,
+            })
+            .updateDisplayType({
+              displayType: "DISABLED",
+            });
+          manufMaximumSOAmountField.defaultValue =
+            rxrs_vs_util.getManufMaxSoAmount(manufId);
+        }
+      }
+
+      let htmlFileId = rxrs_vs_util.getFileId("SL_loading_html.html"); // HTML file for loading animation
       if (htmlFileId) {
         const dialogHtmlField = form.addField({
           id: "custpage_jqueryui_loading_dialog",
@@ -95,37 +132,53 @@ define([
           })
           .getContents();
       }
-      let mrrIdField = form
-        .addField({
-          id: "custpage_mrrid",
-          label: "Return Request Id",
-          type: serverWidget.FieldType.TEXT,
-        })
-        .updateDisplayType({
-          displayType: serverWidget.FieldDisplayType.HIDDEN,
-        });
-      mrrId ? (mrrIdField.defaultValue = mrrId) : null;
-      let rrIdField = form
-        .addField({
-          id: "custpage_rrid",
-          label: "Return Request Id",
-          type: serverWidget.FieldType.TEXT,
-        })
-        .updateDisplayType({
-          displayType: serverWidget.FieldDisplayType.HIDDEN,
-        });
-      rrId ? (rrIdField.defaultValue = rrId) : null;
+      if (mrrId) {
+        //ADD MRR FIELD LINK
 
-      let tranIdField = form
-        .addField({
-          id: "custpage_tranid",
-          label: "Return Request",
-          type: serverWidget.FieldType.TEXT,
-        })
-        .updateDisplayType({
-          displayType: serverWidget.FieldDisplayType.INLINE,
+        let mrrLink = rxrs_vs_util.generateRedirectLink({
+          type: "customrecord_kod_masterreturn",
+          id: mrrId,
         });
-      tranId ? (tranIdField.defaultValue = tranId) : null;
+        form
+          .addField({
+            id: "custpage_mrrid_link",
+            label: "Master Return Request",
+            type: serverWidget.FieldType.TEXT,
+          })
+          .updateDisplayType({
+            displayType: serverWidget.FieldDisplayType.INLINE,
+          }).defaultValue = `<a href = ${mrrLink}>MRR${mrrId}</a>`;
+        let mrrIdFieldId = (form
+          .addField({
+            id: "custpage_mrrid",
+            label: "MRR ID",
+            type: serverWidget.FieldType.TEXT,
+          })
+          .updateDisplayType({
+            displayType: serverWidget.FieldDisplayType.INLINE,
+          }).defaultValue = mrrId);
+      }
+      if (rrId) {
+        form
+          .addField({
+            id: "custpage_rrid",
+            label: "Return Request Id",
+            type: serverWidget.FieldType.TEXT,
+          })
+          .updateDisplayType({
+            displayType: serverWidget.FieldDisplayType.HIDDEN,
+          }).defaultValue = rrId;
+
+        let tranIdField = form
+          .addField({
+            id: "custpage_tranid",
+            label: "Return Request",
+            type: serverWidget.FieldType.TEXT,
+          })
+          .updateDisplayType({
+            displayType: serverWidget.FieldDisplayType.INLINE,
+          });
+      }
       form.addFieldGroup({
         id: "fieldgroup_options",
         label: "Selection Type",
@@ -198,11 +251,13 @@ define([
           sublistFields = rxrs_vs_util.SUBLISTFIELDS.returnableManufacturer;
           // let manuf = []
           // Object.values(manufacturer).map(e => {let name = e.name; manuf.push(name)} )
-          let itemsReturnScan = rxrs_vs_util.getItemScanByManufacturer({
-            rrId: rrId,
-            manufacturer: paramManufacturer,
-            inDated: false,
-          });
+          let itemsReturnScan = rxrs_vs_util.getItemScanReturnbleByManufacturer(
+            {
+              rrId: rrId,
+              manufacturer: paramManufacturer,
+              inDated: false,
+            }
+          );
           log.debug("itemsReturnScan", itemsReturnScan);
           createReturnableSublist({
             form: form,
@@ -266,11 +321,13 @@ define([
           });
         } else {
           sublistFields = rxrs_vs_util.SUBLISTFIELDS.returnableManufacturer;
-          let itemsReturnScan = rxrs_vs_util.getItemScanByManufacturer({
-            rrId: rrId,
-            manufacturer: paramManufacturer,
-            inDated: true,
-          });
+          let itemsReturnScan = rxrs_vs_util.getItemScanReturnbleByManufacturer(
+            {
+              rrId: rrId,
+              manufacturer: paramManufacturer,
+              inDated: true,
+            }
+          );
           createReturnableSublist({
             form: form,
             rrTranId: rrId,
@@ -289,6 +346,7 @@ define([
       log.error("createHeaderFields", e.message);
     }
   };
+
   /**
    * It creates a returnable sublist on the form and populates it with the items that are passed in
    * @param {object}options.form - The form object that we are adding the sublist to.

@@ -159,13 +159,13 @@ define([
         id: "custpage_item_id",
         type: "TEXT",
         label: "Item Id",
-        updateDisplayType: "DISABLED",
+        updateDisplayType: "HIDDEN",
       },
       {
         id: "custpage_manuf_id",
         type: "TEXT",
         label: "Manuf Id",
-        updateDisplayType: "DISABLED",
+        updateDisplayType: "HIDDEN",
       },
     ],
     returnableInDatedManufacturer: [
@@ -620,9 +620,7 @@ define([
           name: "internalid",
           join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
         });
-
-        let ndcLink = `https://6816904.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=436&id=${result.id}&e=T&pf=CUSTRECORD_CS_RET_REQ_SCAN_RRID&pi=10798&pr=-30`;
-
+        let ndcLink = generateRedirectLink({type:"customrecord_cs_item_ret_scan",id: result.id})
         hazardousList.push({
           internalId: result.getValue(column[1]),
           verified: verified,
@@ -765,7 +763,8 @@ define([
 
         let verified = result.getValue(column[0]) == true ? "T" : "F";
         let ndcName = result.getValue(column[1]);
-        let ndcLink = `https://6816904.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=436&id=${result.id}&e=T&pf=CUSTRECORD_CS_RET_REQ_SCAN_RRID&pi=10798&pr=-30`;
+        let ndcLink = generateRedirectLink({type:"customrecord_cs_item_ret_scan",id: result.id})
+
         itemScanList.push({
           internalId: result.id,
           verified: verified,
@@ -784,7 +783,7 @@ define([
             name: "internalid",
             join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
           }),
-          manufId: getManufactuerId(result.getValue(column[3]))
+          manufId: getManufactuerId(result.getValue(column[3])),
         });
         return true;
       });
@@ -954,14 +953,62 @@ define([
     }
   }
 
+  /**
+   * Get the Manufacturer Maximum SO allowed Amount
+   * @param {number} manufId manufacturer Id
+   * @return {number} Maximum Allowed SO Amount
+   */
+  function getManufMaxSoAmount(manufId) {
+    try {
+      let maxSOAmount;
+      const customrecord_returnprocedureSearchObj = search.create({
+        type: "customrecord_returnprocedure",
+        filters: [["custrecord_returnprocmanufacturer", "anyof", manufId]],
+        columns: [
+          search.createColumn({
+            name: "custrecord_psmaxvalue",
+            label: "Maximum Value",
+          }),
+        ],
+      });
+      customrecord_returnprocedureSearchObj.run().each(function (result) {
+        maxSOAmount = result.getValue("custrecord_psmaxvalue");
+      });
+      return maxSOAmount;
+    } catch (e) {
+      log.error("getManufMaxSoAmount", e.message);
+    }
+  }
+
+  /**
+   * Create a redirect link
+   * @params {string} options.type
+   * @params {number }options.id
+   * @return {url} return URL
+   */
+  function generateRedirectLink(options) {
+    try {
+     return url.resolveRecord({
+        recordType: options.type,
+        recordId: options.id,
+        isEditMode: false
+      });
+    } catch (e) {
+      log.error("generateRedirectLink", e.message);
+    }
+  }
+
   return {
     getReturnableManufacturer,
-    getItemScanByManufacturer: getItemScanReturnbleByManufacturer,
+    getItemScanReturnbleByManufacturer,
     getDesctructionHazardous,
     getItemScanByDescrutionType,
     getFileId,
     isEmpty,
     updateVerificationStatus,
+    getManufactuerId,
+    getManufMaxSoAmount,
+    generateRedirectLink,
     SUBLISTFIELDS,
   };
 });
