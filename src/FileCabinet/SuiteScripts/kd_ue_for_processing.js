@@ -24,10 +24,25 @@ define(["N/record", "N/search", "N/url"], /**
         const tranid = rec.getValue("tranid");
 
         const mrrId = rec.getValue("custbody_kd_master_return_id")
+        let stSuiteletUrl = url.resolveScript({
+          scriptId: "customscript_sl_returnable_page",
+          deploymentId: "customdeploy_sl_returnable_page",
+          returnExternalUrl: false,
+          params: {
+            selectionType: "Returnable",
+            rrId: id,
+            tranid:tranid,
+            mrrId: mrrId,
+          },
+        });
+        let output = url.resolveDomain({
+          hostType: url.HostType.APPLICATION,
+        });
+        let urlLink = `https://${output}${stSuiteletUrl}`
         context.form.addButton({
           id: "custpage_verify",
           label: "For Verification",
-          functionName: 'window.open("https://6816904.app.netsuite.com/app/site/hosting/scriptlet.nl?script=831&deploy=1&compid=6816904&rrId=' +id+ '&tranid='+tranid+'&rrType='+ rec.type+ '&mrrId='+ mrrId+'&selectionType=Returnable","_blank","width=1700,height=1200")'
+          functionName: 'window.open("'+urlLink+' ","_blank","width=1900,height=1200")'
         });
       }
     } catch (e) {
