@@ -972,28 +972,7 @@ define([
     }
   }
 
-  /**
-   * Update the status of the item return scan
-   * @param {number} options.ids Internal Id of the return item scan
-   * @param {boolean} options.isVerify
-   * @return {number} item return scan Id
-   */
-  function updateVerificationStatus(options) {
-    try {
-      let ids = options.ids;
-      for (let i = 0; i < ids.length; i++) {
-        record.submitFields.promise({
-          type: "customrecord_cs_item_ret_scan",
-          id: +ids[i],
-          values: {
-            custrecord_is_verified: options.isVerify,
-          },
-        });
-      }
-    } catch (e) {
-      log.error("updateVerificationStatus", e.message);
-    }
-  }
+
 
   /**
    * Get the Manufacturer Maximum SO allowed Amount
@@ -1039,6 +1018,23 @@ define([
       log.error("generateRedirectLink", e.message);
     }
   }
+  /**
+   * Get the internal Id of the Entity in the Master Return Request
+   * @param {number}mrrId
+   * @return {number} Entity Id
+   */
+  function getEntityFromMrr(mrrId) {
+    try {
+      const rs = search.lookupFields({
+        type: "customrecord_kod_masterreturn",
+        id: mrrId,
+        columns: ["custrecord_mrrentity"],
+      });
+      return +rs.custrecord_mrrentity[0].value;
+    } catch (e) {
+      log.error("getEntityFromMrr", e.message);
+    }
+  }
 
   return {
     getReturnableManufacturer,
@@ -1047,10 +1043,12 @@ define([
     getItemScanByDescrutionType,
     getFileId,
     isEmpty,
-    updateVerificationStatus,
     getManufactuerId,
     getManufMaxSoAmount,
     generateRedirectLink,
+    getEntityFromMrr,
     SUBLISTFIELDS,
+
+
   };
 });

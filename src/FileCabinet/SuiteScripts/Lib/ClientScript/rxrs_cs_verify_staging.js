@@ -135,17 +135,21 @@ define([
         fieldId: "custpage_item_id",
         line: i,
       });
-      returnItemScanIds.push({ id: internalId, amount: amount,itemId: itemId });
+      returnItemScanIds.push({ id: internalId, amount: amount || 0,itemId: itemId });
     }
     let maximumAmount = suitelet.getValue("custpage_manuf_max_so_amt");
     let rrId = suitelet.getValue("custpage_rrid");
     let mrrId = suitelet.getValue("custpage_mrrid");
+    let rrType = suitelet.getValue("custpage_rr_type")
+    let manufId = suitelet.getValue("custpage_manuf_id")
     let params = {
       custscript_payload: JSON.stringify(returnItemScanIds),
-      isVerify: false,
+      isVerify: true,
       maximumAmount: JSON.stringify(maximumAmount),
       rrId: rrId,
       mrrid: mrrId,
+      rrType:rrType,
+      manufId:manufId
     };
 
     let stSuiteletUrl = url.resolveScript({
