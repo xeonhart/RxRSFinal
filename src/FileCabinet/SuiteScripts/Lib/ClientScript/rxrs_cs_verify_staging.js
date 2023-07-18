@@ -118,6 +118,7 @@ define([
   }
 
   function verify() {
+    let maxAmount = suitelet.getValue("custpage_manuf_max_so_amt");
     let returnItemScanIds = [];
     for (let i = 0; i < suitelet.getLineCount("custpage_items_sublist"); i++) {
       let internalId = suitelet.getSublistValue({
@@ -135,21 +136,40 @@ define([
         fieldId: "custpage_item_id",
         line: i,
       });
-      returnItemScanIds.push({ id: internalId, amount: amount || 0,itemId: itemId });
+      let prevBag = suitelet.getSublistValue({
+        sublistId: RETURNABLESUBLIST,
+        fieldId: "custpage_bag_tag_label",
+        line: i,
+      });
+
+      if (+amount > +maxAmount) {
+        alert(
+          `Line #${
+            i + 1
+          } exceeds the maximum SO amount of the Manufacturer. This will not get verified and bag will not be created for this line`
+        );
+        continue;
+      }
+      returnItemScanIds.push({
+        id: internalId,
+        amount: amount || 0,
+        itemId: itemId,
+        prevBag: prevBag || "",
+      });
     }
     let maximumAmount = suitelet.getValue("custpage_manuf_max_so_amt");
     let rrId = suitelet.getValue("custpage_rrid");
     let mrrId = suitelet.getValue("custpage_mrrid");
-    let rrType = suitelet.getValue("custpage_rr_type")
-    let manufId = suitelet.getValue("custpage_manuf_id")
+    let rrType = suitelet.getValue("custpage_rr_type");
+    let manufId = suitelet.getValue("custpage_manuf_id");
     let params = {
       custscript_payload: JSON.stringify(returnItemScanIds),
       isVerify: true,
       maximumAmount: JSON.stringify(maximumAmount),
       rrId: rrId,
       mrrid: mrrId,
-      rrType:rrType,
-      manufId:manufId
+      rrType: rrType,
+      manufId: manufId,
     };
 
     let stSuiteletUrl = url.resolveScript({
