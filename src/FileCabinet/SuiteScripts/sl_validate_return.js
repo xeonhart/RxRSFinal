@@ -22,22 +22,26 @@ define([
         let params = context.request.parameters;
         let maximumAmount = params.maximumAmount;
         log.debug("Params", params);
-        let ids = JSON.parse(params.custscript_payload);
         let returnScanList = JSON.parse(params.custscript_payload);
         log.debug("returnScanList", returnScanList);
-        let idList = [];
         let curAmount = returnScanList.reduce(function (acc, obj) {
           return acc + obj.amount;
         }, 0);
         log.debug("amount", { curAmount, maximumAmount });
-        let numberOfBags =
-          +maximumAmount > +curAmount ? 1 : +curAmount / +maximumAmount;
-        log.debug("numberOfBags", numberOfBags);
-        let bags = []
+        let numberOfBags;
+        if (params.returnType != "Destruction") {
+          numberOfBags =
+            +maximumAmount > +curAmount ? 1 : +curAmount / +maximumAmount;
+          log.debug("numberOfBags", numberOfBags);
+        } else {
+          numberOfBags = 1;
+        }
+
+        let bags = [];
         /**
          * Create Bags label depending on the maximum amount
          */
-        let entity = rxrsUtil.getEntityFromMrr(+params.mrrid)
+        let entity = rxrsUtil.getEntityFromMrr(+params.mrrid);
         for (let i = 0; i < numberOfBags; i++) {
           bags.push(
             rxrsBagUtil.createBin({
@@ -51,59 +55,89 @@ define([
         /**
          * Assign Bag to the Item Return Scan
          */
-        log.audit("bags",bags)
+        log.audit("bags", bags);
         let bag = [];
-        let sum = 0;
-        let b = 0;
-        for (let i = 0; i < returnScanList.length; i++) {
+        if (params.returnType != "Destruction") {
+          log.audit("Assigning Bag for Returnable Item Scan");
+          let sum = 0;
+          let b = 0;
+          for (let i = 0; i < returnScanList.length; i++) {
+            sum += returnScanList[i].amount;
+            let prevBag = returnScanList[i].prevBag;
+            try {
+              if (sum <= +maximumAmount) {
 
+                if (!rxrsUtil.isEmpty(prevBag)) {
+                  prevBag = prevBag.split("&");
+                  prevBag = prevBag[1]; // get the id from the URL
+                  prevBag = prevBag.substring(3, prevBag.length);
+                } else {
+                  prevBag = null;
+                }
 
-          sum  += returnScanList[i].amount
-          try {
-          if(sum <= +maximumAmount){
-            let prevBag =returnScanList[i].prevBag
-            prevBag = prevBag.split('&')
-            prevBag = prevBag[1] // get the id from the URL
-            prevBag = prevBag.substring(3,prevBag.length)
-            bag.push({
-              bag: bags[b],
-              scanId: returnScanList[i].id,
-              prevBag: prevBag
-            })
-          if(sum == maximumAmount){
-            b += 1
-            sum = 0
-          }
+                bag.push({
+                  bag: bags[b],
+                  scanId: returnScanList[i].id,
+                  prevBag: prevBag,
+                });
 
-          }else{
-            b += 1
-            if(b >= bags.length){
-              b = b - 1
+                if (sum == maximumAmount) {
+                  b += 1;
+                  sum = 0;
+                }
+              } else {
+                b += 1;
+                if (b >= bags.length) {
+                  b = b - 1;
+                }
+
+                if (!rxrsUtil.isEmpty(prevBag)) {
+                  prevBag = prevBag.split("&");
+                  prevBag = prevBag[1]; // get the id from the URL
+                  prevBag = prevBag.substring(3, prevBag.length);
+                } else {
+                  prevBag = null;
+                }
+                  bag.push({
+                    bag: bags[b],
+                    scanId: returnScanList[i].id,
+                    prevBag: prevBag ,
+                  });
+
+                sum = 0;
+              }
+            } catch (e) {
+              log.error("Returnable Bags", e.message);
             }
-            let prevBag =returnScanList[i].prevBag
-            prevBag = prevBag.split('&')
-            prevBag = prevBag[1] // get the id from the URL
-            prevBag = prevBag.substring(3,prevBag.length)
-            bag.push({
-              bag: bags[b],
-              scanId: returnScanList[i].id,
-              prevBag: prevBag
-            })
-            sum = 0
           }
-          } catch (e) {
-            log.error("for", e.message);
+          log.audit("bag", bag);
+        } else {
+          log.audit("Assigning Bag for Destruction");
+          for (let i = 0; i < returnScanList.length; i++) {
+            let prevBag = returnScanList[i].prevBag;
+            if (!rxrsUtil.isEmpty(prevBag)) {
+              prevBag = prevBag.split("&");
+              prevBag = prevBag[1]; // get the id from the URL
+              prevBag = prevBag.substring(3, prevBag.length);
+            } else {
+              prevBag = null;
+            }
+            bag.push({
+              bag: bags[0],
+              scanId: returnScanList[i].id,
+              prevBag: prevBag,
+            });
           }
         }
-        log.error("bag",bag);
 
-      bag.forEach(b => rxrsBagUtil.updateBagLabel({
-        ids: b.scanId,
-        isVerify: JSON.parse(params.isVerify),
-        bagId: b.bag,
-        prevBag: b.prevBag
-      }))
-
+        bag.forEach((b) =>
+          rxrsBagUtil.updateBagLabel({
+            ids: b.scanId,
+            isVerify: JSON.parse(params.isVerify),
+            bagId: b.bag,
+            prevBag: b.prevBag,
+          })
+        );
       } catch (e) {
         log.error("POST", e.message);
       }

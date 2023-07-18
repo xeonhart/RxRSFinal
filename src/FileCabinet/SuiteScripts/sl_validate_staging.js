@@ -185,7 +185,7 @@ define([
         form
           .addField({
             id: "custpage_rr_link",
-            label: "Return Request Id",
+            label: "Return Request",
             type: serverWidget.FieldType.TEXT,
           })
           .updateDisplayType({

@@ -341,6 +341,12 @@ define([
         label: "Manuf Processing",
         updateDisplayType: "DISABLED",
       },
+      {
+        id: "custpage_bag_tag_label",
+        type: "TEXT",
+        label: "Bag Tag Label",
+        updateDisplayType: "INLINE",
+      },
     ],
   };
 
@@ -626,6 +632,10 @@ define([
             name: "internalid",
             join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
           }),
+          search.createColumn({
+            name: "custrecord_scanbagtaglabel",
+            label: "Bag Tag Label",
+          }),
         ],
       });
       let column = customrecord_cs_item_ret_scanSearchObj.columns;
@@ -640,6 +650,17 @@ define([
           type: "customrecord_cs_item_ret_scan",
           id: result.id,
         });
+        let bagTagLabel = result.getValue("custrecord_scanbagtaglabel")
+        let bagLabelURL
+
+        if(bagTagLabel){
+          bagLabelURL = generateRedirectLink({
+            type: "customrecord_kd_taglabel",
+            id: bagTagLabel,
+          });
+        }
+        log.audit("bagTagLabel des",bagTagLabel)
+
         hazardousList.push({
           internalId: result.getValue(column[1]),
           verified: verified,
@@ -654,6 +675,7 @@ define([
           expirationDate: result.getValue(column[10]),
           pharmaProcessing: result.getText(column[11]),
           mfgProcessing: result.getText(column[12]),
+          bagTagLabel: bagTagLabel ? `<a href ="${bagLabelURL}" target="_blank">${bagTagLabel}</a>` : null
         });
         return true;
       });
@@ -906,7 +928,7 @@ define([
             mrrId: options.mrrId,
           },
         });
-       let isVerified = checkIfHazardousIsVerified({
+        let isVerified = checkIfHazardousIsVerified({
           recId: rrId,
           isHazardous: isHazardous,
         });
@@ -972,8 +994,6 @@ define([
     }
   }
 
-
-
   /**
    * Get the Manufacturer Maximum SO allowed Amount
    * @param {number} manufId manufacturer Id
@@ -1018,6 +1038,7 @@ define([
       log.error("generateRedirectLink", e.message);
     }
   }
+
   /**
    * Get the internal Id of the Entity in the Master Return Request
    * @param {number}mrrId
@@ -1048,7 +1069,5 @@ define([
     generateRedirectLink,
     getEntityFromMrr,
     SUBLISTFIELDS,
-
-
   };
 });

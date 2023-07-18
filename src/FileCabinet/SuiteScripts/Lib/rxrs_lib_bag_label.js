@@ -42,8 +42,8 @@ define(["N/record", "N/search"], /**
       });
 
       return binRec.save({
-        ignoreMandatoryFields: true
-      })
+        ignoreMandatoryFields: true,
+      });
     } catch (e) {
       log.error("createBin", e.message);
     }
@@ -60,26 +60,25 @@ define(["N/record", "N/search"], /**
    */
   function updateBagLabel(options) {
     try {
-      log.audit("updateBagLabel", options)
-        record.submitFields.promise({
-          type: "customrecord_cs_item_ret_scan",
-          id: +options.ids,
-          values: {
-            custrecord_is_verified: options.isVerify,
-            custrecord_scanbagtaglabel: +options.bagId,
-            custrecord_prev_bag_assignement: options.prevBag
-          },
-        });
-
+      log.audit("updateBagLabel", options);
       record.submitFields.promise({
-        type: "customrecord_kd_taglabel",
-        id: +options.prevBag,
+        type: "customrecord_cs_item_ret_scan",
+        id: +options.ids,
         values: {
-          custrecord_is_inactive: true,
-
+          custrecord_is_verified: options.isVerify,
+          custrecord_scanbagtaglabel: +options.bagId,
+          custrecord_prev_bag_assignement: options.prevBag,
         },
       });
-
+      if (options.prevBag != null) {
+        record.submitFields.promise({
+          type: "customrecord_kd_taglabel",
+          id: +options.prevBag,
+          values: {
+            custrecord_is_inactive: true,
+          },
+        });
+      }
     } catch (e) {
       log.error("updateBagLabel", e.message);
     }
@@ -87,6 +86,6 @@ define(["N/record", "N/search"], /**
 
   return {
     createBin,
-    updateBagLabel
+    updateBagLabel,
   };
 });
