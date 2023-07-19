@@ -95,9 +95,14 @@ define([
    */
   function backToReturnable() {
     let params = {};
-
-    params.rrId = urlParams.get("rrId");
-    params.tranid = urlParams.get("tranid");
+    let rrId = suitelet.getValue("custpage_rrid");
+    let tranId = suitelet.getValue("custpage_tranid");
+    let rrType = suitelet.getValue("custpage_rr_type");
+    let mrrId = suitelet.getValue("custpage_mrrid");
+    params.tranid = tranId;
+    params.rrId = rrId;
+    params.rrType = rrType;
+    params.mrrId = mrrId;
     params.selectionType = suitelet.getValue("custpage_radio");
     if (params.selectionType == "Returnable") {
       params.isMainReturnable = true;
@@ -154,10 +159,11 @@ define([
         }
         if (returnType != "Destruction") {
           if (+amount > +maxAmount) {
+
             alert(
               `Line #${
                 i + 1
-              } exceeds the maximum SO amount of the Manufacturer. This will not get verified and bag will not be created for this line`
+              } exceeds the maximum SO amount of the Manufacturer. This will not get verified and bag will not be created for this line.`
             );
             continue;
           }
@@ -171,9 +177,9 @@ define([
         });
       }
       let m = message.create({
-        type: message.Type.INFORMATION,
-        title: "INFORMATION",
-        message: "No item to process"
+        type: message.Type.WARNING,
+        title: "WARNING",
+        message: "NO ITEM TO PROCESS"
       })
       if(returnItemScanIds.length <= 0) {
         m.show({
@@ -189,7 +195,7 @@ define([
       let params = {
         custscript_payload: JSON.stringify(returnItemScanIds),
         isVerify: true,
-        maximumAmount: JSON.stringify(maximumAmount),
+        maximumAmount: maximumAmount ?JSON.stringify(maximumAmount) : 0,
         rrId: rrId,
         mrrid: mrrId,
         rrType: rrType,

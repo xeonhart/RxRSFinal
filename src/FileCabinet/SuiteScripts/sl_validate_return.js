@@ -36,6 +36,9 @@ define([
         } else {
           numberOfBags = 1;
         }
+        if(maximumAmount == 0 && curAmount == 0){
+          numberOfBags = 1;
+        }
 
         let bags = [];
         /**
@@ -75,16 +78,19 @@ define([
                   prevBag = null;
                 }
 
-                bag.push({
-                  bag: bags[b],
-                  scanId: returnScanList[i].id,
-                  prevBag: prevBag,
-                });
 
                 if (sum == maximumAmount) {
                   b += 1;
                   sum = 0;
                 }
+                if(sum == 0 && maximumAmount == 0){
+                  b = 0
+                }
+                bag.push({
+                  bag: bags[b],
+                  scanId: returnScanList[i].id,
+                  prevBag: prevBag,
+                });
               } else {
                 b += 1;
                 if (b >= bags.length) {
