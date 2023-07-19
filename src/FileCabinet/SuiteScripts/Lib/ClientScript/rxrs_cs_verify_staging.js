@@ -211,11 +211,16 @@ define([
       let response = https.post({
         url: stSuiteletUrl,
       });
-      handleButtonClick();
-      if (response) {
-        setTimeout(function () {
-          location.reload();
-        }, 300);
+
+      if (response.body) {
+        if(response.body.includes("ERROR")){
+          alert(response.body)
+        }else{
+          handleButtonClick();
+          setTimeout(function () {
+            location.reload();
+          }, 300);
+        }
       }
     } catch (e) {
       console.error("verify", e.message);

@@ -36,7 +36,7 @@ define([
         } else {
           numberOfBags = 1;
         }
-        if(maximumAmount == 0 && curAmount == 0){
+        if (maximumAmount == 0 && curAmount == 0) {
           numberOfBags = 1;
         }
 
@@ -44,7 +44,7 @@ define([
         /**
          * Create Bags label depending on the maximum amount
          */
-        let entity = rxrsUtil.getEntityFromMrr(+params.mrrid);
+      let entity = rxrsUtil.getEntityFromMrr(+params.mrrid);
         for (let i = 0; i < numberOfBags; i++) {
           bags.push(
             rxrsBagUtil.createBin({
@@ -69,7 +69,6 @@ define([
             let prevBag = returnScanList[i].prevBag;
             try {
               if (sum <= +maximumAmount) {
-
                 if (!rxrsUtil.isEmpty(prevBag)) {
                   prevBag = prevBag.split("&");
                   prevBag = prevBag[1]; // get the id from the URL
@@ -78,13 +77,12 @@ define([
                   prevBag = null;
                 }
 
-
                 if (sum == maximumAmount) {
                   b += 1;
                   sum = 0;
                 }
-                if(sum == 0 && maximumAmount == 0){
-                  b = 0
+                if (sum == 0 && maximumAmount == 0) {
+                  b = 0;
                 }
                 bag.push({
                   bag: bags[b],
@@ -104,11 +102,11 @@ define([
                 } else {
                   prevBag = null;
                 }
-                  bag.push({
-                    bag: bags[b],
-                    scanId: returnScanList[i].id,
-                    prevBag: prevBag ,
-                  });
+                bag.push({
+                  bag: bags[b],
+                  scanId: returnScanList[i].id,
+                  prevBag: prevBag,
+                });
 
                 sum = 0;
               }
@@ -144,7 +142,9 @@ define([
             prevBag: b.prevBag,
           })
         );
+        context.response.write("SUCCESSFUL")
       } catch (e) {
+        context.response.write("ERROR: " +e.message)
         log.error("POST", e.message);
       }
     }
