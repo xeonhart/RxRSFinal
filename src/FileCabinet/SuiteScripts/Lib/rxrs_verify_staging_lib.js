@@ -2,11 +2,6 @@
  * @NApiVersion 2.1
  */
 
-//TODO Include Amount in the Sublist
-//TODO Source MRR and RR information in the creation of Bag Label
-//TODO display manufacturer so maximum amount in the manufacturer record
-//TODO disregard the check of the item return scan in the Suitelet
-//TODO Move the creation of the submit instead of via Client Script
 
 define([
   "N/redirect",
@@ -150,6 +145,12 @@ define([
         updateDisplayType: "DISABLED",
       },
       {
+        id: "custpage_in_date",
+        type: "TEXT",
+        label: "In Date",
+        updateDisplayType: "INLINE",
+      },
+      {
         id: "custpage_bag_tag_label",
         type: "TEXT",
         label: "Bag Tag Label",
@@ -240,6 +241,13 @@ define([
         type: "TEXT",
         label: "Pharma Processing",
         updateDisplayType: "DISABLED",
+
+      },
+      {
+        id: "custpage_in_date",
+        type: "TEXT",
+        label: "In Date",
+        updateDisplayType: "INLINE",
       },
     ],
     destructionSublist: [
@@ -358,7 +366,6 @@ define([
    * @param {string} options.rrType - return request rec type
    * @param {number} options.mrrId - master return request Id
    * @param {string} options.selectionType - Returnable / Destruction / In Dated
-   * @since 07/11/2023
    * @return {array} Return manufacturing list
    */
   function getReturnableManufacturer(options) {
@@ -535,7 +542,7 @@ define([
 
   /**
    * Get the manufacturer ID
-   * @param name
+   * @param {string}name
    */
   function getManufactuerId(name) {
     let manufId;
@@ -559,7 +566,7 @@ define([
   }
 
   /**
-   * Get all of the item return scan hazardous
+   * Get all the item return scan hazardous
    * @param options.isHazardous
    * @param options.rrId
    * @return {*[]} return hazardous item return scan list
@@ -777,6 +784,7 @@ define([
             join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
             label: "Internal ID",
           }),
+
           search.createColumn({ name: "custrecord_scanrate", label: "Rate" }),
           search.createColumn({
             name: "custrecord_isc_overriderate",
@@ -791,6 +799,7 @@ define([
             name: "custrecord_isc_inputrate",
             label: "Input Rate",
           }),
+          search.createColumn({name: "custrecord_scanindate", label: "In Date"}),
         ],
       });
 
@@ -802,7 +811,7 @@ define([
         let qty = result.getValue("custrecord_cs_qty") || 0;
         let bagTagLabel = result.getValue("custrecord_scanbagtaglabel");
 
-        let amount = isOverrideRate == true ? inputRate : +rate * +qty;
+        let amount = isOverrideRate == true ? inputRate  * +qty: +rate * +qty;
 
         let verified = result.getValue(column[0]) == true ? "T" : "F";
         let ndcName = result.getValue(column[1]);
@@ -827,6 +836,7 @@ define([
           mfgProcessing: result.getText(column[8]),
           pharmaProcessing: result.getText(column[9]),
           amount: amount || 0,
+          inDate: result.getValue("custrecord_scanindate"),
           bagTagLabel: `<a href ="${bagLabelURL}" target="_blank">${bagTagLabel}</a>`,
           itemId: result.getValue({
             name: "internalid",

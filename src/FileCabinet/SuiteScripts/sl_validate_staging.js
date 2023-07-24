@@ -373,7 +373,7 @@ define([
             value: itemsReturnScan,
             isMainInDated: false,
             paramManufacturer: paramManufacturer,
-            paramInDate: paramInDate,
+            inDate: true,
           });
         }
       }
@@ -395,13 +395,13 @@ define([
    * @param {string} options.paramManufacturer
    * @param {number} options.mrrId
    * @param {string} options.rrType
-   * @param {string} options.paramInDate
+   * @param {string} options.inDate
    * @returns  Updated Form.
    */
   const createReturnableSublist = (options) => {
     try {
       log.debug("createReturnableSublist", options);
-      let inDate = options.paramInDate ? " : " + options.paramInDate : "";
+      //let inDate = options.paramInDate ? " : " + options.paramInDate : "";
       let manuf = options.paramManufacturer;
       let mrrId = options.mrrId
       let rrType = options.rrType
@@ -416,7 +416,7 @@ define([
       sublist = form.addSublist({
         id: "custpage_items_sublist",
         type: serverWidget.SublistType.LIST,
-        label: `RO ${options.rrName} - RXLINEITEMS :${manuf} ${inDate}`,
+        label: `RO ${options.rrName} - RXLINEITEMS :${manuf}`,
       });
 
       if (manuf) {
@@ -455,10 +455,16 @@ define([
         let fieldInfo = [];
         for (let i = 0; i < value.length; i++) {
           if (rxrs_vs_util.isEmpty(fieldName[i])) continue;
-          fieldInfo.push({
-            fieldId: fieldName[i],
-            value: value[i],
-          });
+          if(options.inDate != true && fieldName[i] == "custpage_in_date"){
+            log.debug("val", [options.inDate, fieldName[i] ])
+            continue;
+          }else{
+            fieldInfo.push({
+              fieldId: fieldName[i],
+              value: value[i],
+            });
+          }
+
         }
         mainLineInfo.push(fieldInfo);
       });
@@ -467,6 +473,7 @@ define([
         sublist: sublist,
         fieldInfo: mainLineInfo,
         isMainReturnable: options.isMainReturnable,
+        isIndate: options.paramInDate
       });
     } catch (e) {
       log.error("createReturnableSublist", e.message);
@@ -480,7 +487,7 @@ define([
    */
   const populateSublist = (options) => {
     try {
-      //log.audit("populateSublist", options);
+      log.audit("populateSublist", options);
       let sublist = options.sublist;
       let sublistFields = options.fieldInfo;
 
