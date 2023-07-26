@@ -74,7 +74,7 @@ define([
         id: "custpage_return_list",
         type: "TEXT",
         label: "Return List",
-        updateDisplayType: "DISABLED",
+        updateDisplayType: "HIDDEN",
       },
     ],
     inDateSublist: [
@@ -594,21 +594,21 @@ define([
           returnList: bag,
           inDated: inDated,
         });
-        log.error("isVerified", verification)
-       let isVerified = verification.isVerified === true ? "T" : "F";
-        log.error("isVerif",verification.isVerified)
-        let bagLabel = isVerified == "T" ? verification.bagLabel : ""
-        let printSLURL
-      if(bagLabel){
-         printSLURL = url.resolveScript({
-          scriptId: "customscript_sl_print_bag_label",
-          deploymentId: "customdeploy_sl_print_bag_label",
-          returnExternalUrl: false,
-          params: {
-            recId: bagLabel
-          }
-        })
-      }
+        log.error("isVerified", verification);
+        let isVerified = verification.isVerified === true ? "T" : "F";
+        log.error("isVerif", verification.isVerified);
+        let bagLabel = isVerified == "T" ? verification.bagLabel : "";
+        let printSLURL;
+        if (bagLabel) {
+          printSLURL = url.resolveScript({
+            scriptId: "customscript_sl_print_bag_label",
+            deploymentId: "customdeploy_sl_print_bag_label",
+            returnExternalUrl: false,
+            params: {
+              recId: bagLabel,
+            },
+          });
+        }
 
         bag.forEach((bag) => {
           let returnList = JSON.stringify(bag.join("_"));
@@ -632,7 +632,9 @@ define([
             manufName: `<a href="${stSuiteletUrl}">${manufName}</a>`,
             inDate: inDate,
             printInventory: "Print Inventory",
-            printLabel:printSLURL ? `<a href="${printSLURL}">Print Label</a>` : "No Bag Label/Not Verified",
+            printLabel: printSLURL
+              ? `<a href="${printSLURL}">Print Label</a>`
+              : "No Bag Label/Not Verified",
             isVerified: isVerified,
             name: manufName,
             returnableScanList: bag,
@@ -659,7 +661,7 @@ define([
   function checkIfReturnScanIsVerified(options) {
     try {
       let ISVERIFIED = true;
-      let bagLabel
+      let bagLabel;
       let filters = [];
       filters.push(
         search.createFilter({
@@ -707,19 +709,21 @@ define([
           }),
         ],
       });
+      let bag = "";
       let column = transactionSearchObj.columns;
       const searchResultCount = transactionSearchObj.runPaged().count;
       transactionSearchObj.run().each(function (result) {
         let isVerified = result.getValue(column[0]);
-         bagLabel = result.getValue(column[1]);
+        bagLabel = result.getValue(column[1]);
         // log.audit("isVerified", { manuf, isVerified });
         if (isVerified == false) {
           ISVERIFIED = false;
           return false;
         }
+        return true
       });
       return {
-        isVerified: searchResultCount == 1 && ISVERIFIED == true,
+        isVerified: ISVERIFIED == true,
         bagLabel: bagLabel,
       };
     } catch (e) {
@@ -1138,6 +1142,7 @@ define([
           join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
         });
         let WACRate = getWACPrice(itemId);
+        log.debug("Amount",{qty,WACRate,isOverrideRate,inputRate})
         let amount =
           isOverrideRate == true ? inputRate * +qty : +WACRate * +qty;
 
@@ -1171,6 +1176,7 @@ define([
         });
         return true;
       });
+      log.error("itemScanList",itemScanList)
       return itemScanList;
     } catch (e) {
       log.error("getItemScanByManufacturer", e.message);

@@ -46,7 +46,7 @@
     </tr>
     <tr>
         <td><b>Manufacturer </b></td>
-        <td>${record.custrecord_kd_mfgname}</td>
+        <td>${record.custrecord_kd_mfgname?replace("&","and")}</td>
     </tr>
     <tr>
         <td><b>Bin Put Away</b></td>

@@ -85,17 +85,17 @@ define([
       : "";
     let rrType = options.params.rrType;
     try {
-      if (returnList) {
-        form
-          .addField({
-            id: "custpage_return_list",
-            label: "Return List",
-            type: serverWidget.FieldType.TEXT,
-          })
-          .updateDisplayType({
-            displayType: serverWidget.FieldDisplayType.NORMAL,
-          }).defaultValue = returnList;
-      }
+      // if (returnList) {
+      //   form
+      //     .addField({
+      //       id: "custpage_return_list",
+      //       label: "Return List",
+      //       type: serverWidget.FieldType.TEXT,
+      //     })
+      //     .updateDisplayType({
+      //       displayType: serverWidget.FieldDisplayType.NORMAL,
+      //     }).defaultValue = returnList;
+      // }
 
       paramManufacturer = paramManufacturer.includes("_")
         ? paramManufacturer.replaceAll("_", "&")
