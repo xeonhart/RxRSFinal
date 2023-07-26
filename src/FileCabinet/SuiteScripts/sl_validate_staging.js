@@ -68,6 +68,15 @@ define([
     let tranId = options.params.tranid;
     let mrrId = options.params.mrrId;
     let form = options.form;
+    let returnList = options.params.returnList;
+    try {
+      returnList = JSON.parse(options.params.returnList);
+      returnList = returnList.split("_");
+    } catch (e) {
+      log.error("returnList", e.message);
+    }
+
+    log.emergency("returnList", returnList);
     let paramInDate = options.params.inDate;
     let paramIsHazardous = options.params.isHazardous;
     let paramSelectionType = options.params.selectionType;
@@ -76,6 +85,18 @@ define([
       : "";
     let rrType = options.params.rrType;
     try {
+      if (returnList) {
+        form
+          .addField({
+            id: "custpage_return_list",
+            label: "Return List",
+            type: serverWidget.FieldType.TEXT,
+          })
+          .updateDisplayType({
+            displayType: serverWidget.FieldDisplayType.NORMAL,
+          }).defaultValue = returnList;
+      }
+
       paramManufacturer = paramManufacturer.includes("_")
         ? paramManufacturer.replaceAll("_", "&")
         : paramManufacturer;
@@ -149,7 +170,7 @@ define([
           .updateDisplayType({
             displayType: serverWidget.FieldDisplayType.INLINE,
           }).defaultValue = `<a href = ${mrrLink}>MRR${mrrId}</a>`;
-        (form
+        form
           .addField({
             id: "custpage_mrrid",
             label: "MRR ID",
@@ -157,7 +178,7 @@ define([
           })
           .updateDisplayType({
             displayType: serverWidget.FieldDisplayType.HIDDEN,
-          }).defaultValue = mrrId);
+          }).defaultValue = mrrId;
       }
       if (rrId) {
         let rrLink = rxrs_vs_util.generateRedirectLink({
@@ -165,14 +186,14 @@ define([
           id: rrId,
         });
         form
-            .addField({
-              id: "custpage_tranid",
-              label: "Return Request",
-              type: serverWidget.FieldType.TEXT,
-            })
-            .updateDisplayType({
-              displayType: serverWidget.FieldDisplayType.HIDDEN,
-            }).defaultValue =  tranId
+          .addField({
+            id: "custpage_tranid",
+            label: "Return Request",
+            type: serverWidget.FieldType.TEXT,
+          })
+          .updateDisplayType({
+            displayType: serverWidget.FieldDisplayType.HIDDEN,
+          }).defaultValue = tranId;
         form
           .addField({
             id: "custpage_rr_type",
@@ -192,14 +213,14 @@ define([
             displayType: serverWidget.FieldDisplayType.INLINE,
           }).defaultValue = `<a href=${rrLink}>${tranId}</a>`;
         form
-            .addField({
-              id: "custpage_rrid",
-              label: "Return Request Id",
-              type: serverWidget.FieldType.TEXT,
-            })
-            .updateDisplayType({
-              displayType: serverWidget.FieldDisplayType.HIDDEN,
-            }).defaultValue = rrId;
+          .addField({
+            id: "custpage_rrid",
+            label: "Return Request Id",
+            type: serverWidget.FieldType.TEXT,
+          })
+          .updateDisplayType({
+            displayType: serverWidget.FieldDisplayType.HIDDEN,
+          }).defaultValue = rrId;
       }
       form.addFieldGroup({
         id: "fieldgroup_options",
@@ -284,6 +305,7 @@ define([
               rrType: rrType,
               manufacturer: paramManufacturer,
               inDated: false,
+              returnList: returnList,
             }
           );
           log.debug("itemsReturnScan", itemsReturnScan);
@@ -305,7 +327,7 @@ define([
             tranId,
             selectionType: paramSelectionType,
             mrrId: mrrId,
-            rrType: rrType
+            rrType: rrType,
           });
           log.emergency("fieldValue", destructionList);
           createDestructioneSublist({
@@ -334,7 +356,7 @@ define([
         }
       } else {
         if (rxrs_vs_util.isEmpty(paramManufacturer)) {
-          sublistFields = rxrs_vs_util.SUBLISTFIELDS.inDateSublist;
+          sublistFields = rxrs_vs_util.SUBLISTFIELDS.returnableSublist;
           let manufByInDated = rxrs_vs_util.getReturnableManufacturer({
             rrId: rrId,
             tranId: tranId,
@@ -374,6 +396,7 @@ define([
             isMainInDated: false,
             paramManufacturer: paramManufacturer,
             inDate: true,
+            returnList: returnList,
           });
         }
       }
@@ -403,8 +426,8 @@ define([
       log.debug("createReturnableSublist", options);
       //let inDate = options.paramInDate ? " : " + options.paramInDate : "";
       let manuf = options.paramManufacturer;
-      let mrrId = options.mrrId
-      let rrType = options.rrType
+      let mrrId = options.mrrId;
+      let rrType = options.rrType;
       let fieldName = [];
       let form = options.form;
       let sublistFields = options.sublistFields;
@@ -455,16 +478,15 @@ define([
         let fieldInfo = [];
         for (let i = 0; i < value.length; i++) {
           if (rxrs_vs_util.isEmpty(fieldName[i])) continue;
-          if(options.inDate != true && fieldName[i] == "custpage_in_date"){
-            log.debug("val", [options.inDate, fieldName[i] ])
+          if (options.inDate != true && fieldName[i] == "custpage_in_date") {
+            log.debug("val", [options.inDate, fieldName[i]]);
             continue;
-          }else{
+          } else {
             fieldInfo.push({
               fieldId: fieldName[i],
               value: value[i],
             });
           }
-
         }
         mainLineInfo.push(fieldInfo);
       });
@@ -473,7 +495,7 @@ define([
         sublist: sublist,
         fieldInfo: mainLineInfo,
         isMainReturnable: options.isMainReturnable,
-        isIndate: options.paramInDate
+        isIndate: options.paramInDate,
       });
     } catch (e) {
       log.error("createReturnableSublist", e.message);

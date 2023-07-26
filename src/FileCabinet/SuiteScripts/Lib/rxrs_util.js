@@ -36,6 +36,21 @@ define([
       column: "baseprice",
     },
   ];
+  /**
+   * Return file Id based on filename
+   * @param fileName
+   * @returns {number}
+   */
+  function getFileId(fileName) {
+    const fileSearch = search
+        .create({
+          type: "file",
+          filters: [["name", "is", fileName]],
+        })
+        .run()
+        .getRange({start: 0, end: 1});
+    return fileSearch[0].id;
+  }
   const rrStatus = Object.freeze({
     PendingReview: "A",
     Rejected: "B",
@@ -563,12 +578,55 @@ define([
       log.error("getEntityType", e.message);
     }
   }
+  /**
+   * Get the item rate based on item id and price level name
+   * @param {string} options.priceLevelName
+   * @param {number} options.itemId
+   * @return {number} return rate of the selected price level of the item
+   */
+  function getItemRate(options) {
+    try {
+      let column = "";
+      let rate;
+      priceLevel.forEach((val) => {
+        if (val.priceName == options.priceLevelName) {
+          column = val.column;
+        }
+      });
+      let filters = [];
+      filters[0] = search.createFilter({
+        name: "internalID",
+        operator: search.Operator.IS,
+        values: options.itemId,
+      });
+      let columns =[];
+      columns[0] = search.createColumn({
+        name: column,
+      });
 
+      const itemSearch = search.create({
+        type: search.Type.ITEM,
+        filters: filters,
+        columns: columns,
+      });
+      const result = itemSearch.run();
+
+      result.each(function (row) {
+        rate = row.getValue({
+          name: column,
+        });
+      });
+      return rate
+    } catch (e) {
+      log.error("getItemRate", e.message);
+    }
+  }
   return {
     rxrsItem,
     RRCATEGORY,
     mrrStatus,
     rrStatus,
+    priceLevel,
     createReturnRequest,
     createReturnPackages,
     createTask,
@@ -579,6 +637,8 @@ define([
     getReturnRequestType,
     getEntityType,
     getDefaultTaskAssignee,
-  
+    getItemRate,
+    getFileId
+
   };
 });

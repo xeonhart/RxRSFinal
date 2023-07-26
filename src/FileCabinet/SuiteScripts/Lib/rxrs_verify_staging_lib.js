@@ -2,7 +2,6 @@
  * @NApiVersion 2.1
  */
 
-
 define([
   "N/redirect",
   "N/render",
@@ -10,6 +9,8 @@ define([
   "N/search",
   "N/url",
   "N/record",
+  "./rxrs_util",
+  "./rxrs_verify_staging_lib",
 ], /**
  * @param{redirect} redirect
  * @param{render} render
@@ -17,7 +18,18 @@ define([
  * @param{search} search
  * @param{url} url
  * @param record
- */ (redirect, render, runtime, search, url, record) => {
+ * @param rxrs_util
+ * @param rxrs_vs_lib
+ */ (
+  redirect,
+  render,
+  runtime,
+  search,
+  url,
+  record,
+  rxrs_util,
+  rxrs_vs_lib
+) => {
   const SUBLISTFIELDS = {
     returnableSublist: [
       {
@@ -26,6 +38,7 @@ define([
         label: "Group By",
         updateDisplayType: "DISABLED",
       },
+
       {
         id: "custpage_in_date",
         type: "TEXT",
@@ -33,16 +46,35 @@ define([
         updateDisplayType: "HIDDEN",
       },
       {
+        id: "custpage_print_inventory",
+        type: "TEXT",
+        label: "Print Inventory",
+        updateDisplayType: "NORMAL",
+      },
+      {
+        id: "custpage_print_label",
+        type: "TEXT",
+        label: "Print Label",
+        updateDisplayType: "NORMAL",
+      },
+      {
         id: "custpage_verified",
         type: "CHECKBOX",
         label: "Verified",
         updateDisplayType: "DISABLED",
       },
+
       {
         id: "custpage_manuf",
         type: "TEXT",
         label: "MANUF NAME",
         updateDisplayType: "HIDDEN",
+      },
+      {
+        id: "custpage_return_list",
+        type: "TEXT",
+        label: "Return List",
+        updateDisplayType: "DISABLED",
       },
     ],
     inDateSublist: [
@@ -241,7 +273,6 @@ define([
         type: "TEXT",
         label: "Pharma Processing",
         updateDisplayType: "DISABLED",
-
       },
       {
         id: "custpage_in_date",
@@ -403,6 +434,26 @@ define([
           name: "custrecord_cs_item_manufacturer",
           summary: "GROUP",
         })
+
+        // columns.push(
+        //   search.createColumn({
+        //     name: "formulanumeric",
+        //     summary: "SUM",
+        //     formula:
+        //       "NVL({custrecord_cs_return_req_scan_item.price} * {custrecord_cs_qty},0)",
+        //     label: "WAC Amount",
+        //   }),
+        //   search.createColumn({
+        //     name: "formulanumeric",
+        //     summary: "SUM",
+        //     formula: "NVL({custrecord_isc_inputrate}*{custrecord_cs_qty},0)",
+        //     label: "Custom Amount",
+        //   }),
+        //   search.createColumn({
+        //     name: "custrecord_isc_overriderate",
+        //     summary: "MAX",
+        //     label: "Override Rate",
+        //   })
       );
       if (options.inDated == true) {
         columns.push(
@@ -418,14 +469,56 @@ define([
         filters: filters,
         columns: columns,
       });
+      let column = transactionSearchObj.columns;
       transactionSearchObj.run().each(function (result) {
         let manufName = result.getValue({
           name: "custrecord_cs_item_manufacturer",
           summary: "GROUP",
         });
-        //fixed issue in the URL when there is an ampersand symbol in Manuf Name
+        // let WACAmount = result.getValue({
+        //   name: "formulanumeric",
+        //   summary: "SUM",
+        //   formula:
+        //     "NVL({custrecord_cs_return_req_scan_item.price} * {custrecord_cs_qty},0)",
+        // });
+        // let customAmount = result.getValue(column[2]);
+        // let isOverrideRate = result.getValue({
+        //   name: "custrecord_isc_overriderate",
+        //   summary: "MAX",
+        // });
+        let returnableScanList = getItemScanReturnbleByManufacturer({
+          rrId: options.rrId,
+          manufacturer: manufName,
+          inDated: options.inDated,
+          rrType: options.rrType,
+          mrrId: options.mrrId,
+        });
+        let currentAmount = 0;
+        returnableScanList.forEach((ret) => (currentAmount += ret.amount));
 
+        let manufId = getManufactuerId(manufName);
+        //fixed issue in the URL when there is an ampersand symbol in Manuf Name
+        let manufMaximumAmount = getManufMaxSoAmount(manufId)
+          ? getManufMaxSoAmount(manufId)
+          : 0;
+        log.error("new info", { manufName, manufMaximumAmount, currentAmount });
+        let numberOfBags;
+        numberOfBags =
+          +manufMaximumAmount > +currentAmount
+            ? 1
+            : +currentAmount / +manufMaximumAmount;
+        numberOfBags = Math.ceil(numberOfBags);
         let manufURLName = manufName.replaceAll("&", "_");
+        if (manufMaximumAmount == 0 || currentAmount == 0) {
+          numberOfBags = 1;
+        }
+        log.error("numberOfBags", numberOfBags);
+
+        let bags = [];
+        for (let i = 1; i <= numberOfBags; i++) {
+          bags.push(i);
+        }
+        let bag = [];
         let inDate;
         if (options.inDated == true) {
           inDate = result.getValue({
@@ -434,39 +527,252 @@ define([
           });
         }
 
-        let stSuiteletUrl = url.resolveScript({
-          scriptId: "customscript_sl_returnable_page",
-          deploymentId: "customdeploy_sl_returnable_page",
-          returnExternalUrl: false,
-          params: {
-            selectionType: options.selectionType,
-            manufacturer: manufURLName,
-            rrId: rrId,
-            tranid: options.tranId,
-            inDate: inDate,
-            rrType: options.rrType,
-            mrrId: options.mrrId,
-          },
-        });
-        let isVerified = checkIfManufIsVerified({
+        let sum = 0;
+        let b = 0;
+        /**
+         * Group the return item scanlist based from the manuf maximum amount
+         */
+        log.error("returnableScanList", returnableScanList);
+        try {
+          if (manufMaximumAmount >= currentAmount) {
+            log.error("if");
+            let holder = [];
+            returnableScanList.forEach((ret) => {
+              holder.push(ret.internalId);
+            });
+            bag.push(holder);
+          } else {
+            log.error("else");
+            for (let i = 0; i < returnableScanList.length; i++) {
+              sum += returnableScanList[i].amount;
+              log.error("loop", sum);
+              if (sum <= +manufMaximumAmount) {
+                if (sum == manufMaximumAmount) {
+                  b += 1;
+                  sum = 0;
+                }
+                if (sum == 0 && manufMaximumAmount == 0) {
+                  b = 0;
+                }
+                bag.push({
+                  bag: bags[b],
+                  scanId: returnableScanList[i].internalId,
+                });
+              } else {
+                b += 1;
+                if (b >= bags.length) {
+                  b = b - 1;
+                }
+                bag.push({
+                  bag: bags[b],
+                  scanId: returnableScanList[i].internalId,
+                });
+                sum = 0;
+              }
+            }
+
+            const groupBy = (a, f) =>
+              a.reduce((x, c) => (x[f(c)] ??= []).push(c) && x, {});
+            bag = groupBy(bag, (b) => b.bag);
+            let mainBags = [];
+
+            for (let i = 1; i <= numberOfBags; i++) {
+              let a = bag[i];
+              let temp = [];
+              a.forEach((b) => temp.push(b.scanId));
+              mainBags.push(temp);
+            }
+            bag = mainBags;
+          }
+          log.error("bag", bag);
+        } catch (e) {
+          log.error("GROUPING RETURN LIST", e.message);
+        }
+
+        let verification = checkIfReturnScanIsVerified({
           recId: rrId,
-          manufName: manufName,
+          returnList: bag,
           inDated: inDated,
         });
-        isVerified = isVerified === true ? "T" : "F";
-        manufacturer.push({
-          manufName: `<a href="${stSuiteletUrl}">${manufName}</a>`,
-          inDate: inDate,
-          isVerified: isVerified,
-          name: manufName,
+        log.error("isVerified", verification)
+       let isVerified = verification.isVerified === true ? "T" : "F";
+        log.error("isVerif",verification.isVerified)
+        let bagLabel = isVerified == "T" ? verification.bagLabel : ""
+        let printSLURL
+      if(bagLabel){
+         printSLURL = url.resolveScript({
+          scriptId: "customscript_sl_print_bag_label",
+          deploymentId: "customdeploy_sl_print_bag_label",
+          returnExternalUrl: false,
+          params: {
+            recId: bagLabel
+          }
+        })
+      }
+
+        bag.forEach((bag) => {
+          let returnList = JSON.stringify(bag.join("_"));
+          let stSuiteletUrl = url.resolveScript({
+            scriptId: "customscript_sl_returnable_page",
+            deploymentId: "customdeploy_sl_returnable_page",
+            returnExternalUrl: false,
+            params: {
+              selectionType: options.selectionType,
+              manufacturer: manufURLName,
+              rrId: rrId,
+              tranid: options.tranId,
+              inDate: inDate,
+              rrType: options.rrType,
+              mrrId: options.mrrId,
+              returnList: returnList,
+            },
+          });
+
+          manufacturer.push({
+            manufName: `<a href="${stSuiteletUrl}">${manufName}</a>`,
+            inDate: inDate,
+            printInventory: "Print Inventory",
+            printLabel:printSLURL ? `<a href="${printSLURL}">Print Label</a>` : "No Bag Label/Not Verified",
+            isVerified: isVerified,
+            name: manufName,
+            returnableScanList: bag,
+          });
+          if (options.inDated == false) delete manufacturer[0].inDated;
         });
-        if (options.inDated == false) delete manufacturer[0].inDated;
+
         return true;
       });
       log.error("manufacturer", manufacturer);
       return manufacturer;
     } catch (e) {
       log.error("getReturnableManufacturer", e.message);
+    }
+  }
+
+  /**
+   * Check if the returnList is verified
+   * @param {string} options.returnList
+   * @param {number} options.recId
+   * @param {boolean} options.inDated
+   * @return {boolean}
+   */
+  function checkIfReturnScanIsVerified(options) {
+    try {
+      let ISVERIFIED = true;
+      let bagLabel
+      let filters = [];
+      filters.push(
+        search.createFilter({
+          name: "custrecord_cs_ret_req_scan_rrid",
+          operator: "anyof",
+          values: options.recId,
+        })
+      );
+      filters.push(
+        search.createFilter({
+          name: "custrecord_cs__mfgprocessing",
+          operator: "anyof",
+          values: 2,
+        })
+      );
+      filters.push(
+        search.createFilter({
+          name: "custrecord_scanindated",
+          operator: "is",
+          values: options.inDated,
+        })
+      );
+      filters.push(
+        search.createFilter({
+          name: "internalid",
+          operator: "anyof",
+          values: options.returnList,
+        })
+      );
+
+      const transactionSearchObj = search.create({
+        type: "customrecord_cs_item_ret_scan",
+        filters: filters,
+
+        columns: [
+          search.createColumn({
+            name: "custrecord_is_verified",
+            summary: "GROUP",
+            label: "Verified",
+          }),
+          search.createColumn({
+            name: "custrecord_scanbagtaglabel",
+            summary: "GROUP",
+            label: "Bag Tag Label",
+          }),
+        ],
+      });
+      let column = transactionSearchObj.columns;
+      const searchResultCount = transactionSearchObj.runPaged().count;
+      transactionSearchObj.run().each(function (result) {
+        let isVerified = result.getValue(column[0]);
+         bagLabel = result.getValue(column[1]);
+        // log.audit("isVerified", { manuf, isVerified });
+        if (isVerified == false) {
+          ISVERIFIED = false;
+          return false;
+        }
+      });
+      return {
+        isVerified: searchResultCount == 1 && ISVERIFIED == true,
+        bagLabel: bagLabel,
+      };
+    } catch (e) {
+      log.error("checkIfManufIsVerified", e.message);
+    }
+  }
+
+  /**
+   * Get the bag label if the all the return list is verified
+   * @param {array}options.returnList
+   */
+  function getReturnListBagLabel(options) {
+    log.error("getReturnListBagLabel", options.returnList);
+
+    try {
+      let bagLabel;
+      let filters = [];
+      filters.push(
+        search.createFilter({
+          name: "internalid",
+          operator: "anyof",
+          values: options.returnList,
+        })
+      );
+      const customrecord_cs_item_ret_scanSearchObj = search.create({
+        type: "customrecord_cs_item_ret_scan",
+        filters: filters,
+        columns: [
+          search.createColumn({
+            name: "custrecord_is_verified",
+            summary: "GROUP",
+            label: "Verified",
+          }),
+          search.createColumn({
+            name: "custrecord_scanbagtaglabel",
+            summary: "GROUP",
+            label: "Bag Tag Label",
+          }),
+        ],
+      });
+      const searchResultCount =
+        customrecord_cs_item_ret_scanSearchObj.runPaged().count;
+      if (searchResultCount > 1) return null;
+      customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
+        bagLabel = result.getValue({
+          name: "custrecord_scanbagtaglabel",
+          summary: "GROUP",
+        });
+        return true;
+      });
+      return bagLabel;
+    } catch (e) {
+      log.error("getReturnListBagLabel", e.message);
     }
   }
 
@@ -511,6 +817,7 @@ define([
           values: options.manufName,
         })
       );
+
       const transactionSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
         filters: filters,
@@ -657,16 +964,16 @@ define([
           type: "customrecord_cs_item_ret_scan",
           id: result.id,
         });
-        let bagTagLabel = result.getValue("custrecord_scanbagtaglabel")
-        let bagLabelURL
+        let bagTagLabel = result.getValue("custrecord_scanbagtaglabel");
+        let bagLabelURL;
 
-        if(bagTagLabel){
+        if (bagTagLabel) {
           bagLabelURL = generateRedirectLink({
             type: "customrecord_kd_taglabel",
             id: bagTagLabel,
           });
         }
-        log.audit("bagTagLabel des",bagTagLabel)
+        log.audit("bagTagLabel des", bagTagLabel);
 
         hazardousList.push({
           internalId: result.getValue(column[1]),
@@ -682,7 +989,9 @@ define([
           expirationDate: result.getValue(column[10]),
           pharmaProcessing: result.getText(column[11]),
           mfgProcessing: result.getText(column[12]),
-          bagTagLabel: bagTagLabel ? `<a href ="${bagLabelURL}" target="_blank">${bagTagLabel}</a>` : null
+          bagTagLabel: bagTagLabel
+            ? `<a href ="${bagLabelURL}" target="_blank">${bagTagLabel}</a>`
+            : null,
         });
         return true;
       });
@@ -699,6 +1008,7 @@ define([
    * @param {boolean} options.inDated - Check If In dated
    * @param {string} options.rrType - Return Request Type
    * @param {number} options.mrrId - Master Return Request Id
+   * @param {array} options.returnList - List of the return item scan
    * @returns {object} returns the item scanlist
    */
   function getItemScanReturnbleByManufacturer(options) {
@@ -708,34 +1018,44 @@ define([
       //log.audit("getItemScanByManufacturer", options);
       let itemScanList = [];
       let filters = [];
-      filters.push(
-        search.createFilter({
-          name: "custrecord_cs_ret_req_scan_rrid",
-          operator: "anyof",
-          values: options.rrId,
-        })
-      );
-      filters.push(
-        search.createFilter({
-          name: "custrecord_cs_item_manufacturer",
-          operator: "is",
-          values: manufacturer,
-        })
-      );
-      filters.push(
-        search.createFilter({
-          name: "custrecord_cs__mfgprocessing",
-          operator: "anyof",
-          values: 2,
-        })
-      );
-      filters.push(
-        search.createFilter({
-          name: "custrecord_scanindated",
-          operator: "is",
-          values: options.inDated,
-        })
-      );
+      if (options.returnList) {
+        filters.push(
+          search.createFilter({
+            name: "internalid",
+            operator: "anyof",
+            values: options.returnList,
+          })
+        );
+      } else {
+        filters.push(
+          search.createFilter({
+            name: "custrecord_cs_ret_req_scan_rrid",
+            operator: "anyof",
+            values: options.rrId,
+          })
+        );
+        filters.push(
+          search.createFilter({
+            name: "custrecord_cs_item_manufacturer",
+            operator: "is",
+            values: manufacturer,
+          })
+        );
+        filters.push(
+          search.createFilter({
+            name: "custrecord_cs__mfgprocessing",
+            operator: "anyof",
+            values: 2,
+          })
+        );
+        filters.push(
+          search.createFilter({
+            name: "custrecord_scanindated",
+            operator: "is",
+            values: options.inDated,
+          })
+        );
+      }
 
       const customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
@@ -799,7 +1119,10 @@ define([
             name: "custrecord_isc_inputrate",
             label: "Input Rate",
           }),
-          search.createColumn({name: "custrecord_scanindate", label: "In Date"}),
+          search.createColumn({
+            name: "custrecord_scanindate",
+            label: "In Date",
+          }),
         ],
       });
 
@@ -810,8 +1133,13 @@ define([
         let rate = result.getValue("custrecord_scanrate") || 0;
         let qty = result.getValue("custrecord_cs_qty") || 0;
         let bagTagLabel = result.getValue("custrecord_scanbagtaglabel");
-
-        let amount = isOverrideRate == true ? inputRate  * +qty: +rate * +qty;
+        let itemId = result.getValue({
+          name: "internalid",
+          join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+        });
+        let WACRate = getWACPrice(itemId);
+        let amount =
+          isOverrideRate == true ? inputRate * +qty : +WACRate * +qty;
 
         let verified = result.getValue(column[0]) == true ? "T" : "F";
         let ndcName = result.getValue(column[1]);
@@ -838,10 +1166,7 @@ define([
           amount: amount || 0,
           inDate: result.getValue("custrecord_scanindate"),
           bagTagLabel: `<a href ="${bagLabelURL}" target="_blank">${bagTagLabel}</a>`,
-          itemId: result.getValue({
-            name: "internalid",
-            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-          }),
+          itemId: itemId,
           manufId: getManufactuerId(result.getValue(column[3])),
         });
         return true;
@@ -1001,6 +1326,17 @@ define([
       return searchResultCount == 1 && ISVERIFIED == true;
     } catch (e) {
       log.error("checkIfHazardousIsVerified", e.message);
+    }
+  }
+
+  function getWACPrice(itemId) {
+    try {
+      return rxrs_util.getItemRate({
+        priceLevelName: 'Wholesale Acquisition Price "WAC" (input)',
+        itemId: itemId,
+      });
+    } catch (e) {
+      log.error("getWACPrice", e.message);
     }
   }
 

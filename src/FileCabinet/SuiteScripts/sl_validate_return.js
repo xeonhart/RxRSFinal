@@ -60,63 +60,63 @@ define([
          */
         log.audit("bags", bags);
         let bag = [];
-        if (params.returnType != "Destruction") {
-          log.audit("Assigning Bag for Returnable Item Scan");
-          let sum = 0;
-          let b = 0;
-          for (let i = 0; i < returnScanList.length; i++) {
-            sum += returnScanList[i].amount;
-            let prevBag = returnScanList[i].prevBag;
-            try {
-              if (sum <= +maximumAmount) {
-                if (!rxrsUtil.isEmpty(prevBag)) {
-                  prevBag = prevBag.split("&");
-                  prevBag = prevBag[1]; // get the id from the URL
-                  prevBag = prevBag.substring(3, prevBag.length);
-                } else {
-                  prevBag = null;
-                }
-
-                if (sum == maximumAmount) {
-                  b += 1;
-                  sum = 0;
-                }
-                if (sum == 0 && maximumAmount == 0) {
-                  b = 0;
-                }
-                bag.push({
-                  bag: bags[b],
-                  scanId: returnScanList[i].id,
-                  prevBag: prevBag,
-                });
-              } else {
-                b += 1;
-                if (b >= bags.length) {
-                  b = b - 1;
-                }
-
-                if (!rxrsUtil.isEmpty(prevBag)) {
-                  prevBag = prevBag.split("&");
-                  prevBag = prevBag[1]; // get the id from the URL
-                  prevBag = prevBag.substring(3, prevBag.length);
-                } else {
-                  prevBag = null;
-                }
-                bag.push({
-                  bag: bags[b],
-                  scanId: returnScanList[i].id,
-                  prevBag: prevBag,
-                });
-
-                sum = 0;
-              }
-            } catch (e) {
-              log.error("Returnable Bags", e.message);
-            }
-          }
-          log.audit("bag", bag);
-        } else {
-          log.audit("Assigning Bag for Destruction");
+        // if (params.returnType != "Destruction") {
+        //   log.audit("Assigning Bag for Returnable Item Scan");
+        //   let sum = 0;
+        //   let b = 0;
+        //   for (let i = 0; i < returnScanList.length; i++) {
+        //     sum += returnScanList[i].amount;
+        //     let prevBag = returnScanList[i].prevBag;
+        //     try {
+        //       if (sum <= +maximumAmount) {
+        //         if (!rxrsUtil.isEmpty(prevBag)) {
+        //           prevBag = prevBag.split("&");
+        //           prevBag = prevBag[1]; // get the id from the URL
+        //           prevBag = prevBag.substring(3, prevBag.length);
+        //         } else {
+        //           prevBag = null;
+        //         }
+        //
+        //         if (sum == maximumAmount) {
+        //           b += 1;
+        //           sum = 0;
+        //         }
+        //         if (sum == 0 && maximumAmount == 0) {
+        //           b = 0;
+        //         }
+        //         bag.push({
+        //           bag: bags[b],
+        //           scanId: returnScanList[i].id,
+        //           prevBag: prevBag,
+        //         });
+        //       } else {
+        //         b += 1;
+        //         if (b >= bags.length) {
+        //           b = b - 1;
+        //         }
+        //
+        //         if (!rxrsUtil.isEmpty(prevBag)) {
+        //           prevBag = prevBag.split("&");
+        //           prevBag = prevBag[1]; // get the id from the URL
+        //           prevBag = prevBag.substring(3, prevBag.length);
+        //         } else {
+        //           prevBag = null;
+        //         }
+        //         bag.push({
+        //           bag: bags[b],
+        //           scanId: returnScanList[i].id,
+        //           prevBag: prevBag,
+        //         });
+        //
+        //         sum = 0;
+        //       }
+        //     } catch (e) {
+        //       log.error("Returnable Bags", e.message);
+        //     }
+        //   }
+        //   log.audit("bag", bag);
+        // } else {
+        //   log.audit("Assigning Bag for Destruction");
           for (let i = 0; i < returnScanList.length; i++) {
             let prevBag = returnScanList[i].prevBag;
             if (!rxrsUtil.isEmpty(prevBag)) {
@@ -132,7 +132,7 @@ define([
               prevBag: prevBag,
             });
           }
-        }
+
 
         bag.forEach((b) =>
           rxrsBagUtil.updateBagLabel({
