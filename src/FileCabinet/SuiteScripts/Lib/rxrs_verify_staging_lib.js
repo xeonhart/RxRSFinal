@@ -579,9 +579,9 @@ define([
           returnList: bag,
           inDated: inDated,
         });
-        log.error("isVerified", verification);
+        log.debug("isVerified", verification);
         let isVerified = verification.isVerified === true ? "T" : "F";
-        log.error("isVerif", verification.isVerified);
+        log.debug("isVerif", verification.isVerified);
         let bagLabel = isVerified == "T" ? verification.bagLabel : "";
         let printSLURL;
         if (bagLabel) {
@@ -629,7 +629,7 @@ define([
 
         return true;
       });
-      log.error("manufacturer", manufacturer);
+      log.debug("manufacturer", manufacturer);
       return manufacturer;
     } catch (e) {
       log.error("getReturnableManufacturer", e.message);
@@ -1032,7 +1032,7 @@ define([
         });
         return true;
       });
-      log.error("itemScanList", itemScanList);
+      log.audit("itemScanList", itemScanList);
       return itemScanList;
     } catch (e) {
       log.error("getItemScanByManufacturer", e.message);
@@ -1198,7 +1198,7 @@ define([
       let ISHAZARDOUS = options.isHazardous == "true" ? "T" : "F";
       log.emergency("ISHAZARDOUS", ISHAZARDOUS);
       let hazardousList = [];
-      var customrecord_cs_item_ret_scanSearchObj = search.create({
+      const customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
         filters: [
           ["custrecord_cs__mfgprocessing", "anyof", "1"],
