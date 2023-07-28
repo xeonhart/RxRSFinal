@@ -9,10 +9,16 @@ define([
   "./Lib/lib_template_handler",
   "./Lib/rxrs_util",
   "N/record",
+    "N/file"
 ], /**
  * @param{render} render
+ * @param https
  * @param{runtime} runtime
- */ (render,https, runtime, templateHandler, rxrsUtil, record) => {
+ * @param templateHandler
+ * @param rxrsUtil
+ * @param record
+ * @param file
+ */ (render,https, runtime, templateHandler, rxrsUtil, record,file) => {
   /**
    * Defines the Suitelet script trigger point.
    * @param {Object} scriptContext
@@ -42,19 +48,21 @@ define([
       }
       log.debug("data",data)
       const folderId = -15;
-      let fileName = `TAG_LABEL_${tagLabelId}`;
+      let fileName = `TAG_LABEL_${tagLabelId}.pdf`;
       const XMLCOntent = templateHandler.buildFileFromTemplate({
         templateID: xmlFileId,
         content: data,
         fileName: fileName,
         outputFolder: folderId,
       });
-      context.response.sendRedirect({
-        type: https.RedirectType.MEDIA_ITEM,
-        identifier: XMLCOntent,
-      });
+      let pdfFile = file.load(XMLCOntent)
+      context.response.writeFile({
+        file: pdfFile,
+        isInline: true
+      })
     } catch (e) {
       log.error("onRequest", e.message);
+      context.response.write(e.message)
     }
   };
 

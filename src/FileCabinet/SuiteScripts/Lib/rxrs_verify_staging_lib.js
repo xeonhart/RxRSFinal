@@ -11,6 +11,7 @@ define([
   "N/record",
   "./rxrs_util",
   "./rxrs_verify_staging_lib",
+  "./rxrs_print_inventory_lib",
 ], /**
  * @param{redirect} redirect
  * @param{render} render
@@ -28,7 +29,8 @@ define([
   url,
   record,
   rxrs_util,
-  rxrs_vs_lib
+  rxrs_vs_lib,
+  rxrs_PI_lib
 ) => {
   const SUBLISTFIELDS = {
     returnableSublist: [
@@ -503,7 +505,7 @@ define([
         for (let i = 1; i <= numberOfBags; i++) {
           bags.push(i);
         }
-        let bag = [];
+        let bagList = [];
         let inDate;
         if (options.inDated == true) {
           inDate = result.getValue({
@@ -525,7 +527,7 @@ define([
             returnableScanList.forEach((ret) => {
               holder.push(ret.internalId);
             });
-            bag.push(holder);
+            bagList.push(holder);
           } else {
             log.error("else");
             for (let i = 0; i < returnableScanList.length; i++) {
@@ -539,7 +541,7 @@ define([
                 if (sum == 0 && manufMaximumAmount == 0) {
                   b = 0;
                 }
-                bag.push({
+                bagList.push({
                   bag: bags[b],
                   scanId: returnableScanList[i].internalId,
                 });
@@ -548,7 +550,7 @@ define([
                 if (b >= bags.length) {
                   b = b - 1;
                 }
-                bag.push({
+                bagList.push({
                   bag: bags[b],
                   scanId: returnableScanList[i].internalId,
                 });
@@ -558,45 +560,70 @@ define([
 
             const groupBy = (a, f) =>
               a.reduce((x, c) => (x[f(c)] ??= []).push(c) && x, {});
-            bag = groupBy(bag, (b) => b.bag);
+            bagList = groupBy(bagList, (b) => b.bag);
             let mainBags = [];
 
             for (let i = 1; i <= numberOfBags; i++) {
-              let a = bag[i];
+              let a = bagList[i];
               let temp = [];
               a.forEach((b) => temp.push(b.scanId));
               mainBags.push(temp);
             }
-            bag = mainBags;
+            bagList = mainBags;
           }
-          log.error("bag", bag);
+          log.error("bag", bagList);
         } catch (e) {
           log.error("GROUPING RETURN LIST", e.message);
         }
 
-        let verification = checkIfReturnScanIsVerified({
-          recId: rrId,
-          returnList: bag,
-          inDated: inDated,
-        });
-        log.debug("isVerified", verification);
-        let isVerified = verification.isVerified === true ? "T" : "F";
-        log.debug("isVerif", verification.isVerified);
-        let bagLabel = isVerified == "T" ? verification.bagLabel : "";
-        let printSLURL;
-        if (bagLabel) {
-          printSLURL = url.resolveScript({
-            scriptId: "customscript_sl_print_bag_label",
-            deploymentId: "customdeploy_sl_print_bag_label",
-            returnExternalUrl: false,
-            params: {
-              recId: bagLabel,
-            },
-          });
-        }
 
-        bag.forEach((bag) => {
+
+
+
+        // let mainFields = rxrs_PI_lib.getInventoryLocationObject({
+        //   rrId: rrId,
+        //   rrType: options.rrType,
+        //   manufId: manufId,
+        //   returnList: bag,
+        //   inventoryStatus: options.selectionType
+        // })
+
+        bagList.forEach((bag) => {
+          let verification = checkIfReturnScanIsVerified({
+            recId: rrId,
+            returnList: bag,
+            inDated: inDated,
+          });
+          log.debug("isVerified", verification);
+          let isVerified = verification.isVerified === true ? "T" : "F";
+          log.debug("isVerif", verification.isVerified);
+          let bagLabel = isVerified == "T" ? verification.bagLabel : "";
+          let printSLURL;
           let returnList = JSON.stringify(bag.join("_"));
+          let params = {
+            rrId: rrId,
+            rrType: options.rrType,
+            manufId: manufId,
+            returnList: returnList,
+            inventoryStatus: options.selectionType
+          }
+          if (bagLabel) {
+            printSLURL = url.resolveScript({
+              scriptId: "customscript_sl_print_bag_label",
+              deploymentId: "customdeploy_sl_print_bag_label",
+              returnExternalUrl: false,
+              params: {
+                recId: bagLabel,
+              },
+            });
+          }
+
+          let printSLInventory = url.resolveScript({
+            scriptId: "customscript_sl_print_inv_report",
+            deploymentId: "customdeploy_sl_print_inv_report",
+            returnExternalUrl: false,
+            params: params
+          });
           let stSuiteletUrl = url.resolveScript({
             scriptId: "customscript_sl_returnable_page",
             deploymentId: "customdeploy_sl_returnable_page",
@@ -616,7 +643,9 @@ define([
           manufacturer.push({
             manufName: `<a href="${stSuiteletUrl}">${manufName}</a>`,
             inDate: inDate,
-            printInventory: "Print Inventory",
+            printInventory: printSLInventory
+                ? `<a href="${printSLInventory}">Print Inventory</a>`
+                : "",
             printLabel: printSLURL
               ? `<a href="${printSLURL}">Print Label</a>`
               : "No Bag Label/Not Verified",
@@ -1099,32 +1128,47 @@ define([
           recId: rrId,
           isHazardous: isHazardous,
         });
-        let bagLabel =
-          isVerified === true
-            ? getDesctructionHazardous({
-                isHazardous: isHazardous,
-                rrId: rrId,
-                getBagLabel: true,
-              })
-            : null;
-        let printSLURL
-        if (bagLabel) {
+        let returnData = getDesctructionHazardous({
+          isHazardous: isHazardous,
+          rrId: rrId,
+          getBagLabel: true,
+        })
+
+        let returnList = returnData.returnList.join("_")
+        log.emergency("returnDatareturnList", returnList)
+        let params = {
+          rrId: rrId,
+          rrType: options.rrType,
+          returnList: JSON.stringify(returnList),
+          inventoryStatus: options.selectionType
+        }
+
+        let printSLInventory = url.resolveScript({
+          scriptId: "customscript_sl_print_inv_report",
+          deploymentId: "customdeploy_sl_print_inv_report",
+          returnExternalUrl: false,
+          params: params
+        });
+        let printSLURL;
+        if (isVerified === true) {
           printSLURL = url.resolveScript({
             scriptId: "customscript_sl_print_bag_label",
             deploymentId: "customdeploy_sl_print_bag_label",
             returnExternalUrl: false,
             params: {
-              recId: bagLabel,
+              recId: returnData.bagTagLabel,
             },
           });
         }
         isVerified = isVerified === true ? "T" : "F";
         destructionList.push({
           destruction: `<a href="${stSuiteletUrl}">${name}</a>`,
-          printInventory: "Print Inventory",
+          printInventory: printSLInventory
+              ? `<a href="${printSLInventory}">Print Inventory</a>`
+              : "",
           printLabel: printSLURL
-              ? `<a href="${printSLURL}">Print Label</a>`
-              : "No Bag Label/Not Verified",
+            ? `<a href="${printSLURL}">Print Label</a>`
+            : "No Bag Label/Not Verified",
           isVerified: isVerified,
           name: name,
         });
@@ -1188,11 +1232,12 @@ define([
    * Get all the item return scan hazardous
    * @param options.isHazardous
    * @param options.rrId
-   * @param options.getBagLabel
+   * @param options.getReturnList
    * @return {*[]} return hazardous item return scan list
    */
   function getDesctructionHazardous(options) {
     try {
+      let returnList = []
       log.emergency("getDesctructionHazardous", options);
       let bagTagLabel;
       let ISHAZARDOUS = options.isHazardous == "true" ? "T" : "F";
@@ -1288,7 +1333,7 @@ define([
           });
         }
         log.audit("bagTagLabel des", bagTagLabel);
-
+        returnList.push(result.id)
         hazardousList.push({
           internalId: result.getValue(column[1]),
           verified: verified,
@@ -1310,7 +1355,8 @@ define([
         return true;
       });
       if (options.getBagLabel == true) {
-        return bagTagLabel;
+        log.emergency("Value",{ bagTagLabel, returnList })
+        return { bagTagLabel, returnList };
       } else {
         return hazardousList;
       }

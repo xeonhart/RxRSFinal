@@ -1,0 +1,136 @@
+<?xml version="1.0"?><!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
+<pdf>
+    <head>
+        <link name="NotoSans" type="font" subtype="truetype" src="${nsfont.NotoSans_Regular}" src-bold="${nsfont.NotoSans_Bold}" src-italic="${nsfont.NotoSans_Italic}" src-bolditalic="${nsfont.NotoSans_BoldItalic}" bytes="2" />
+        <#if .locale == "zh_CN">
+        <link name="NotoSansCJKsc" type="font" subtype="opentype" src="${nsfont.NotoSansCJKsc_Regular}" src-bold="${nsfont.NotoSansCJKsc_Bold}" bytes="2" />
+        <#elseif .locale == "zh_TW">
+        <link name="NotoSansCJKtc" type="font" subtype="opentype" src="${nsfont.NotoSansCJKtc_Regular}" src-bold="${nsfont.NotoSansCJKtc_Bold}" bytes="2" />
+        <#elseif .locale == "ja_JP">
+        <link name="NotoSansCJKjp" type="font" subtype="opentype" src="${nsfont.NotoSansCJKjp_Regular}" src-bold="${nsfont.NotoSansCJKjp_Bold}" bytes="2" />
+        <#elseif .locale == "ko_KR">
+        <link name="NotoSansCJKkr" type="font" subtype="opentype" src="${nsfont.NotoSansCJKkr_Regular}" src-bold="${nsfont.NotoSansCJKkr_Bold}" bytes="2" />
+        <#elseif .locale == "th_TH">
+        <link name="NotoSansThai" type="font" subtype="opentype" src="${nsfont.NotoSansThai_Regular}" src-bold="${nsfont.NotoSansThai_Bold}" bytes="2" />
+    </#if>
+    <macrolist>
+        <macro id="nlheader">
+            <table align="right" style="font-size:10pt;width:100%;"><tr>
+                <td rowspan="3" style="padding: 0px; width: 376px; height: 67px;"><#if companyInformation.logoUrl?length != 0><img src="${companyInformation.logoUrl}" style="float: left; margin: 7px; width: 120px; height: 50px;" /> </#if><br /><br /><br />&nbsp;</td>
+                <td rowspan="3" style="padding: 0px; text-align: right; vertical-align: middle; width: 396px; height: 67px;"><span style="font-size:16px;">RETURN ORDER<br />&nbsp; &nbsp;INVENTORY&nbsp;</span></td>
+                <td style="padding: 0px; width: 121px; text-align: left;"><span style="color:#2980b9;">Return No:</span></td>
+                <td align="right" style="padding: 0px; width: 146px;">${record.returnNo}</td>
+            </tr>
+            <tr>
+                <td style="padding: 0px; width: 121px; text-align: left;"><span style="color:#2980b9;">Date:</span></td>
+                <td align="right" style="padding: 0px; width: 146px;">${record.date}</td>
+            </tr>
+            <tr>
+                <td align="right" colspan="2" style="padding: 0px; height: 32px; width: 270px;">&nbsp;</td>
+            </tr>
+            <tr>
+                <td style="padding: 0px; width: 376px;">${record.location?replace(",","<br />")}</td>
+                <td style="padding: 0px; text-align: center; width: 396px; vertical-align: top;"><span style="font-size:16px;">&nbsp; &nbsp;&nbsp;</span></td>
+                <td colspan="2" style="padding: 0px; text-align: left; width: 270px;"><span style="color:#2980b9;">Prepared For:</span><br />${record.manufInfo?replace(",","<br />")}</td>
+            </tr></table>
+    </macro>
+    <macro id="nlfooter">
+        <table style="width: 100%; font-size: 8pt;">
+            <tr>
+                <td align="right" style="padding: 0;"><pagenumber/> of <totalpages/></td>
+            </tr>
+            <tr>
+                <td align="center" style="padding: 0;">Rx Return Services</td>
+            </tr>
+            <tr>
+                <td align="center" style="padding: 0;">1115 N OLD COACHMAN RD,Clearwater, FL 33765</td>
+            </tr>
+            <tr>
+                <td align="center" style="padding: 0;">Ph. 727-754-7848 Fax. 727-724-4156</td>
+            </tr>
+            <tr>
+                <td align="center" style="padding: 0;"> </td>
+            </tr>
+
+        </table>
+        <hr />
+    </macro>
+</macrolist>
+<style type="text/css">* {
+<#if .locale == "zh_CN">
+font-family: NotoSans, NotoSansCJKsc, sans-serif;
+<#elseif .locale == "zh_TW">
+font-family: NotoSans, NotoSansCJKtc, sans-serif;
+<#elseif .locale == "ja_JP">
+font-family: NotoSans, NotoSansCJKjp, sans-serif;
+<#elseif .locale == "ko_KR">
+font-family: NotoSans, NotoSansCJKkr, sans-serif;
+<#elseif .locale == "th_TH">
+font-family: NotoSans, NotoSansThai, sans-serif;
+<#else>
+font-family: NotoSans, sans-serif;
+</#if>
+        }
+        table {
+        font-size: 9pt;
+        table-layout: fixed;
+        }
+        th {
+        font-weight: bold;
+        font-size: 8pt;
+        vertical-align: middle;
+        padding: 5px 6px 3px;
+        background-color: #e3e3e3;
+        color: #333333;
+        }
+        td {
+        padding: 4px 6px;
+        }
+        td p { align:left }
+        hr {
+        width: 30%;
+        color: black;
+        background-color: black;
+        height: 1px;
+        bottom: 20px
+        }
+        </style>
+        </head>
+<body header="nlheader" header-height="20%" footer="nlfooter" footer-height="20pt" padding="1in 1in 1in 1in" size="Letter-LANDSCAPE">
+<br /><br /><#if record.item?has_content>
+<table align="right" border="0" cellpadding="1" cellspacing="1" style="width:230px;"><tr>
+    <td style="text-align: right;">Inventory Status:</td>
+    <td>${record.inventoryStatus}</td>
+</tr></table>
+
+<table style="width: 100%; margin-top: 10px;"><!-- start items --><#list record.item as item><#if item_index==0>
+    <thead>
+        <tr>
+            <th align="center" colspan="4" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">NDC</span></th>
+            <th align="center" colspan="5" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Description</span></th>
+            <th align="center" colspan="3" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Manufacturer</span></th>
+            <th align="center" colspan="3" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Ctrl</span></th>
+            <th align="center" colspan="2" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Form 222</span></th>
+            <th align="center" colspan="2" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Lot</span></th>
+            <th align="center" colspan="3" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Exp. Date</span></th>
+            <th align="center" colspan="2" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Pk Size</span></th>
+            <th align="center" colspan="2" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Full</span></th>
+            <th align="center" colspan="2" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Partial</span></th>
+        </tr>
+    </thead>
+</#if><tr>
+    <td align="center" colspan="4" >${item.ndc}</td>
+    <td align="center" colspan="5" >${item.description}</td>
+    <td align="center" colspan="3" >${item.manufacturer}</td>
+    <td align="center" colspan="3" >${item.ctrl}</td>
+    <td align="center" colspan="2" >${item.form222}</td>
+    <td align="center" colspan="2" >${item.lotNumber}</td>
+    <td align="center" colspan="3" >${item.expDate}</td>
+    <td align="center" colspan="2" >${item.pkSize}</td>
+    <td align="center" colspan="2" >${item.full}</td>
+    <td align="center" colspan="2" >${item.partial}</td>
+</tr>
+</#list><!-- end items --></table>
+        </#if>
+        </body>
+        </pdf>
