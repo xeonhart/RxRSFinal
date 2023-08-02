@@ -16,8 +16,8 @@
     <macrolist>
         <macro id="nlheader">
             <table align="right" style="font-size:10pt;width:100%;"><tr>
-                <td rowspan="3" style="padding: 0px; width: 376px; height: 67px;"><#if companyInformation.logoUrl?length != 0><img src="${companyInformation.logoUrl}" style="float: left; margin: 7px; width: 120px; height: 50px;" /> </#if><br /><br /><br />&nbsp;</td>
-                <td rowspan="3" style="padding: 0px; text-align: right; vertical-align: middle; width: 396px; height: 67px;"><span style="font-size:16px;">RETURN ORDER<br />&nbsp; &nbsp;INVENTORY&nbsp;</span></td>
+                <td rowspan="3" style="padding: 0px; width: 405px; height: 67px;"><#if companyInformation.logoUrl?length != 0><img src="${companyInformation.logoUrl}" style="float: left; margin: 7px; width: 120px; height: 50px;" /> </#if><br /><br /><br />&nbsp;</td>
+                <td rowspan="3" style="padding: 0px; text-align: right; vertical-align: middle; width: 367px; height: 67px;"><span style="font-size:16px;">RETURN ORDER<br />&nbsp; &nbsp;&nbsp;INVENTORY&nbsp;</span></td>
                 <td style="padding: 0px; width: 121px; text-align: left;"><span style="color:#2980b9;">Return No:</span></td>
                 <td align="right" style="padding: 0px; width: 146px;">${record.returnNo}</td>
             </tr>
@@ -96,7 +96,7 @@ font-family: NotoSans, sans-serif;
         }
         </style>
         </head>
-<body header="nlheader" header-height="20%" footer="nlfooter" footer-height="20pt" padding="1in 1in 1in 1in" size="Letter-LANDSCAPE">
+<body header="nlheader" header-height="12%" footer="nlfooter" footer-height="20pt" padding="0.5in 0.5in 0.5in 0.5in" size="Letter-LANDSCAPE">
 <br /><br /><#if record.item?has_content>
 <table align="right" border="0" cellpadding="1" cellspacing="1" style="width:230px;"><tr>
     <td style="text-align: right;">Inventory Status:</td>

@@ -61,6 +61,7 @@ define(["N/record", "N/search"], /**
   function updateBagLabel(options) {
     try {
       log.audit("updateBagLabel", options);
+
       record.submitFields.promise({
         type: "customrecord_cs_item_ret_scan",
         id: +options.ids,
@@ -69,7 +70,10 @@ define(["N/record", "N/search"], /**
           custrecord_scanbagtaglabel: +options.bagId,
           custrecord_prev_bag_assignement: options.prevBag,
         },
+        enablesourcing: true,
+        ignoreMandatoryFields: true
       });
+
       if (options.prevBag != null) {
         record.submitFields.promise({
           type: "customrecord_kd_taglabel",

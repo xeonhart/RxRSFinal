@@ -481,8 +481,8 @@ define([
           mrrId: options.mrrId,
         });
         let currentAmount = 0;
-        returnableScanList.forEach((ret) => (currentAmount += ret.amount));
-
+        returnableScanList.forEach((ret) => (currentAmount += +ret.amount));
+        log.error("returnableScanList", {manufName,returnableScanList})
         let manufId = getManufactuerId(manufName);
         //fixed issue in the URL when there is an ampersand symbol in Manuf Name
         let manufMaximumAmount = getManufMaxSoAmount(manufId)
@@ -531,7 +531,7 @@ define([
           } else {
             log.error("else");
             for (let i = 0; i < returnableScanList.length; i++) {
-              sum += returnableScanList[i].amount;
+              sum += +returnableScanList[i].amount;
               log.error("loop", sum);
               if (sum <= +manufMaximumAmount) {
                 if (sum == manufMaximumAmount) {
@@ -1012,6 +1012,11 @@ define([
             name: "custrecord_scanindate",
             label: "In Date",
           }),
+          search.createColumn({
+            name: "custrecord_amount",
+            sort: search.Sort.ASC,
+            label: "Amount"
+          }),
         ],
       });
 
@@ -1026,10 +1031,9 @@ define([
           name: "internalid",
           join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
         });
-        let WACRate = getWACPrice(itemId);
-        log.debug("Amount", { qty, WACRate, isOverrideRate, inputRate });
-        let amount =
-          isOverrideRate == true ? inputRate * +qty : +WACRate * +qty;
+       // let WACRate = getWACPrice(itemId);
+       // log.debug("Amount", { qty, WACRate, isOverrideRate, inputRate });
+        let amount = result.getValue("custrecord_amount");
 
         let verified = result.getValue(column[0]) == true ? "T" : "F";
         let ndcName = result.getValue(column[1]);
@@ -1124,12 +1128,13 @@ define([
             mrrId: options.mrrId,
           },
         });
+        log.emergency("Is Hazzard", isHazardous)
         let isVerified = checkIfHazardousIsVerified({
           recId: rrId,
-          isHazardous: isHazardous,
+          isHazardous:isHazardous,
         });
         let returnData = getDesctructionHazardous({
-          isHazardous: isHazardous,
+          isHazardous:  isHazardous,
           rrId: rrId,
           getBagLabel: true,
         })
@@ -1240,7 +1245,7 @@ define([
       let returnList = []
       log.emergency("getDesctructionHazardous", options);
       let bagTagLabel;
-      let ISHAZARDOUS = options.isHazardous == "true" ? "T" : "F";
+      let ISHAZARDOUS = options.isHazardous == true || options.isHazardous == "true" ? "T" : "F";
       log.emergency("ISHAZARDOUS", ISHAZARDOUS);
       let hazardousList = [];
       const customrecord_cs_item_ret_scanSearchObj = search.create({
@@ -1481,6 +1486,7 @@ define([
     getFileId,
     isEmpty,
     getManufactuerId,
+    getWACPrice,
     getManufMaxSoAmount,
     generateRedirectLink,
     getEntityFromMrr,
