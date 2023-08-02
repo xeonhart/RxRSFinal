@@ -1013,7 +1013,7 @@ define([
             label: "In Date",
           }),
           search.createColumn({
-            name: "custrecord_amount",
+            name: "custrecord_wac_amount",
             sort: search.Sort.ASC,
             label: "Amount"
           }),
@@ -1033,7 +1033,7 @@ define([
         });
        // let WACRate = getWACPrice(itemId);
        // log.debug("Amount", { qty, WACRate, isOverrideRate, inputRate });
-        let amount = result.getValue("custrecord_amount");
+        let amount = result.getValue("custrecord_wac_amount");
 
         let verified = result.getValue(column[0]) == true ? "T" : "F";
         let ndcName = result.getValue(column[1]);

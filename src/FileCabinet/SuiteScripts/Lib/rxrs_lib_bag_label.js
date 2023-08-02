@@ -83,6 +83,7 @@ define(["N/record", "N/search"], /**
           },
         });
       }
+      return +options.ids
     } catch (e) {
       log.error("updateBagLabel", e.message);
     }

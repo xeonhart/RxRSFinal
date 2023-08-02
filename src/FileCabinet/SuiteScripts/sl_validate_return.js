@@ -6,9 +6,12 @@ define([
   "N/record",
   "./Lib/rxrs_verify_staging_lib",
   "./Lib/rxrs_lib_bag_label",
+    "./Lib/rxrs_transaction_lib"
 ], /**
  * @param{record} record
- */ (record, rxrsUtil, rxrsBagUtil) => {
+ * @param rxrsUtil
+ * @param rxrsBagUtil
+ */ (record, rxrsUtil, rxrsBagUtil,rxrs_tran_lib) => {
   /**
    * Defines the Suitelet script trigger point.
    * @param {Object} scriptContext
@@ -134,13 +137,20 @@ define([
           }
 
 
-        bag.forEach((b) =>
-          rxrsBagUtil.updateBagLabel({
-            ids: b.scanId,
-            isVerify: JSON.parse(params.isVerify),
-            bagId: b.bag,
-            prevBag: b.prevBag,
-          })
+        bag.forEach((b) =>{
+          let IRSId = rxrsBagUtil.updateBagLabel({
+                ids: b.scanId,
+                isVerify: JSON.parse(params.isVerify),
+                bagId: b.bag,
+                prevBag: b.prevBag,
+              })
+          if(IRSId){
+            rxrs_tran_lib.createInventoryAdjustment({
+              id: +IRSId
+            })
+          }
+        }
+
         );
         context.response.write("SUCCESSFUL")
       } catch (e) {

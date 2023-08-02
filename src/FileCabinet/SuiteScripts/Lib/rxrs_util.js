@@ -36,6 +36,7 @@ define([
       column: "baseprice",
     },
   ];
+
   /**
    * Return file Id based on filename
    * @param fileName
@@ -43,14 +44,15 @@ define([
    */
   function getFileId(fileName) {
     const fileSearch = search
-        .create({
-          type: "file",
-          filters: [["name", "is", fileName]],
-        })
-        .run()
-        .getRange({start: 0, end: 1});
+      .create({
+        type: "file",
+        filters: [["name", "is", fileName]],
+      })
+      .run()
+      .getRange({ start: 0, end: 1 });
     return fileSearch[0].id;
   }
+
   const rrStatus = Object.freeze({
     PendingReview: "A",
     Rejected: "B",
@@ -100,13 +102,15 @@ define([
       let recordType = "";
       let location = 1;
       let rrpoName;
+
       if (options.planSelectionType == QUICKCASH) {
         recordType = "custompurchase_returnrequestpo";
         rrpoName = generateRRPODocumentNumber();
       } else {
         recordType = "customsale_kod_returnrequest";
+
       }
-      log.debug("createReturnRequest", options);
+      log.audit("createReturnRequest", options);
       const rrRec = record.create({
         type: recordType,
         isDynamic: false,
@@ -131,8 +135,15 @@ define([
           fieldId: "tranid",
           value: rrpoName,
         });
+
+   if(recordType == "customsale_kod_returnrequest"){
+     rrRec.setValue({
+       fieldId: "entity",
+       value: options.customer,
+     });
+   }
       rrRec.setValue({
-        fieldId: "entity",
+        fieldId: "custbody_rrentity",
         value: options.customer,
       });
 
@@ -225,6 +236,15 @@ define([
 
         const numOfLabels = options.numOfLabels;
         const masterRecId = options.masterRecId;
+        log.audit("returnValues ", {
+          rrId: RRId,
+          numOfLabels: numOfLabels,
+          mrrId: masterRecId,
+          requestedDate: requestedDate,
+          category: cat,
+          customer: customer,
+          isC2: isC2,
+        })
         return {
           rrId: RRId,
           numOfLabels: numOfLabels,
@@ -530,8 +550,6 @@ define([
     return name;
   }
 
-
-
   /**
    * Get the return request transaction type
    * @param rrId
@@ -578,6 +596,7 @@ define([
       log.error("getEntityType", e.message);
     }
   }
+
   /**
    * Get the item rate based on item id and price level name
    * @param {string} options.priceLevelName
@@ -599,7 +618,7 @@ define([
         operator: search.Operator.IS,
         values: options.itemId,
       });
-      let columns =[];
+      let columns = [];
       columns[0] = search.createColumn({
         name: column,
       });
@@ -616,11 +635,12 @@ define([
           name: column,
         });
       });
-      return rate
+      return rate;
     } catch (e) {
       log.error("getItemRate", e.message);
     }
   }
+
   return {
     rxrsItem,
     RRCATEGORY,
@@ -638,7 +658,6 @@ define([
     getEntityType,
     getDefaultTaskAssignee,
     getItemRate,
-    getFileId
-
+    getFileId,
   };
 });
