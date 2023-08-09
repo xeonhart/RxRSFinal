@@ -741,7 +741,7 @@ define([
         bagLabel: bagLabel,
       };
     } catch (e) {
-      log.error("checkIfManufIsVerified", e.message);
+      log.error("checkIfReturnScanIsVerified", e.message);
     }
   }
 
@@ -795,13 +795,11 @@ define([
   }
 
   /**
-   * Check if the manufacturer is verified
-   * @param {string} options.manufName Manufacturer Name
-   * @param {number} options.recId
-   * @param {boolean} options.inDated
+   * Check if the returnRequest Is Verified
+   * @param {string} options.rrId Manufacturer Name
    * @return {boolean}
    */
-  function checkIfManufIsVerified(options) {
+  function checkIfRRIsVerified(options) {
     try {
       let manuf = options.manufName;
       //log.audit("checkIfManufIsVerified", options);
@@ -811,30 +809,10 @@ define([
         search.createFilter({
           name: "custrecord_cs_ret_req_scan_rrid",
           operator: "anyof",
-          values: options.recId,
+          values: options.rrId,
         })
       );
-      filters.push(
-        search.createFilter({
-          name: "custrecord_cs__mfgprocessing",
-          operator: "anyof",
-          values: 2,
-        })
-      );
-      filters.push(
-        search.createFilter({
-          name: "custrecord_scanindated",
-          operator: "is",
-          values: options.inDated,
-        })
-      );
-      filters.push(
-        search.createFilter({
-          name: "custrecord_cs_item_manufacturer",
-          operator: "is",
-          values: options.manufName,
-        })
-      );
+
 
       const transactionSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
@@ -861,7 +839,7 @@ define([
       log.audit("results", { manuf, searchResultCount, ISVERIFIED });
       return searchResultCount == 1 && ISVERIFIED == true;
     } catch (e) {
-      log.error("checkIfManufIsVerified", e.message);
+      log.error("checkIfRRIsVerified", e.message);
     }
   }
 
@@ -1235,9 +1213,9 @@ define([
 
   /**
    * Get all the item return scan hazardous
-   * @param options.isHazardous
-   * @param options.rrId
-   * @param options.getReturnList
+   * @param {boolean}options.isHazardous
+   * @param {number}options.rrId
+   * @param {array}options.getReturnList
    * @return {*[]} return hazardous item return scan list
    */
   function getDesctructionHazardous(options) {
@@ -1480,6 +1458,7 @@ define([
 
   return {
     getReturnableManufacturer,
+    checkIfRRIsVerified,
     getItemScanReturnbleByManufacturer,
     getDesctructionHazardous,
     getItemScanByDescrutionType,
