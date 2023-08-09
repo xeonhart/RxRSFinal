@@ -1,16 +1,14 @@
 /**
  * @NApiVersion 2.1
  */
-define(["N/record", "N/search","./rxrs_verify_staging_lib"], /**
+define(["N/record", "N/search", "./rxrs_verify_staging_lib"], /**
  * @param{record} record
  * @param{search} search
  * @param rxrsUtil
- */ (record, search,rxrsUtil) => {
+ */ (record, search, rxrsUtil) => {
   const SUBSIDIARY = 2; //Rx Return Services
   const ACCOUNT = 212; //50000 Cost of Goods Sold
   const LOCATION = 1; //Clearwater
-
-
 
   /**
    * Create Inventory Adjustment for verified Item Return Scan
@@ -19,8 +17,11 @@ define(["N/record", "N/search","./rxrs_verify_staging_lib"], /**
    */
   function createInventoryAdjustment(options) {
     try {
-      log.error("isRR Verified",rxrsUtil.checkIfRRIsVerified({rrId: options.rrId}))
-      if(rxrsUtil.checkIfRRIsVerified({rrId: options.rrId}) != true) return
+      log.error(
+        "isRR Verified",
+        rxrsUtil.checkIfRRIsVerified({ rrId: options.rrId })
+      );
+      if (rxrsUtil.checkIfRRIsVerified({ rrId: options.rrId }) != true) return;
       log.audit("createInventoryAdjustment", options);
       let inventoryAdjRec;
       let IAExist = checkIfInvAdAlreadyExist({ mrrId: options.mrrId });
@@ -52,8 +53,8 @@ define(["N/record", "N/search","./rxrs_verify_staging_lib"], /**
       });
       inventoryAdjRec.setValue({
         fieldId: "custbody_kd_master_return_id",
-        value: options.mrrId
-      })
+        value: options.mrrId,
+      });
       let IAId = addInventoryAdjustmentLine({
         inventoryAdjRec: inventoryAdjRec,
         rrId: options.rrId,
@@ -71,7 +72,6 @@ define(["N/record", "N/search","./rxrs_verify_staging_lib"], /**
    */
   function addInventoryAdjustmentLine(options) {
     try {
-
       let inventoryAdjRec = options.inventoryAdjRec;
       let items = getReturnRequestLine(options.rrId);
       items.forEach((IRFields) => {
@@ -191,13 +191,11 @@ define(["N/record", "N/search","./rxrs_verify_staging_lib"], /**
       log.error("getReturnRequestLine", e.message);
     }
   }
-function createPO(options){
 
-}
   /**
    * Check if the inventory Adjustment Already Exist
    *@param {number} options.mrrId - Internal Id of the Return Request
-   *@return  return null if no IA created | return the internal Id if the IA exists
+   *@return  null if no IA created | return the internal Id if the IA exists
    */
   function checkIfInvAdAlreadyExist(options) {
     try {
