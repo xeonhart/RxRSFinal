@@ -246,12 +246,12 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "rxrs_util"], /**
         poRec = record.load({
           type: record.Type.PURCHASE_ORDER,
           id: poId,
-          isDynamic: false,
+          isDynamic: true,
         });
       } else {
         poRec = record.create({
           type: record.Type.PURCHASE_ORDER,
-          isDynamic: false,
+          isDynamic: true,
         });
       }
       poRec.setValue({
@@ -270,43 +270,43 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "rxrs_util"], /**
       if (poLines.length < 1) throw "No Lines can be set on the Purchase Order";
       let i = 0;
       poLines.forEach((item) => {
-        poRec.setSublistValue({
+        poRec.selectNewLine({
+          sublistId: "item",
+        });
+        poRec.setCurrentSublistValue({
           sublistId: "item",
           fieldId: "item",
           value: item.item,
-          line: i,
         });
-        poRec.setSublistValue({
+        poRec.setCurrentSublistValue({
           sublistId: "item",
           fieldId: "csegmanufacturer",
           value: item.manufacturer,
-          line: i,
         });
-        poRec.setSublistValue({
+        poRec.setCurrentSublistValue({
           sublistId: "item",
           fieldId: "custcol_kod_mfgprocessing",
           value: item.mfgProcessing,
-          line: i,
         });
-        poRec.setSublistValue({
+        poRec.setCurrentSublistValue({
           sublistId: "item",
           fieldId: "custcol_kod_rqstprocesing",
           value: item.pharmaProcessing,
-          line: i,
         });
-        poRec.setSublistValue({
+        poRec.setCurrentSublistValue({
           sublistId: "item",
           fieldId: "quantity",
           value: item.quantity,
-          line: i,
         });
-        poRec.setSublistValue({
+        poRec.setCurrentSublistValue({
           sublistId: "item",
           fieldId: "amount",
           value: item.amount,
-          line: i,
         });
-        i++;
+        poRec.commitLine("item");
+      });
+      poRec.save({
+        ignoreMandatoryFields: true,
       });
     } catch (e) {
       log.error("createPO", e.message);
