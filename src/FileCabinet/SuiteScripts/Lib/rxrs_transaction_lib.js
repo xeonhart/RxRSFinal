@@ -1,30 +1,34 @@
 /**
  * @NApiVersion 2.1
  */
-define(["N/record", "N/search", "./rxrs_verify_staging_lib"], /**
+define(["N/record", "N/search", "./rxrs_verify_staging_lib", "rxrs_util"], /**
  * @param{record} record
  * @param{search} search
- * @param rxrsUtil
- */ (record, search, rxrsUtil) => {
+ * @param rxrsUtil_vl
+ */ (record, search, rxrsUtil_vl, rxrsUtil) => {
   const SUBSIDIARY = 2; //Rx Return Services
   const ACCOUNT = 212; //50000 Cost of Goods Sold
   const LOCATION = 1; //Clearwater
 
   /**
    * Create Inventory Adjustment for verified Item Return Scan
-   * @param {number}options.rrId Internal Id of the Return Request
-   * @param {number} options.mrrId Internal Id of the Master Return Request
+   * @param {number}options.rrId Internal I'd of the Return Request
+   * @param {number} options.mrrId Internal I'd of the Master Return Request
    */
   function createInventoryAdjustment(options) {
     try {
       log.error(
         "isRR Verified",
-        rxrsUtil.checkIfRRIsVerified({ rrId: options.rrId })
+        rxrsUtil_vl.checkIfRRIsVerified({ rrId: options.rrId })
       );
-      if (rxrsUtil.checkIfRRIsVerified({ rrId: options.rrId }) != true) return;
+      if (rxrsUtil_vl.checkIfRRIsVerified({ rrId: options.rrId }) != true)
+        return;
       log.audit("createInventoryAdjustment", options);
       let inventoryAdjRec;
-      let IAExist = checkIfInvAdAlreadyExist({ mrrId: options.mrrId });
+      let IAExist = checkITransAlreadyExist({
+        mrrId: options.mrrId,
+        searchType: "so",
+      });
       log.debug("createInventoryAdjustment IAExist", IAExist);
       if (IAExist == null) {
         inventoryAdjRec = record.create({
@@ -68,7 +72,7 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib"], /**
   /**
    * Add Inventory Adjustment Line
    * @param {object}options.inventoryAdjRec -  Inventory Adjustment Record
-   * @param {number}options.rrId - Return Request Id
+   * @param {number}options.rrId - Return Request I'd
    */
   function addInventoryAdjustmentLine(options) {
     try {
@@ -193,17 +197,19 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib"], /**
   }
 
   /**
-   * Check if the inventory Adjustment Already Exist
+   * Check if the PO or Inventory Adjustment Already Exist
    *@param {number} options.mrrId - Internal Id of the Return Request
+   *@param {string} options.searchType - Use po or so
    *@return  null if no IA created | return the internal Id if the IA exists
    */
-  function checkIfInvAdAlreadyExist(options) {
+  function checkITransAlreadyExist(options) {
     try {
+      let Searchtype = options.searchType == "po" ? "PurchOrd" : "InvAdjst";
       let invAdId;
       const inventoryadjustmentSearchObj = search.create({
-        type: "inventoryadjustment",
+        type: "transaction",
         filters: [
-          ["type", "anyof", "InvAdjst"],
+          ["type", "anyof", Searchtype],
           "AND",
           ["custbody_kd_master_return_id", "anyof", options.mrrId],
           "AND",
@@ -219,9 +225,152 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib"], /**
       });
       return invAdId;
     } catch (e) {
-      log.error("checkIfInvAdAlreadyExist", e.message);
+      log.error("checkITransAlreadyExist", e.message);
     }
   }
 
-  return { createInventoryAdjustment: createInventoryAdjustment };
+  /**
+   * Create PO if the type of the Return Request is RRPO
+   * @param {number}options.mrrId
+   * @param {number}options.rrId
+   * @param options.entity
+   */
+  function createPO(options) {
+    try {
+      let poId = checkITransAlreadyExist({
+        mrrId: options.mrrId,
+        searchType: "po",
+      });
+      let poRec;
+      if (poId !== null) {
+        poRec = record.load({
+          type: record.Type.PURCHASE_ORDER,
+          id: poId,
+          isDynamic: false,
+        });
+      } else {
+        poRec = record.create({
+          type: record.Type.PURCHASE_ORDER,
+          isDynamic: false,
+        });
+      }
+      poRec.setValue({
+        fieldId: "entity",
+        value: rxrsUtil_vl.getEntityFromMrr({ mrrId: options.mrrId }),
+      });
+      poRec.setValue({
+        fieldId: "custbody_kd_master_return_id",
+        value: options.mrrId,
+      });
+      poRec.setValue({
+        fieldId: "custbody_kd_return_request2",
+        value: options.rrId,
+      });
+      let poLines = getIRSPOLine({ rrId: options.rrId });
+      if (poLines.length < 1) throw "No Lines can be set on the Purchase Order";
+      let i = 0;
+      poLines.forEach((item) => {
+        poRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "item",
+          value: item.item,
+          line: i,
+        });
+        poRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "csegmanufacturer",
+          value: item.manufacturer,
+          line: i,
+        });
+        poRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_kod_mfgprocessing",
+          value: item.mfgProcessing,
+          line: i,
+        });
+        poRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_kod_rqstprocesing",
+          value: item.pharmaProcessing,
+          line: i,
+        });
+        poRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "quantity",
+          value: item.quantity,
+          line: i,
+        });
+        poRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "amount",
+          value: item.amount,
+          line: i,
+        });
+        i++;
+      });
+    } catch (e) {
+      log.error("createPO", e.message);
+    }
+  }
+
+  /**
+   * Get verified Item Return Scan Details for PO
+   * @param {number}options.rrId - Return Request Id
+   * @return {array} return list of verified Item Return Scan
+   */
+  function getIRSPOLine(options) {
+    try {
+      let poLines = [];
+      const customrecord_cs_item_ret_scanSearchObj = search.create({
+        type: "customrecord_cs_item_ret_scan",
+        filters: [["custrecord_cs_ret_req_scan_rrid", "anyof", options.rrId]],
+        columns: [
+          search.createColumn({
+            name: "custrecord_cs_return_req_scan_item",
+            label: "Item",
+          }),
+          search.createColumn({
+            name: "custrecord_scanmanufacturer",
+            label: "Manufacturer",
+          }),
+          search.createColumn({
+            name: "custrecord_cs__mfgprocessing",
+            label: "Mfg Processing",
+          }),
+          search.createColumn({
+            name: "custrecord_cs__rqstprocesing",
+            label: "Pharmacy Processing",
+          }),
+          search.createColumn({ name: "custrecord_cs_qty", label: "Qty" }),
+          search.createColumn({ name: "custrecord_scanrate", label: "Rate" }),
+          search.createColumn({
+            name: "custrecord_irc_total_amount",
+            label: "Amount ",
+          }),
+        ],
+      });
+
+      customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
+        let amount = 0;
+        amount = result.getValue("amount");
+        poLines.push({
+          item: result.getValue("custrecord_cs_return_req_scan_item"),
+          manufacturer: result.getValue("custrecord_scanmanufacturer"),
+          mfgProcessing: result.getValue("custrecord_cs__mfgprocessing"),
+          pharmaProcessing: result.getValue("custrecord_cs__rqstprocesing"),
+          quantity: result.getValue("custrecord_cs_qty"),
+          amount: amount,
+        });
+        return true;
+      });
+      return poLines;
+    } catch (e) {
+      log.error("getIRSPOLine", e.message);
+    }
+  }
+
+  return {
+    createInventoryAdjustment: createInventoryAdjustment,
+    createPO: createPO,
+  };
 });
