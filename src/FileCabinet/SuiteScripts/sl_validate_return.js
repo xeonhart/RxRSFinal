@@ -93,8 +93,12 @@ define([
         });
 
         if (rrType == "customsale_kod_returnrequest") {
-
           rxrs_tran_lib.createInventoryAdjustment({
+            rrId: params.rrId,
+            mrrId: params.mrrid,
+          });
+        } else {
+          rxrs_tran_lib.createPO({
             rrId: params.rrId,
             mrrId: params.mrrid,
           });

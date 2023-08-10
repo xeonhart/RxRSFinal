@@ -233,7 +233,6 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "rxrs_util"], /**
    * Create PO if the type of the Return Request is RRPO
    * @param {number}options.mrrId
    * @param {number}options.rrId
-   * @param options.entity
    */
   function createPO(options) {
     try {
@@ -305,9 +304,12 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "rxrs_util"], /**
         });
         poRec.commitLine("item");
       });
-      poRec.save({
-        ignoreMandatoryFields: true,
-      });
+      log.audit(
+        "PO Id",
+        poRec.save({
+          ignoreMandatoryFields: true,
+        })
+      );
     } catch (e) {
       log.error("createPO", e.message);
     }
