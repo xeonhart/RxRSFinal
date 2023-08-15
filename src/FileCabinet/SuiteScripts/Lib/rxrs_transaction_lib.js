@@ -1,11 +1,11 @@
 /**
  * @NApiVersion 2.1
  */
-define(["N/record", "N/search", "./rxrs_verify_staging_lib", "rxrs_util"], /**
+define(["N/record", "N/search", "./rxrs_verify_staging_lib"], /**
  * @param{record} record
  * @param{search} search
  * @param rxrsUtil_vl
- */ (record, search, rxrsUtil_vl, rxrsUtil) => {
+ */ (record, search, rxrsUtil_vl) => {
   const SUBSIDIARY = 2; //Rx Return Services
   const ACCOUNT = 212; //50000 Cost of Goods Sold
   const LOCATION = 1; //Clearwater
@@ -232,10 +232,11 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "rxrs_util"], /**
   /**
    * Create PO if the type of the Return Request is RRPO
    * @param {number}options.mrrId
-   * @param {number}options.rrId
+   * @param {string}options.rrId
    */
   function createPO(options) {
     try {
+      log.debug("createPO", options);
       let poId = checkITransAlreadyExist({
         mrrId: options.mrrId,
         searchType: "po",
@@ -259,57 +260,60 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "rxrs_util"], /**
       });
       poRec.setValue({
         fieldId: "custbody_kd_master_return_id",
-        value: options.mrrId,
+        value: +options.mrrId,
       });
       poRec.setValue({
         fieldId: "custbody_kd_return_request2",
         value: options.rrId,
       });
       let poLines = getIRSPOLine({ rrId: options.rrId });
+      log.audit("poLines", poLines);
       if (poLines.length < 1) throw "No Lines can be set on the Purchase Order";
-      let i = 0;
+
       poLines.forEach((item) => {
-        poRec.selectNewLine({
-          sublistId: "item",
-        });
-        poRec.setCurrentSublistValue({
-          sublistId: "item",
-          fieldId: "item",
-          value: item.item,
-        });
-        poRec.setCurrentSublistValue({
-          sublistId: "item",
-          fieldId: "csegmanufacturer",
-          value: item.manufacturer,
-        });
-        poRec.setCurrentSublistValue({
-          sublistId: "item",
-          fieldId: "custcol_kod_mfgprocessing",
-          value: item.mfgProcessing,
-        });
-        poRec.setCurrentSublistValue({
-          sublistId: "item",
-          fieldId: "custcol_kod_rqstprocesing",
-          value: item.pharmaProcessing,
-        });
-        poRec.setCurrentSublistValue({
-          sublistId: "item",
-          fieldId: "quantity",
-          value: item.quantity,
-        });
-        poRec.setCurrentSublistValue({
-          sublistId: "item",
-          fieldId: "amount",
-          value: item.amount,
-        });
-        poRec.commitLine("item");
+        try {
+          poRec.selectNewLine({
+            sublistId: "item",
+          });
+          poRec.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "item",
+            value: +item.item,
+          });
+          poRec.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "csegmanufacturer",
+            value: +item.manufacturer,
+          });
+          poRec.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "custcol_kod_mfgprocessing",
+            value: +item.mfgProcessing,
+          });
+          poRec.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "custcol_kod_rqstprocesing",
+            value: +item.pharmaProcessing,
+          });
+          poRec.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "quantity",
+            value: +item.quantity,
+          });
+          poRec.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "amount",
+            value: item.amount ? item.amount : 0,
+          });
+          poRec.commitLine("item");
+        } catch (e) {
+          log.error("Setting PO Lines", e.message);
+        }
       });
-      log.audit(
-        "PO Id",
-        poRec.save({
-          ignoreMandatoryFields: true,
-        })
-      );
+      let POID = poRec.save({
+        ignoreMandatoryFields: true,
+      });
+      log.audit("PO Id", POID);
     } catch (e) {
       log.error("createPO", e.message);
     }

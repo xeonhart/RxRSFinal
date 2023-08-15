@@ -4,9 +4,9 @@
  */
 define([
   "N/record",
-  "./Lib/rxrs_verify_staging_lib",
-  "./Lib/rxrs_lib_bag_label",
-  "./Lib/rxrs_transaction_lib",
+  "../rxrs_verify_staging_lib",
+  "../rxrs_lib_bag_label",
+  "../rxrs_transaction_lib",
 ], /**
  * @param{record} record
  * @param rxrsUtil
@@ -93,11 +93,13 @@ define([
         });
 
         if (rrType == "customsale_kod_returnrequest") {
+          log.audit("Creating Inventory Adjustment");
           rxrs_tran_lib.createInventoryAdjustment({
             rrId: params.rrId,
             mrrId: params.mrrid,
           });
         } else {
+          log.audit("Creating PO");
           rxrs_tran_lib.createPO({
             rrId: params.rrId,
             mrrId: params.mrrid,

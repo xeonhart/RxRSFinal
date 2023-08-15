@@ -560,6 +560,7 @@ define([
 
             const groupBy = (a, f) =>
               a.reduce((x, c) => (x[f(c)] ??= []).push(c) && x, {});
+
             bagList = groupBy(bagList, (b) => b.bag);
             let mainBags = [];
 
@@ -1438,7 +1439,7 @@ define([
 
   /**
    * Get the internal Id of the Entity in the Master Return Request
-   * @param {{mrrId: number}}mrrId
+   * @param {number}mrrId
    * @return {number} Entity Id
    */
   function getEntityFromMrr(mrrId) {

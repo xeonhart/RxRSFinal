@@ -2,11 +2,11 @@
  * @NApiVersion 2.1
  * @NScriptType UserEventScript
  */
-define(["N/record", "N/search", "N/url"], /**
+define(["N/record", "N/search", "N/url"]
+/**
  * @param{record} record
  * @param{search} search
- */
-(record, search, url) => {
+ */, (record, search, url) => {
   /**
    * Defines the function definition that is executed before record is loaded.
    * @param {Object} scriptContext
@@ -16,40 +16,7 @@ define(["N/record", "N/search", "N/url"], /**
    * @param {ServletRequest} scriptContext.request - HTTP request information sent from the browser for a client action only.
    * @since 2015.2
    */
-  const beforeLoad = (context) => {
-    try {
-      if (context.type == "view") {
-        const rec = context.newRecord;
-        const id = rec.id;
-        const tranid = rec.getValue("tranid");
-
-        const mrrId = rec.getValue("custbody_kd_master_return_id")
-        let stSuiteletUrl = url.resolveScript({
-          scriptId: "customscript_sl_returnable_page",
-          deploymentId: "customdeploy_sl_returnable_page",
-          returnExternalUrl: false,
-          params: {
-            selectionType: "Returnable",
-            rrId: id,
-            tranid:tranid,
-            mrrId: mrrId,
-            rrType: rec.type
-          },
-        });
-        let output = url.resolveDomain({
-          hostType: url.HostType.APPLICATION,
-        });
-        let urlLink = `https://${output}${stSuiteletUrl}`
-        context.form.addButton({
-          id: "custpage_verify",
-          label: "For Verification",
-          functionName: 'window.open("'+urlLink+' ","_blank","width=1900,height=1200")'
-        });
-      }
-    } catch (e) {
-      log.error("beforeLoad", e.message);
-    }
-  };
+  const beforeLoad = (context) => {};
 
   /**
    * Defines the function definition that is executed before record is submitted.

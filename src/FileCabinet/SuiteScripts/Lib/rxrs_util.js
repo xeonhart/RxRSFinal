@@ -43,14 +43,42 @@ define([
    * @returns {number}
    */
   function getFileId(fileName) {
-    const fileSearch = search
-      .create({
-        type: "file",
-        filters: [["name", "is", fileName]],
-      })
-      .run()
-      .getRange({ start: 0, end: 1 });
-    return fileSearch[0].id;
+    log.audit("getFileId", fileName);
+    try {
+      const fileSearch = search
+        .create({
+          type: "file",
+          filters: [["name", "is", fileName]],
+        })
+        .run()
+        .getRange({ start: 0, end: 1 });
+      log.debug("fileSearch", fileSearch);
+      return fileSearch[0].id;
+    } catch (e) {
+      log.error("getFileId", e.message);
+    }
+  }
+
+  /**
+   * Return Folder Id based on Folder Name
+   * @param FolderName
+   * @returns {number}
+   */
+  function getFolderId(FolderName) {
+    log.audit("getFolderId", FolderName);
+    try {
+      const fileSearch = search
+        .create({
+          type: "folder",
+          filters: [["name", "is", FolderName]],
+        })
+        .run()
+        .getRange({ start: 0, end: 1 });
+      log.debug("getFolderId", fileSearch);
+      return fileSearch[0].id;
+    } catch (e) {
+      log.error("getFolderId", e.message);
+    }
   }
 
   const rrStatus = Object.freeze({
@@ -108,9 +136,8 @@ define([
         rrpoName = generateRRPODocumentNumber();
       } else {
         recordType = "customsale_kod_returnrequest";
-
       }
-      log.audit("createReturnRequest", options);
+      log.audit("createReturnRequest", { options, recordType });
       const rrRec = record.create({
         type: recordType,
         isDynamic: false,
@@ -136,16 +163,18 @@ define([
           value: rrpoName,
         });
 
-   if(recordType == "customsale_kod_returnrequest"){
-     rrRec.setValue({
-       fieldId: "entity",
-       value: options.customer,
-     });
-   }
-      rrRec.setValue({
-        fieldId: "custbody_rrentity",
-        value: options.customer,
-      });
+      try {
+        rrRec.setValue({
+          fieldId: "entity",
+          value: options.customer,
+        });
+        rrRec.setValue({
+          fieldId: "custbody_rrentity",
+          value: options.customer,
+        });
+      } catch (e) {
+        log.error("setting Entity", e.message);
+      }
 
       rrRec.setValue({
         fieldId: "custbody_kd_master_return_id",
@@ -244,7 +273,7 @@ define([
           category: cat,
           customer: customer,
           isC2: isC2,
-        })
+        });
         return {
           rrId: RRId,
           numOfLabels: numOfLabels,
@@ -659,5 +688,6 @@ define([
     getDefaultTaskAssignee,
     getItemRate,
     getFileId,
+    getFolderId,
   };
 });

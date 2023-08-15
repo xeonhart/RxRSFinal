@@ -4,7 +4,7 @@
  */
 define([
   "N/ui/serverWidget",
-  "./Lib/rxrs_verify_staging_lib",
+  "../rxrs_verify_staging_lib",
   "N/cache",
   "N/file",
   "N/record",
@@ -13,6 +13,9 @@ define([
  * @param{serverWidget} serverWidget
  * @param rxrs_vs_util
  * @param cache
+ * @param file
+ * @param record
+ * @param redirect
  */ (serverWidget, rxrs_vs_util, cache, file, record, redirect) => {
   /**
    * Defines the Suitelet script trigger point.
@@ -480,7 +483,6 @@ define([
           if (rxrs_vs_util.isEmpty(fieldName[i])) continue;
           if (options.inDate != true && fieldName[i] == "custpage_in_date") {
             log.debug("val", [options.inDate, fieldName[i]]);
-            continue;
           } else {
             fieldInfo.push({
               fieldId: fieldName[i],
