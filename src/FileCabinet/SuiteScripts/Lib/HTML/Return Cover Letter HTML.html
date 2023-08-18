@@ -1,0 +1,30 @@
+<form action="https://LinkToSuitelet.js" class="form-horizontal" method="post">
+    <table>
+        <tbody>
+        <tr>
+            <td>First Name</td>
+            <td class="col-md-8"><input class="form-control" id="firstname" name="firstname" placeholder="First Name"
+                                        required="" type="text"></td>
+        </tr>
+        <tr>
+            <td>Last Name</td>
+            <td class="col-md-8"><input class="form-control" id="lastname" name="lastname" placeholder="Last Name"
+                                        required="" type="text"></td>
+        </tr>
+        <tr>
+            <td>Email</td>
+            <td class="col-md-8"><input class="form-control" id="email" name="email" placeholder="email" required=""
+                                        type="email"></td>
+        </tr>
+        <tr>
+            <td>Facebook URL</td>
+            <td class="col-md-8"><input class="form-control" id="custentity_fb_url" name="custentity_fb_url"
+                                        placeholder="Facebook" required="" type="text"></td>
+        </tr>
+        <input name="company" type="hidden" value="{{sponsorid}}">
+        <input name="project" type="hidden" value="{{projectid}}">
+        </tbody>
+    </table>
+    <br>
+    <button class="btn btn-inverse" type="submit">Sign Up as a Volunteer</button>
+</form>

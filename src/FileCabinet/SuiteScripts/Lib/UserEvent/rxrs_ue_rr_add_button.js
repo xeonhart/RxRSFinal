@@ -27,7 +27,7 @@ define(["N/record", "N/url"], /**
         const rec = context.newRecord;
         const id = rec.id;
         const tranid = rec.getValue("tranid");
-
+        const customer = rec.getValue("entity");
         const mrrId = rec.getValue("custbody_kd_master_return_id");
         let forVerificationSLUrl = url.resolveScript({
           scriptId: "customscript_sl_returnable_page",
@@ -51,10 +51,23 @@ define(["N/record", "N/url"], /**
           functionName:
             'window.open("' + urlLink + ' ","_blank","width=1900,height=1200")',
         });
+        let returnCoverLetterURL = url.resolveScript({
+          scriptId: "customscript_sl_return_cover_letter",
+          deploymentId: "customdeploy_sl_return_cover_letter",
+          returnExternalUrl: false,
+          params: {
+            selectionType: "Returnable",
+            rrId: id,
+            tranid: tranid,
+            mrrId: mrrId,
+            rrType: rec.type,
+            customer: customer,
+          },
+        });
         context.form.addButton({
           id: "custpage_return_cover_letter",
           label: "Return Cover Letter",
-          functionName: 'window.open("' + forVerificationSLUrl + ' ","_blank")',
+          functionName: 'window.open("' + returnCoverLetterURL + ' ","_blank")',
         });
       }
     } catch (e) {

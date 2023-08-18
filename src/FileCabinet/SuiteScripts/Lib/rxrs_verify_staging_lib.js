@@ -3,6 +3,7 @@
  */
 
 define([
+  "N/ui/serverWidget",
   "N/redirect",
   "N/render",
   "N/runtime",
@@ -13,6 +14,7 @@ define([
   "./rxrs_verify_staging_lib",
   "./rxrs_print_inventory_lib",
 ], /**
+ * @param serverWidget
  * @param{redirect} redirect
  * @param{render} render
  * @param{runtime} runtime
@@ -21,7 +23,9 @@ define([
  * @param record
  * @param rxrs_util
  * @param rxrs_vs_lib
+ * @param rxrs_PI_lib
  */ (
+  serverWidget,
   redirect,
   render,
   runtime,
@@ -32,6 +36,92 @@ define([
   rxrs_vs_lib,
   rxrs_PI_lib
 ) => {
+  const VERIFYSTAGINGRETURNABLECOLUMNS = [
+    search.createColumn({
+      name: "custrecord_is_verified",
+      label: "Verified",
+    }),
+    search.createColumn({
+      name: "custrecord_cs_item_ndc",
+      label: "Item Details Display - NDC",
+    }),
+    search.createColumn({
+      name: "salesdescription",
+      join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+      label: "Description",
+    }),
+    search.createColumn({
+      name: "custrecord_cs_item_manufacturer",
+      label: "Item manufacturer",
+    }),
+    search.createColumn({ name: "created", label: "Scanned on" }),
+    search.createColumn({
+      name: "custrecord_cs_lotnum",
+      label: "Serial/Lot Number",
+    }),
+    search.createColumn({
+      name: "custrecord_cs_full_partial_package",
+      label: "Full/Partial Package",
+    }),
+    search.createColumn({
+      name: "custrecord_cs_expiration_date",
+      label: "Expiration Date",
+    }),
+    search.createColumn({
+      name: "custrecord_cs__mfgprocessing",
+      label: "Mfg Processing",
+    }),
+    search.createColumn({
+      name: "custrecord_cs__rqstprocesing",
+      label: "Pharmacy Processing",
+    }),
+    search.createColumn({
+      name: "internalid",
+      join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+      label: "Internal ID",
+    }),
+
+    search.createColumn({ name: "custrecord_scanrate", label: "Rate" }),
+    search.createColumn({
+      name: "custrecord_isc_overriderate",
+      label: "Override Rate",
+    }),
+    search.createColumn({ name: "custrecord_cs_qty", label: "Qty" }),
+    search.createColumn({
+      name: "custrecord_scanbagtaglabel",
+      label: "Bag Tag Label",
+    }),
+    search.createColumn({
+      name: "custrecord_isc_inputrate",
+      label: "Input Rate",
+    }),
+    search.createColumn({
+      name: "custrecord_scanindate",
+      label: "In Date",
+    }),
+    search.createColumn({
+      name: "custrecord_wac_amount",
+      sort: search.Sort.ASC,
+      label: "Amount",
+    }),
+  ];
+  const RETURNCOVERLETTERCOLUMNS = [
+    search.createColumn({
+      name: "created",
+      summary: "MAX",
+      label: "Date Created",
+    }),
+    search.createColumn({
+      name: "custrecord_wac_amount",
+      summary: "SUM",
+      label: "Amount",
+    }),
+    search.createColumn({
+      name: "custrecord_scan_paymentschedule",
+      summary: "GROUP",
+      label: "Payment Sched",
+    }),
+  ];
   const SUBLISTFIELDS = {
     returnableSublist: [
       {
@@ -401,6 +491,26 @@ define([
         updateDisplayType: "INLINE",
       },
     ],
+    returnCoverLetterFields: [
+      {
+        id: "custpage_date_created",
+        type: "TEXT",
+        label: "Date Created",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_amount",
+        type: "TEXT",
+        label: "AMOUNT",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_payment_type",
+        type: "TEXT",
+        label: "Payment Type",
+        updateDisplayType: "DISABLED",
+      },
+    ],
   };
 
   /**
@@ -419,7 +529,7 @@ define([
    */
   function getReturnableManufacturer(options) {
     try {
-      log.error("getReturnableManufacturer", options);
+      log.audit("getReturnableManufacturer", options);
       let inDated = options.inDated == false ? "F" : "T";
       let rrId = options.rrId;
       let manufacturer = [];
@@ -479,6 +589,7 @@ define([
           inDated: options.inDated,
           rrType: options.rrType,
           mrrId: options.mrrId,
+          isVerifyStaging: true,
         });
         let currentAmount = 0;
         returnableScanList.forEach((ret) => (currentAmount += +ret.amount));
@@ -522,17 +633,14 @@ define([
         log.error("returnableScanList", returnableScanList);
         try {
           if (manufMaximumAmount >= currentAmount) {
-            log.error("if");
             let holder = [];
             returnableScanList.forEach((ret) => {
               holder.push(ret.internalId);
             });
             bagList.push(holder);
           } else {
-            log.error("else");
             for (let i = 0; i < returnableScanList.length; i++) {
               sum += +returnableScanList[i].amount;
-              log.error("loop", sum);
               if (sum <= +manufMaximumAmount) {
                 if (sum == manufMaximumAmount) {
                   b += 1;
@@ -565,14 +673,18 @@ define([
             let mainBags = [];
 
             for (let i = 1; i <= numberOfBags; i++) {
-              let a = bagList[i];
-              let temp = [];
-              a.forEach((b) => temp.push(b.scanId));
-              mainBags.push(temp);
+              try {
+                let a = bagList[i];
+                let temp = [];
+                a.forEach((b) => temp.push(b.scanId));
+                mainBags.push(temp);
+              } catch (e) {
+                log.error("adding to bag", e.message);
+              }
             }
             bagList = mainBags;
           }
-          log.error("bag", bagList);
+          log.debug("bag", bagList);
         } catch (e) {
           log.error("GROUPING RETURN LIST", e.message);
         }
@@ -584,7 +696,7 @@ define([
         //   returnList: bag,
         //   inventoryStatus: options.selectionType
         // })
-
+        log.debug("aaa ", bagList);
         bagList.forEach((bag) => {
           let verification = checkIfReturnScanIsVerified({
             recId: rrId,
@@ -872,15 +984,22 @@ define([
    * @param {string} options.rrType - Return Request Type
    * @param {number} options.mrrId - Master Return Request Id
    * @param {array} options.returnList - List of the return item scan
+   * @param {boolean} options.isVerifyStaging - Check if the suitelet is for Verify Staging else it is use for return cover letter
    * @returns {object} returns the item scanlist
    */
   function getItemScanReturnbleByManufacturer(options) {
     try {
-      let manufacturer = options.manufacturer;
-
-      //log.audit("getItemScanByManufacturer", options);
       let itemScanList = [];
       let filters = [];
+      let manufacturer = options.manufacturer;
+      let columns;
+      columns =
+        options.isVerifyStaging == true
+          ? VERIFYSTAGINGRETURNABLECOLUMNS
+          : RETURNCOVERLETTERCOLUMNS;
+
+      //log.audit("getItemScanByManufacturer", options);
+
       if (options.returnList) {
         filters.push(
           search.createFilter({
@@ -897,13 +1016,16 @@ define([
             values: options.rrId,
           })
         );
-        filters.push(
-          search.createFilter({
-            name: "custrecord_cs_item_manufacturer",
-            operator: "is",
-            values: manufacturer,
-          })
-        );
+        if (options.isVerifyStaging == true) {
+          filters.push(
+            search.createFilter({
+              name: "custrecord_cs_item_manufacturer",
+              operator: "is",
+              values: manufacturer,
+            })
+          );
+        }
+
         filters.push(
           search.createFilter({
             name: "custrecord_cs__mfgprocessing",
@@ -923,121 +1045,68 @@ define([
       const customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
         filters: filters,
-        columns: [
-          search.createColumn({
-            name: "custrecord_is_verified",
-            label: "Verified",
-          }),
-          search.createColumn({
-            name: "custrecord_cs_item_ndc",
-            label: "Item Details Display - NDC",
-          }),
-          search.createColumn({
-            name: "salesdescription",
-            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-            label: "Description",
-          }),
-          search.createColumn({
-            name: "custrecord_cs_item_manufacturer",
-            label: "Item manufacturer",
-          }),
-          search.createColumn({ name: "created", label: "Scanned on" }),
-          search.createColumn({
-            name: "custrecord_cs_lotnum",
-            label: "Serial/Lot Number",
-          }),
-          search.createColumn({
-            name: "custrecord_cs_full_partial_package",
-            label: "Full/Partial Package",
-          }),
-          search.createColumn({
-            name: "custrecord_cs_expiration_date",
-            label: "Expiration Date",
-          }),
-          search.createColumn({
-            name: "custrecord_cs__mfgprocessing",
-            label: "Mfg Processing",
-          }),
-          search.createColumn({
-            name: "custrecord_cs__rqstprocesing",
-            label: "Pharmacy Processing",
-          }),
-          search.createColumn({
-            name: "internalid",
-            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-            label: "Internal ID",
-          }),
-
-          search.createColumn({ name: "custrecord_scanrate", label: "Rate" }),
-          search.createColumn({
-            name: "custrecord_isc_overriderate",
-            label: "Override Rate",
-          }),
-          search.createColumn({ name: "custrecord_cs_qty", label: "Qty" }),
-          search.createColumn({
-            name: "custrecord_scanbagtaglabel",
-            label: "Bag Tag Label",
-          }),
-          search.createColumn({
-            name: "custrecord_isc_inputrate",
-            label: "Input Rate",
-          }),
-          search.createColumn({
-            name: "custrecord_scanindate",
-            label: "In Date",
-          }),
-          search.createColumn({
-            name: "custrecord_wac_amount",
-            sort: search.Sort.ASC,
-            label: "Amount",
-          }),
-        ],
+        columns: columns,
       });
 
       let column = customrecord_cs_item_ret_scanSearchObj.columns;
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
-        let inputRate = result.getValue("custrecord_isc_inputrate");
-        let isOverrideRate = result.getValue("custrecord_isc_overriderate");
-        let rate = result.getValue("custrecord_scanrate") || 0;
-        let qty = result.getValue("custrecord_cs_qty") || 0;
-        let bagTagLabel = result.getValue("custrecord_scanbagtaglabel");
-        let itemId = result.getValue({
-          name: "internalid",
-          join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
-        });
-        // let WACRate = getWACPrice(itemId);
-        // log.debug("Amount", { qty, WACRate, isOverrideRate, inputRate });
-        let amount = result.getValue("custrecord_wac_amount");
-
-        let verified = result.getValue(column[0]) == true ? "T" : "F";
-        let ndcName = result.getValue(column[1]);
-        let ndcLink = generateRedirectLink({
-          type: "customrecord_cs_item_ret_scan",
-          id: result.id,
-        });
-        let bagLabelURL = generateRedirectLink({
-          type: "customrecord_kd_taglabel",
-          id: bagTagLabel,
-        });
-        itemScanList.push({
-          internalId: result.id,
-          verified: verified,
-          ndc: `<a href=${ndcLink}>${ndcName}</a>`,
-          description: result.getValue(column[2]),
-          manufacturer: result.getValue(column[3]),
-          dateCreated: result.getValue(column[4]),
-          serialLotNumber: result.getValue(column[5]),
-          fullPartialPackage: result.getText(column[6]),
-          expirationDate: result.getValue(column[7]),
-          mfgProcessing: result.getText(column[8]),
-          pharmaProcessing: result.getText(column[9]),
-          amount: amount || 0,
-          inDate: result.getValue("custrecord_scanindate"),
-          bagTagLabel: `<a href ="${bagLabelURL}" target="_blank">${bagTagLabel}</a>`,
-          itemId: itemId,
-          manufId: getManufactuerId(result.getValue(column[3])),
-        });
-        return true;
+        if (options.isVerifyStaging == true) {
+          let inputRate = result.getValue("custrecord_isc_inputrate");
+          let isOverrideRate = result.getValue("custrecord_isc_overriderate");
+          let rate = result.getValue("custrecord_scanrate") || 0;
+          let qty = result.getValue("custrecord_cs_qty") || 0;
+          let bagTagLabel = result.getValue("custrecord_scanbagtaglabel");
+          let itemId = result.getValue({
+            name: "internalid",
+            join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+          });
+          let amount = result.getValue("custrecord_wac_amount");
+          let verified = result.getValue(column[0]) == true ? "T" : "F";
+          let ndcName = result.getValue(column[1]);
+          let ndcLink = generateRedirectLink({
+            type: "customrecord_cs_item_ret_scan",
+            id: result.id,
+          });
+          let bagLabelURL = generateRedirectLink({
+            type: "customrecord_kd_taglabel",
+            id: bagTagLabel,
+          });
+          itemScanList.push({
+            internalId: result.id,
+            verified: verified,
+            ndc: `<a href=${ndcLink}>${ndcName}</a>`,
+            description: result.getValue(column[2]),
+            manufacturer: result.getValue(column[3]),
+            dateCreated: result.getValue(column[4]),
+            serialLotNumber: result.getValue(column[5]),
+            fullPartialPackage: result.getText(column[6]),
+            expirationDate: result.getValue(column[7]),
+            mfgProcessing: result.getText(column[8]),
+            pharmaProcessing: result.getText(column[9]),
+            amount: amount || 0,
+            inDate: result.getValue("custrecord_scanindate"),
+            bagTagLabel: `<a href ="${bagLabelURL}" target="_blank">${bagTagLabel}</a>`,
+            itemId: itemId,
+            manufId: getManufactuerId(result.getValue(column[3])),
+          });
+          return true;
+        } else {
+          itemScanList.push({
+            dateCreated: result.getValue({
+              name: "created",
+              summary: "MAX",
+            }),
+            amount: result.getValue({
+              name: "custrecord_wac_amount",
+              summary: "SUM",
+            }),
+            paymetnSchedule: result.getText({
+              name: "custrecord_scan_paymentschedule",
+              summary: "GROUP",
+            }),
+          });
+          return true;
+        }
       });
       log.audit("itemScanList", itemScanList);
       return itemScanList;
@@ -1455,8 +1524,137 @@ define([
     }
   }
 
+  /**
+   * It creates a returnable sublist on the form and populates it with the items that are passed in
+   * @param {object}options.form - The form object that we are adding the sublist to.
+   * @param {number}options.rrTranId - Return Request Id
+   * @param {object}options.sublistFields SublistFields
+   * @param {array} options.value
+   * @param {boolean} options.isMainReturnable
+   * @param {string} options.rrName
+   * @param {string} options.paramManufacturer
+   * @param {number} options.mrrId
+   * @param {string} options.rrType
+   * @param {string} options.inDate
+   * @param {string} options.title
+   * @returns  Updated Form.
+   */
+  const createReturnableSublist = (options) => {
+    try {
+      log.debug("createReturnableSublist", options);
+      //let inDate = options.paramInDate ? " : " + options.paramInDate : "";
+      let manuf = options.paramManufacturer;
+      let mrrId = options.mrrId;
+      let rrType = options.rrType;
+      let fieldName = [];
+      let form = options.form;
+      let sublistFields = options.sublistFields;
+      let value = options.value;
+      form.clientScriptFileId = getFileId("rxrs_cs_verify_staging.js");
+      let sublist;
+
+      sublist = form.addSublist({
+        id: "custpage_items_sublist",
+        type: serverWidget.SublistType.LIST,
+        label: options.title,
+      });
+
+      if (manuf) {
+        //If the user is in the Manufacturing Group. Add the following UI context below
+
+        form.addButton({
+          id: "custpage_verify",
+          label: "Update Verification",
+          functionName: `verify()`,
+        });
+        form.addButton({
+          id: "custpage_back",
+          label: "Back",
+          functionName: `backToReturnable()`,
+        });
+        sublist.addMarkAllButtons();
+      }
+
+      sublistFields.forEach((attri) => {
+        fieldName.push(attri.id);
+        sublist
+          .addField({
+            id: attri.id,
+            type: serverWidget.FieldType[attri.type],
+            label: attri.label,
+          })
+          .updateDisplayType({
+            displayType: serverWidget.FieldDisplayType[attri.updateDisplayType],
+          });
+      });
+
+      let mainLineInfo = [];
+
+      value.forEach((val) => {
+        let value = Object.values(val);
+        let fieldInfo = [];
+        for (let i = 0; i < value.length; i++) {
+          if (isEmpty(fieldName[i])) continue;
+          if (options.inDate != true && fieldName[i] == "custpage_in_date") {
+            log.debug("val", [options.inDate, fieldName[i]]);
+          } else {
+            fieldInfo.push({
+              fieldId: fieldName[i],
+              value: value[i],
+            });
+          }
+        }
+        mainLineInfo.push(fieldInfo);
+      });
+
+      populateSublist({
+        sublist: sublist,
+        fieldInfo: mainLineInfo,
+        isMainReturnable: options.isMainReturnable,
+        isIndate: options.paramInDate,
+      });
+    } catch (e) {
+      log.error("createReturnableSublist", e.message);
+    }
+  };
+  /**
+   * Populate the returnable sublist
+   * @param options.sublist
+   * @param options.fieldInfo
+   * @param options.isMainReturnable
+   */
+  const populateSublist = (options) => {
+    try {
+      log.audit("populateSublist", options);
+      let sublist = options.sublist;
+      let sublistFields = options.fieldInfo;
+
+      if (sublistFields.length > 0) {
+        let lineCount = 0;
+        sublistFields.forEach((element) => {
+          for (let i = 0; i < element.length; i++) {
+            try {
+              sublist.setSublistValue({
+                id: element[i].fieldId,
+                line: lineCount,
+                value: element[i].value ? element[i].value : " ",
+              });
+            } catch (e) {
+              log.emergency("SetSublist", e.message);
+            }
+          }
+
+          lineCount++;
+        });
+      }
+    } catch (e) {
+      log.error("populateSublist", e.message);
+    }
+  };
+
   return {
     getReturnableManufacturer,
+    createReturnableSublist,
     checkIfRRIsVerified,
     getItemScanReturnbleByManufacturer,
     getDesctructionHazardous,

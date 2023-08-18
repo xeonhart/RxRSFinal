@@ -72,6 +72,7 @@ define([
     let mrrId = options.params.mrrId;
     let form = options.form;
     let returnList = options.params.returnList;
+    log.debug("createHeaderFields returnList", returnList);
     try {
       returnList = JSON.parse(options.params.returnList);
       returnList = returnList.split("_");
@@ -286,7 +287,7 @@ define([
         if (rxrs_vs_util.isEmpty(paramManufacturer)) {
           sublistFields = rxrs_vs_util.SUBLISTFIELDS.returnableSublist;
           log.emergency("returnableSublist", sublistFields);
-          createReturnableSublist({
+          rxrs_vs_util.createReturnableSublist({
             form: form,
             rrTranId: rrId,
             rrName: tranId,
@@ -296,6 +297,7 @@ define([
             value: manufacturer,
             isMainReturnable: false,
             paramManufacturer: paramManufacturer,
+            title: `RO ${tranId} - RXLINEITEMS :${paramManufacturer}`,
           });
         } else {
           sublistFields = rxrs_vs_util.SUBLISTFIELDS.returnableManufacturer;
@@ -309,10 +311,11 @@ define([
               manufacturer: paramManufacturer,
               inDated: false,
               returnList: returnList,
+              isVerifyStaging: true,
             }
           );
           log.debug("itemsReturnScan", itemsReturnScan);
-          createReturnableSublist({
+          rxrs_vs_util.createReturnableSublist({
             form: form,
             rrTranId: rrId,
             documentNumber: tranId,
@@ -320,6 +323,7 @@ define([
             value: itemsReturnScan,
             isMainReturnable: false,
             paramManufacturer: paramManufacturer,
+            title: `RO ${tranId} - RXLINEITEMS :${paramManufacturer}`,
           });
         }
       } else if (paramSelectionType == "Destruction") {
@@ -368,7 +372,7 @@ define([
             inDated: true,
             selectionType: paramSelectionType,
           });
-          createReturnableSublist({
+          rxrs_vs_util.createReturnableSublist({
             form: form,
             rrTranId: rrId,
             rrName: tranId,
@@ -378,6 +382,7 @@ define([
             value: manufByInDated,
             isMainInDated: true,
             paramManufacturer: paramManufacturer,
+            title: `RO ${tranId} - RXLINEITEMS :${paramManufacturer}`,
           });
         } else {
           sublistFields = rxrs_vs_util.SUBLISTFIELDS.returnableManufacturer;
@@ -388,9 +393,10 @@ define([
               rrType: rrType,
               manufacturer: paramManufacturer,
               inDated: true,
+              isVerifyStaging: true,
             }
           );
-          createReturnableSublist({
+          rxrs_vs_util.createReturnableSublist({
             form: form,
             rrTranId: rrId,
             rrName: tranId,
@@ -400,6 +406,7 @@ define([
             paramManufacturer: paramManufacturer,
             inDate: true,
             returnList: returnList,
+            title: `RO ${tranId} - RXLINEITEMS :${paramManufacturer}`,
           });
         }
       }
@@ -410,144 +417,6 @@ define([
     }
   };
 
-  /**
-   * It creates a returnable sublist on the form and populates it with the items that are passed in
-   * @param {object}options.form - The form object that we are adding the sublist to.
-   * @param {number}options.rrTranId - Return Request Id
-   * @param {object}options.sublistFields SublistFields
-   * @param {array} options.value
-   * @param {boolean} options.isMainReturnable
-   * @param {string} options.rrName
-   * @param {string} options.paramManufacturer
-   * @param {number} options.mrrId
-   * @param {string} options.rrType
-   * @param {string} options.inDate
-   * @returns  Updated Form.
-   */
-  const createReturnableSublist = (options) => {
-    try {
-      log.debug("createReturnableSublist", options);
-      //let inDate = options.paramInDate ? " : " + options.paramInDate : "";
-      let manuf = options.paramManufacturer;
-      let mrrId = options.mrrId;
-      let rrType = options.rrType;
-      let fieldName = [];
-      let form = options.form;
-      let sublistFields = options.sublistFields;
-      let value = options.value;
-      let scriptId = rxrs_vs_util.getFileId("rxrs_cs_verify_staging.js");
-      form.clientScriptFileId = scriptId;
-      let sublist;
-
-      sublist = form.addSublist({
-        id: "custpage_items_sublist",
-        type: serverWidget.SublistType.LIST,
-        label: `RO ${options.rrName} - RXLINEITEMS :${manuf}`,
-      });
-
-      if (manuf) {
-        //If the user is in the Manufacturing Group. Add the following UI context below
-
-        form.addButton({
-          id: "custpage_verify",
-          label: "Update Verification",
-          functionName: `verify()`,
-        });
-        form.addButton({
-          id: "custpage_back",
-          label: "Back",
-          functionName: `backToReturnable()`,
-        });
-        sublist.addMarkAllButtons();
-      }
-
-      sublistFields.forEach((attri) => {
-        fieldName.push(attri.id);
-        sublist
-          .addField({
-            id: attri.id,
-            type: serverWidget.FieldType[attri.type],
-            label: attri.label,
-          })
-          .updateDisplayType({
-            displayType: serverWidget.FieldDisplayType[attri.updateDisplayType],
-          });
-      });
-
-      let mainLineInfo = [];
-
-      value.forEach((val) => {
-        let value = Object.values(val);
-        let fieldInfo = [];
-        for (let i = 0; i < value.length; i++) {
-          if (rxrs_vs_util.isEmpty(fieldName[i])) continue;
-          if (options.inDate != true && fieldName[i] == "custpage_in_date") {
-            log.debug("val", [options.inDate, fieldName[i]]);
-          } else {
-            fieldInfo.push({
-              fieldId: fieldName[i],
-              value: value[i],
-            });
-          }
-        }
-        mainLineInfo.push(fieldInfo);
-      });
-
-      populateSublist({
-        sublist: sublist,
-        fieldInfo: mainLineInfo,
-        isMainReturnable: options.isMainReturnable,
-        isIndate: options.paramInDate,
-      });
-    } catch (e) {
-      log.error("createReturnableSublist", e.message);
-    }
-  };
-  /**
-   * Populate the returnable sublist
-   * @param options.sublist
-   * @param options.fieldInfo
-   * @param options.isMainReturnable
-   */
-  const populateSublist = (options) => {
-    try {
-      log.audit("populateSublist", options);
-      let sublist = options.sublist;
-      let sublistFields = options.fieldInfo;
-
-      if (sublistFields.length > 0) {
-        let lineCount = 0;
-        sublistFields.forEach((element) => {
-          for (let i = 0; i < element.length; i++) {
-            try {
-              sublist.setSublistValue({
-                id: element[i].fieldId,
-                line: lineCount,
-                value: element[i].value ? element[i].value : " ",
-              });
-            } catch (e) {
-              log.emergency("SetSublist", e.message);
-            }
-          }
-
-          lineCount++;
-        });
-      }
-    } catch (e) {
-      log.error("populateSublist", e.message);
-    }
-  };
-  /**
-   * It creates a destruction sublist on the form and populates it with the items that are passed in
-   * @param {object}options.form - The form object that we are adding the sublist to.
-   * @param {number}options.rrTranId - Return Request Id
-   * @param {object}options.sublistFields SublistFields
-   * @param {array} options.value
-   * @param {boolean} options.isMainReturnable
-   * @param {string} options.documentNumber
-   * @param {string} options.paramIsHazardous
-   * @returns The form is being returned.
-   */
   const createDestructioneSublist = (options) => {
     try {
       log.debug("createDestructioneSublist", options);
