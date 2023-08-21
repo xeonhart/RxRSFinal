@@ -15,9 +15,9 @@ define([
  */ (record, rxrsUtil, rxrsBagUtil, rxrs_tran_lib) => {
   /**
    * Defines the Suitelet script trigger point.
-   * @param {Object} scriptContext
-   * @param {ServerRequest} scriptContext.request - Incoming request
-   * @param {ServerResponse} scriptContext.response - Suitelet response
+   * @param {Object} context
+   * @param {ServerRequest} context.request - Incoming request
+   * @param {ServerResponse} context.response - Suitelet response
    * @since 2015.2
    */
   const onRequest = (context) => {

@@ -67,11 +67,8 @@ define([
    * @return {*}
    */
   const createHeaderFields = (options) => {
-    let rrId = options.params.rrId;
-    let tranId = options.params.tranid;
-    let mrrId = options.params.mrrId;
     let form = options.form;
-    let returnList = options.params.returnList;
+    let { rrId, tranId, mrrId, returnList } = options.params;
     log.debug("createHeaderFields returnList", returnList);
     try {
       returnList = JSON.parse(options.params.returnList);
@@ -89,18 +86,6 @@ define([
       : "";
     let rrType = options.params.rrType;
     try {
-      // if (returnList) {
-      //   form
-      //     .addField({
-      //       id: "custpage_return_list",
-      //       label: "Return List",
-      //       type: serverWidget.FieldType.TEXT,
-      //     })
-      //     .updateDisplayType({
-      //       displayType: serverWidget.FieldDisplayType.NORMAL,
-      //     }).defaultValue = returnList;
-      // }
-
       paramManufacturer = paramManufacturer.includes("_")
         ? paramManufacturer.replaceAll("_", "&")
         : paramManufacturer;
@@ -301,19 +286,15 @@ define([
           });
         } else {
           sublistFields = rxrs_vs_util.SUBLISTFIELDS.returnableManufacturer;
-          // let manuf = []
-          // Object.values(manufacturer).map(e => {let name = e.name; manuf.push(name)} )
-          let itemsReturnScan = rxrs_vs_util.getItemScanReturnbleByManufacturer(
-            {
-              rrId: rrId,
-              mrrId: mrrId,
-              rrType: rrType,
-              manufacturer: paramManufacturer,
-              inDated: false,
-              returnList: returnList,
-              isVerifyStaging: true,
-            }
-          );
+          let itemsReturnScan = rxrs_vs_util.getReturnableItemScan({
+            rrId: rrId,
+            mrrId: mrrId,
+            rrType: rrType,
+            manufacturer: paramManufacturer,
+            inDated: false,
+            returnList: returnList,
+            isVerifyStaging: true,
+          });
           log.debug("itemsReturnScan", itemsReturnScan);
           rxrs_vs_util.createReturnableSublist({
             form: form,
@@ -337,7 +318,7 @@ define([
             rrType: rrType,
           });
           log.emergency("fieldValue", destructionList);
-          createDestructioneSublist({
+          rxrs_vs_util.createDestructioneSublist({
             form: form,
             rrTranId: rrId,
             documentNumber: tranId,
@@ -352,7 +333,7 @@ define([
           });
           log.emergency("destructionlist", desctructionList);
           let sublistFields = rxrs_vs_util.SUBLISTFIELDS.descrutionField;
-          createDestructioneSublist({
+          rxrs_vs_util.createDestructioneSublist({
             form: form,
             rrTranId: rrId,
             documentNumber: tranId,
@@ -386,16 +367,14 @@ define([
           });
         } else {
           sublistFields = rxrs_vs_util.SUBLISTFIELDS.returnableManufacturer;
-          let itemsReturnScan = rxrs_vs_util.getItemScanReturnbleByManufacturer(
-            {
-              rrId: rrId,
-              mrrId: mrrId,
-              rrType: rrType,
-              manufacturer: paramManufacturer,
-              inDated: true,
-              isVerifyStaging: true,
-            }
-          );
+          let itemsReturnScan = rxrs_vs_util.getReturnableItemScan({
+            rrId: rrId,
+            mrrId: mrrId,
+            rrType: rrType,
+            manufacturer: paramManufacturer,
+            inDated: true,
+            isVerifyStaging: true,
+          });
           rxrs_vs_util.createReturnableSublist({
             form: form,
             rrTranId: rrId,
@@ -417,72 +396,6 @@ define([
     }
   };
 
-  const createDestructioneSublist = (options) => {
-    try {
-      log.debug("createDestructioneSublist", options);
-
-      let fieldName = [];
-      let form = options.form;
-      let sublistFields = options.sublistFields;
-      let value = options.value;
-      let scriptId = rxrs_vs_util.getFileId("rxrs_cs_verify_staging.js");
-      form.clientScriptFileId = scriptId;
-      let sublist;
-      sublist = form.addSublist({
-        id: "custpage_items_sublist",
-        type: serverWidget.SublistType.LIST,
-        label: `RO ${options.documentNumber} - Destruction Line Items :`,
-      });
-
-      if (options.isMainDestruction == false) {
-        form.addButton({
-          id: "custpage_verify",
-          label: "Update Verification",
-          functionName: `verify()`,
-        });
-        form.addButton({
-          id: "custpage_back",
-          label: "Back",
-          functionName: `backToReturnable()`,
-        });
-        sublist.addMarkAllButtons();
-      }
-
-      sublistFields.forEach((attri) => {
-        fieldName.push(attri.id);
-        sublist
-          .addField({
-            id: attri.id,
-            type: serverWidget.FieldType[attri.type],
-            label: attri.label,
-          })
-          .updateDisplayType({
-            displayType: serverWidget.FieldDisplayType[attri.updateDisplayType],
-          });
-      });
-      let mainLineInfo = [];
-      value.forEach((val) => {
-        let value = Object.values(val);
-        let fieldInfo = [];
-        for (let i = 0; i < value.length; i++) {
-          fieldInfo.push({
-            fieldId: fieldName[i],
-            value: value[i],
-          });
-        }
-
-        mainLineInfo.push(fieldInfo);
-      });
-      log.debug("mainlineInfo", { sublist, mainLineInfo });
-      populateSublist({
-        sublist: sublist,
-        fieldInfo: mainLineInfo,
-        isMainDestruction: null,
-      });
-    } catch (e) {
-      log.error("createDestructioneSublist", e.message);
-    }
-  };
   /**
    * Populate the returnable sublist
    * @param options.sublist

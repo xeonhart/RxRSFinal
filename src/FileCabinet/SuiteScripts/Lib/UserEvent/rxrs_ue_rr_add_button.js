@@ -29,6 +29,7 @@ define(["N/record", "N/url"], /**
         const tranid = rec.getValue("tranid");
         const customer = rec.getValue("entity");
         const mrrId = rec.getValue("custbody_kd_master_return_id");
+        const DEA222Fees = rec.getValue("custbody_kd_total_222_form_fee");
         let forVerificationSLUrl = url.resolveScript({
           scriptId: "customscript_sl_returnable_page",
           deploymentId: "customdeploy_sl_returnable_page",
@@ -41,15 +42,13 @@ define(["N/record", "N/url"], /**
             rrType: rec.type,
           },
         });
-        let output = url.resolveDomain({
-          hostType: url.HostType.APPLICATION,
-        });
-        let urlLink = `https://${output}${forVerificationSLUrl}`;
         context.form.addButton({
           id: "custpage_verify",
-          label: "For Verification",
+          label: "Verify Items",
           functionName:
-            'window.open("' + urlLink + ' ","_blank","width=1900,height=1200")',
+            'window.open("' +
+            forVerificationSLUrl +
+            ' ","_blank","width=1900,height=1200")',
         });
         let returnCoverLetterURL = url.resolveScript({
           scriptId: "customscript_sl_return_cover_letter",
@@ -62,6 +61,7 @@ define(["N/record", "N/url"], /**
             mrrId: mrrId,
             rrType: rec.type,
             customer: customer,
+            DEA222Fees: DEA222Fees,
           },
         });
         context.form.addButton({

@@ -1,11 +1,11 @@
 /**
  * @NApiVersion 2.1
  */
-define(["N/record", "N/search", "./rxrs_verify_staging_lib"], /**
+define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
  * @param{record} record
  * @param{search} search
  * @param rxrsUtil_vl
- */ (record, search, rxrsUtil_vl) => {
+ */ (record, search, rxrsUtil_vl, rxrs_util) => {
   const SUBSIDIARY = 2; //Rx Return Services
   const ACCOUNT = 212; //50000 Cost of Goods Sold
   const LOCATION = 1; //Clearwater
@@ -17,16 +17,26 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib"], /**
    */
   function createInventoryAdjustment(options) {
     try {
+      let { rrId, mrrId } = options;
       log.error(
         "isRR Verified",
-        rxrsUtil_vl.checkIfRRIsVerified({ rrId: options.rrId })
+        rxrsUtil_vl.checkIfRRIsVerified({ rrId: rrId })
       );
-      if (rxrsUtil_vl.checkIfRRIsVerified({ rrId: options.rrId }) != true)
-        return;
+      if (rxrsUtil_vl.checkIfRRIsVerified({ rrId: rrId }) != true) return;
       log.audit("createInventoryAdjustment", options);
+      /**
+       * Set the return request to approve since all the items are verified
+       */
+      record.submitFields({
+        type: rxrs_util.getReturnRequestType(rrId),
+        id: rrId,
+        values: {
+          transtatus: rxrs_util.rrStatus.Approved,
+        },
+      });
       let inventoryAdjRec;
       let IAExist = checkITransAlreadyExist({
-        mrrId: options.mrrId,
+        mrrId: mrrId,
         searchType: "so",
       });
       log.debug("createInventoryAdjustment IAExist", IAExist);
@@ -57,11 +67,11 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib"], /**
       });
       inventoryAdjRec.setValue({
         fieldId: "custbody_kd_master_return_id",
-        value: options.mrrId,
+        value: mrrId,
       });
       let IAId = addInventoryAdjustmentLine({
         inventoryAdjRec: inventoryAdjRec,
-        rrId: options.rrId,
+        rrId: rrId,
       });
       log.audit("IAId", IAId);
     } catch (e) {

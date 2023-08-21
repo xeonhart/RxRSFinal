@@ -583,7 +583,7 @@ define([
           summary: "GROUP",
         });
 
-        let returnableScanList = getItemScanReturnbleByManufacturer({
+        let returnableScanList = getReturnableItemScan({
           rrId: options.rrId,
           manufacturer: manufName,
           inDated: options.inDated,
@@ -984,28 +984,37 @@ define([
    * @param {string} options.rrType - Return Request Type
    * @param {number} options.mrrId - Master Return Request Id
    * @param {array} options.returnList - List of the return item scan
+   * @param {number} options.paymentSchedId - Payment ID of the Item Return Scan
    * @param {boolean} options.isVerifyStaging - Check if the suitelet is for Verify Staging else it is use for return cover letter
    * @returns {object} returns the item scanlist
    */
-  function getItemScanReturnbleByManufacturer(options) {
+  function getReturnableItemScan(options) {
+    let paymentAmount = 0;
+    let itemScanList = [];
+    let filters = [];
+    let {
+      returnList,
+      paymentSchedId,
+      inDated,
+      manufacturer,
+      rrId,
+      isVerifyStaging,
+    } = options;
+    let columns;
     try {
-      let itemScanList = [];
-      let filters = [];
-      let manufacturer = options.manufacturer;
-      let columns;
       columns =
-        options.isVerifyStaging == true
+        isVerifyStaging == true
           ? VERIFYSTAGINGRETURNABLECOLUMNS
           : RETURNCOVERLETTERCOLUMNS;
 
       //log.audit("getItemScanByManufacturer", options);
 
-      if (options.returnList) {
+      if (returnList) {
         filters.push(
           search.createFilter({
             name: "internalid",
             operator: "anyof",
-            values: options.returnList,
+            values: returnList,
           })
         );
       } else {
@@ -1013,10 +1022,10 @@ define([
           search.createFilter({
             name: "custrecord_cs_ret_req_scan_rrid",
             operator: "anyof",
-            values: options.rrId,
+            values: rrId,
           })
         );
-        if (options.isVerifyStaging == true) {
+        if (isVerifyStaging == true && isEmpty(paymentSchedId)) {
           filters.push(
             search.createFilter({
               name: "custrecord_cs_item_manufacturer",
@@ -1025,7 +1034,15 @@ define([
             })
           );
         }
-
+        if (paymentSchedId) {
+          filters.push(
+            search.createFilter({
+              name: "custrecord_scan_paymentschedule",
+              operator: "anyof",
+              values: paymentSchedId,
+            })
+          );
+        }
         filters.push(
           search.createFilter({
             name: "custrecord_cs__mfgprocessing",
@@ -1037,7 +1054,7 @@ define([
           search.createFilter({
             name: "custrecord_scanindated",
             operator: "is",
-            values: options.inDated,
+            values: inDated,
           })
         );
       }
@@ -1050,7 +1067,7 @@ define([
 
       let column = customrecord_cs_item_ret_scanSearchObj.columns;
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
-        if (options.isVerifyStaging == true) {
+        if (isVerifyStaging == true || !isEmpty(paymentSchedId)) {
           let inputRate = result.getValue("custrecord_isc_inputrate");
           let isOverrideRate = result.getValue("custrecord_isc_overriderate");
           let rate = result.getValue("custrecord_scanrate") || 0;
@@ -1091,23 +1108,49 @@ define([
           });
           return true;
         } else {
+          let amount = result.getValue({
+            name: "custrecord_wac_amount",
+            summary: "SUM",
+          });
+          let paymentSchedId = result.getValue({
+            name: "custrecord_scan_paymentschedule",
+            summary: "GROUP",
+          });
+          let paymentSchedText = result.getText({
+            name: "custrecord_scan_paymentschedule",
+            summary: "GROUP",
+          });
+          let stSuiteletUrl = url.resolveScript({
+            scriptId: "customscript_sl_return_cover_letter",
+            deploymentId: "customdeploy_sl_return_cover_letter",
+            returnExternalUrl: false,
+            params: {
+              paymentSchedId: paymentSchedId,
+              paymentSchedText: paymentSchedText,
+              rrId: options.rrId,
+            },
+          });
+
+          paymentAmount += +amount;
           itemScanList.push({
             dateCreated: result.getValue({
               name: "created",
               summary: "MAX",
             }),
-            amount: result.getValue({
-              name: "custrecord_wac_amount",
-              summary: "SUM",
-            }),
-            paymetnSchedule: result.getText({
-              name: "custrecord_scan_paymentschedule",
-              summary: "GROUP",
-            }),
+            amount: "$" + amount,
+            paymetnSchedule: `<a href="${stSuiteletUrl}" target="_blank" >${paymentSchedText} </a>`,
           });
           return true;
         }
       });
+
+      if (isVerifyStaging == false) {
+        itemScanList.push({
+          dateCreated: " ",
+          amount: "$" + paymentAmount.toFixed(2),
+          paymetnSchedule: " ",
+        });
+      }
       log.audit("itemScanList", itemScanList);
       return itemScanList;
     } catch (e) {
@@ -1651,12 +1694,78 @@ define([
       log.error("populateSublist", e.message);
     }
   };
+  const createDestructioneSublist = (options) => {
+    try {
+      log.debug("createDestructioneSublist", options);
 
+      let fieldName = [];
+      let form = options.form;
+      let sublistFields = options.sublistFields;
+      let value = options.value;
+      let scriptId = getFileId("rxrs_cs_verify_staging.js");
+      form.clientScriptFileId = scriptId;
+      let sublist;
+      sublist = form.addSublist({
+        id: "custpage_items_sublist",
+        type: serverWidget.SublistType.LIST,
+        label: `RO ${options.documentNumber} - Destruction Line Items :`,
+      });
+
+      if (options.isMainDestruction == false) {
+        form.addButton({
+          id: "custpage_verify",
+          label: "Update Verification",
+          functionName: `verify()`,
+        });
+        form.addButton({
+          id: "custpage_back",
+          label: "Back",
+          functionName: `backToReturnable()`,
+        });
+        sublist.addMarkAllButtons();
+      }
+
+      sublistFields.forEach((attri) => {
+        fieldName.push(attri.id);
+        sublist
+          .addField({
+            id: attri.id,
+            type: serverWidget.FieldType[attri.type],
+            label: attri.label,
+          })
+          .updateDisplayType({
+            displayType: serverWidget.FieldDisplayType[attri.updateDisplayType],
+          });
+      });
+      let mainLineInfo = [];
+      value.forEach((val) => {
+        let value = Object.values(val);
+        let fieldInfo = [];
+        for (let i = 0; i < value.length; i++) {
+          fieldInfo.push({
+            fieldId: fieldName[i],
+            value: value[i],
+          });
+        }
+
+        mainLineInfo.push(fieldInfo);
+      });
+      log.debug("mainlineInfo", { sublist, mainLineInfo });
+      populateSublist({
+        sublist: sublist,
+        fieldInfo: mainLineInfo,
+        isMainDestruction: null,
+      });
+    } catch (e) {
+      log.error("createDestructioneSublist", e.message);
+    }
+  };
   return {
     getReturnableManufacturer,
+    createDestructioneSublist,
     createReturnableSublist,
     checkIfRRIsVerified,
-    getItemScanReturnbleByManufacturer,
+    getReturnableItemScan: getReturnableItemScan,
     getDesctructionHazardous,
     getItemScanByDescrutionType,
     getFileId,
