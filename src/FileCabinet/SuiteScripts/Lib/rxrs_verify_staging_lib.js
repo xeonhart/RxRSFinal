@@ -1760,7 +1760,56 @@ define([
       log.error("createDestructioneSublist", e.message);
     }
   };
+
+  /**
+   * Get the Item ReturnScan In days
+   * @params {number} irsId Item Return Scan Id
+   * @return {number} returns the In days of the Item return Scan
+   */
+  function getIndays(irsId) {
+    try {
+      let inDays;
+      var customrecord_cs_item_ret_scanSearchObj = search.create({
+        type: "customrecord_cs_item_ret_scan",
+        filters: [
+          ["custrecord_scanindated", "is", "T"],
+          "AND",
+          ["internalid", "anyof", irsId],
+        ],
+        columns: [
+          search.createColumn({
+            name: "custrecord_cs_return_req_scan_item",
+            label: "Item",
+          }),
+          search.createColumn({
+            name: "formulanumeric",
+            formula: "{today}-{custrecord_scanindate}",
+            label: "Formula (Numeric)",
+          }),
+        ],
+      });
+      var searchResultCount =
+        customrecord_cs_item_ret_scanSearchObj.runPaged().count;
+      log.debug("customrecord_cs_item_ret_scanSearchObj result count", {
+        searchResultCount,
+        irsId,
+      });
+      customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
+        inDays = result.getValue({
+          name: "formulanumeric",
+          formula: "{today}-{custrecord_scanindate}",
+        });
+        log.audit("inDays", { inDays, irsId });
+      });
+      log.audit("indaysss", parseInt(inDays));
+      return parseInt(inDays);
+    } catch (e) {
+      log.error("getIndays", e.message);
+    }
+  }
+
   return {
+    getIndays,
     getReturnableManufacturer,
     createDestructioneSublist,
     createReturnableSublist,

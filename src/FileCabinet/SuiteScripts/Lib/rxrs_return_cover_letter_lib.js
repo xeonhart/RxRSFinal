@@ -62,7 +62,7 @@ define(["N/record", "N/search"], /**
       const customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
         filters: [
-          ["custrecord_cs_ret_req_scan_rrid", "anyof", "10804"],
+          ["custrecord_cs_ret_req_scan_rrid", "anyof", rrId],
           "AND",
           ["custrecord_cs__mfgprocessing", "anyof", "1", "2"],
         ],
@@ -131,7 +131,9 @@ define(["N/record", "N/search"], /**
         log.error("totalAmount", totalAmount);
       });
       return totalAmount;
-
+    } catch (e) {
+      log.error("getCustomerTotalCreditAmount", e.message);
+    }
   }
 
   return {
