@@ -35,7 +35,26 @@ define([
     suitelet = scriptContext.currentRecord;
     let arrTemp = window.location.href.split("?");
     urlParams = new URLSearchParams(arrTemp[1]);
+
+    if (window.location.href.indexOf("splitPayment") != -1) {
+      let splitPayment = urlParams.get("splitPayment");
+      if (splitPayment == true || splitPayment == "true") {
+        setTimeout(function () {
+          opener.location.reload();
+          if (!window.location.hash) {
+            //setting window location
+            window.location = window.location + "#loaded";
+            //using reload() method to reload web page
+            window.location.reload();
+          }
+        }, 100);
+      }
+    }
   }
+
+  window.onload = function () {
+    //considering there aren't any hashes in the urls already
+  };
 
   /**
    * Function to be executed when field is changed.
@@ -153,13 +172,12 @@ define([
           fieldId: "custpage_bag_tag_label",
           line: i,
         });
-        console.log(prevBag.length)
-        if(prevBag.length <= 96){
-          prevBag = null
+        console.log(prevBag.length);
+        if (prevBag.length <= 96) {
+          prevBag = null;
         }
         if (returnType != "Destruction") {
           if (+amount > +maxAmount) {
-
             alert(
               `Line #${
                 i + 1
@@ -173,18 +191,18 @@ define([
           id: internalId,
           amount: amount || 0,
           itemId: itemId,
-          prevBag: prevBag ,
+          prevBag: prevBag,
         });
       }
       let m = message.create({
         type: message.Type.WARNING,
         title: "WARNING",
-        message: "NO ITEM TO PROCESS"
-      })
-      if(returnItemScanIds.length <= 0) {
+        message: "NO ITEM TO PROCESS",
+      });
+      if (returnItemScanIds.length <= 0) {
         m.show({
-          duration: 2000
-        })
+          duration: 2000,
+        });
         return;
       }
       let maximumAmount = suitelet.getValue("custpage_manuf_max_so_amt");
@@ -195,7 +213,7 @@ define([
       let params = {
         custscript_payload: JSON.stringify(returnItemScanIds),
         isVerify: true,
-        maximumAmount: maximumAmount ?JSON.stringify(maximumAmount) : 0,
+        maximumAmount: maximumAmount ? JSON.stringify(maximumAmount) : 0,
         rrId: rrId,
         mrrid: mrrId,
         rrType: rrType,
@@ -213,9 +231,9 @@ define([
       });
 
       if (response.body) {
-        if(response.body.includes("ERROR")){
-          alert(response.body)
-        }else{
+        if (response.body.includes("ERROR")) {
+          alert(response.body);
+        } else {
           handleButtonClick();
           setTimeout(function () {
             location.reload();
@@ -225,6 +243,17 @@ define([
     } catch (e) {
       console.error("verify", e.message);
     }
+  }
+
+  function showMessage() {
+    let m = message.create({
+      type: message.Type.WARNING,
+      title: "WARNING",
+      message: "NO ITEM TO PROCESS",
+    });
+    m.show({
+      duration: 2000,
+    });
   }
 
   function handleButtonClick() {
@@ -257,6 +286,10 @@ define([
     }
   }
 
+  function hey() {
+    alert("test");
+  }
+
   function destroyModal() {
     jQuery("#_loading_dialog").dialog("destroy");
   }
@@ -266,5 +299,6 @@ define([
     fieldChanged: fieldChanged,
     verify: verify,
     backToReturnable: backToReturnable,
+    showMessage: showMessage,
   };
 });

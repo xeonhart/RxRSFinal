@@ -105,12 +105,42 @@ define([
       label: "Amount",
     }),
   ];
+  const RETURNCOVERLETTERCOLUMNSFINALYPAYMENTSCHED = [
+    search.createColumn({
+      name: "custrecord_wac_amount",
+      summary: "SUM",
+      label: "Wac Amount",
+    }),
+    search.createColumn({
+      name: "created",
+      summary: "MAX",
+      label: "Date Created",
+    }),
+    search.createColumn({
+      name: "custrecord_final_payment_schedule",
+      summary: "GROUP",
+      label: "Final Payment Schedule",
+    }),
+  ];
+
   const RETURNCOVERLETTERCOLUMNS = [
     search.createColumn({
       name: "created",
       summary: "MAX",
       label: "Date Created",
     }),
+    search.createColumn({
+      name: "custrecord_wac_amount",
+      summary: "SUM",
+      label: "Amount",
+    }),
+    search.createColumn({
+      name: "custrecord_scan_paymentschedule",
+      summary: "GROUP",
+      label: "Payment Sched",
+    }),
+  ];
+  const INDATED_INVENTORY_COLUMN = [
     search.createColumn({
       name: "custrecord_wac_amount",
       summary: "SUM",
@@ -510,6 +540,38 @@ define([
         label: "Payment Type",
         updateDisplayType: "DISABLED",
       },
+      {
+        id: "custpage_delete",
+        type: "TEXT",
+        label: "Action",
+        updateDisplayType: "INLINE",
+      },
+    ],
+    INDATED_INVENTORY: [
+      {
+        id: "custpage_payment_type",
+        type: "TEXT",
+        label: "Payment Type",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_amount",
+        type: "TEXT",
+        label: "AMOUNT",
+        updateDisplayType: "INLINE",
+      },
+      {
+        id: "custpage_split_payment",
+        type: "TEXT",
+        label: "Split Payment",
+        updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_customized",
+        type: "TEXT",
+        label: "Customize",
+        updateDisplayType: "DISABLED",
+      },
     ],
   };
 
@@ -689,14 +751,6 @@ define([
           log.error("GROUPING RETURN LIST", e.message);
         }
 
-        // let mainFields = rxrs_PI_lib.getInventoryLocationObject({
-        //   rrId: rrId,
-        //   rrType: options.rrType,
-        //   manufId: manufId,
-        //   returnList: bag,
-        //   inventoryStatus: options.selectionType
-        // })
-        log.debug("aaa ", bagList);
         bagList.forEach((bag) => {
           let verification = checkIfReturnScanIsVerified({
             recId: rrId,
@@ -838,7 +892,7 @@ define([
       transactionSearchObj.run().each(function (result) {
         let isVerified = result.getValue(column[0]);
         bagLabel = result.getValue(column[1]);
-        // log.audit("isVerified", { manuf, isVerified });
+
         if (isVerified == false) {
           ISVERIFIED = false;
           return false;
@@ -979,12 +1033,15 @@ define([
   /**
    * Get the item return scan record based on Return request and Manufacturer and In Dated Status
    * @param {number}options.rrId - Return Request Id
+   * @param {number}options.rclId - Return Cover Letter Id
    * @param {string}options.manufacturer - Manufacturer Text Name
    * @param {boolean} options.inDated - Check If In dated
    * @param {string} options.rrType - Return Request Type
    * @param {number} options.mrrId - Master Return Request Id
+   * @param {string} options.mrrName - Master Return Name
    * @param {array} options.returnList - List of the return item scan
    * @param {number} options.paymentSchedId - Payment ID of the Item Return Scan
+   * @param {boolean} options.finalPaymentSched - If set to true - filter to be used is the final payment schedule else initial payment sched
    * @param {boolean} options.isVerifyStaging - Check if the suitelet is for Verify Staging else it is use for return cover letter
    * @returns {object} returns the item scanlist
    */
@@ -992,22 +1049,46 @@ define([
     let paymentAmount = 0;
     let itemScanList = [];
     let filters = [];
+    let target;
+    let paymentFields;
+    log.error("options", options);
     let {
+      rclId,
       returnList,
       paymentSchedId,
       inDated,
       manufacturer,
       rrId,
+      mrrId,
+      finalPaymentSched,
       isVerifyStaging,
+      mrrName,
     } = options;
     let columns;
+    let paymentColumn;
+    if (finalPaymentSched == true || finalPaymentSched == "true") {
+      paymentFields = "custrecord_final_payment_schedule";
+      paymentColumn = RETURNCOVERLETTERCOLUMNSFINALYPAYMENTSCHED;
+      target = "_blank";
+    } else {
+      paymentFields = "custrecord_scan_paymentschedule";
+      paymentColumn = INDATED_INVENTORY_COLUMN;
+      target = "_self";
+      // Remove the updated item return scan in the list
+      filters.push(
+        search.createFilter({
+          name: "custrecord_payment_schedule_updated",
+          operator: "is",
+          values: "F",
+        })
+      );
+    }
+
     try {
       columns =
         isVerifyStaging == true
           ? VERIFYSTAGINGRETURNABLECOLUMNS
-          : RETURNCOVERLETTERCOLUMNS;
-
-      //log.audit("getItemScanByManufacturer", options);
+          : paymentColumn;
 
       if (returnList) {
         filters.push(
@@ -1018,13 +1099,25 @@ define([
           })
         );
       } else {
-        filters.push(
-          search.createFilter({
-            name: "custrecord_cs_ret_req_scan_rrid",
-            operator: "anyof",
-            values: rrId,
-          })
-        );
+        if (mrrId) {
+          filters.push(
+            search.createFilter({
+              name: "custrecord_irs_master_return_request",
+              operator: "anyof",
+              values: mrrId,
+            })
+          );
+        }
+        if (rrId) {
+          filters.push(
+            search.createFilter({
+              name: "custrecord_cs_ret_req_scan_rrid",
+              operator: "anyof",
+              values: rrId,
+            })
+          );
+        }
+
         if (isVerifyStaging == true && isEmpty(paymentSchedId)) {
           filters.push(
             search.createFilter({
@@ -1037,7 +1130,7 @@ define([
         if (paymentSchedId) {
           filters.push(
             search.createFilter({
-              name: "custrecord_scan_paymentschedule",
+              name: paymentFields,
               operator: "anyof",
               values: paymentSchedId,
             })
@@ -1058,6 +1151,8 @@ define([
           })
         );
       }
+      log.emergency("Get Item Return Scan Filter", filters);
+      log.emergency("Get Item Return Scan Columns", columns);
 
       const customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
@@ -1067,7 +1162,8 @@ define([
 
       let column = customrecord_cs_item_ret_scanSearchObj.columns;
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
-        if (isVerifyStaging == true || !isEmpty(paymentSchedId)) {
+        if (isVerifyStaging == true || isEmpty(paymentSchedId)) {
+          log.error("IFFFFFFFFFFFFF");
           let inputRate = result.getValue("custrecord_isc_inputrate");
           let isOverrideRate = result.getValue("custrecord_isc_overriderate");
           let rate = result.getValue("custrecord_scanrate") || 0;
@@ -1108,16 +1204,17 @@ define([
           });
           return true;
         } else {
+          log.error("IFFFFFFFFFFFFF");
           let amount = result.getValue({
             name: "custrecord_wac_amount",
             summary: "SUM",
           });
           let paymentSchedId = result.getValue({
-            name: "custrecord_scan_paymentschedule",
+            name: paymentFields,
             summary: "GROUP",
           });
           let paymentSchedText = result.getText({
-            name: "custrecord_scan_paymentschedule",
+            name: paymentFields,
             summary: "GROUP",
           });
           let stSuiteletUrl = url.resolveScript({
@@ -1127,19 +1224,77 @@ define([
             params: {
               paymentSchedId: paymentSchedId,
               paymentSchedText: paymentSchedText,
-              rrId: options.rrId,
+              mrrId: mrrId,
+              tranId: mrrName,
+              finalPaymentSched: finalPaymentSched,
             },
           });
 
           paymentAmount += +amount;
-          itemScanList.push({
-            dateCreated: result.getValue({
-              name: "created",
-              summary: "MAX",
-            }),
-            amount: "$" + amount,
-            paymetnSchedule: `<a href="${stSuiteletUrl}" target="_blank" >${paymentSchedText} </a>`,
-          });
+          if (finalPaymentSched == "true" || finalPaymentSched == true) {
+            let deleteWord = paymentSchedId != 12 ? "Delete" : " ";
+            let deleteURL =
+              paymentSchedId != 12
+                ? url.resolveScript({
+                    scriptId: "customscript_sl_return_cover_letter",
+                    deploymentId: "customdeploy_sl_return_cover_letter",
+                    returnExternalUrl: false,
+                    params: {
+                      mrrId: mrrId,
+                      tranId: mrrName,
+                      finalPaymentSched: finalPaymentSched,
+                      rclId: rclId,
+                      inDated: inDated,
+                      isVerifyStaging: isVerifyStaging,
+                      remove: true,
+                      paymentId: paymentSchedId,
+                    },
+                  })
+                : "";
+
+            itemScanList.push({
+              dateCreated: result.getValue({
+                name: "created",
+                summary: "MAX",
+              }),
+              amount: "$" + amount,
+              paymetnSchedule: `<a href="${stSuiteletUrl}" target="${target}" >${paymentSchedText} </a>`,
+              delete: `<a href="${deleteURL}" target="_self" >${deleteWord}</a>`,
+            });
+          } else {
+            let splitPaymentURL = url.resolveScript({
+              scriptId: "customscript_sl_return_cover_letter",
+              deploymentId: "customdeploy_sl_return_cover_letter",
+              returnExternalUrl: false,
+              params: {
+                mrrId: mrrId,
+                tranId: mrrName,
+                finalPaymentSched: finalPaymentSched,
+                inDated: inDated,
+                splitPayment: true,
+                isVerifyStaging: isVerifyStaging,
+                paymentId: paymentSchedId,
+              },
+            });
+
+            let customizedURL = url.resolveScript({
+              scriptId: "customscript_sl_return_cover_letter",
+              deploymentId: "customdeploy_sl_return_cover_letter",
+              returnExternalUrl: false,
+              params: {
+                mrrId: mrrId,
+                tranId: mrrName,
+                finalPaymentSched: finalPaymentSched,
+                customize: true,
+              },
+            });
+            itemScanList.push({
+              paymetnSchedule: `<a href="${stSuiteletUrl}" target="${target}" >${paymentSchedText} </a>`,
+              amount: "$" + amount,
+              splitPayment: `<a href="${splitPaymentURL}" target="${target}" >Split Payment </a>`,
+              customize: `<a href="${customizedURL}" target="${target}" >Customize</a>`,
+            });
+          }
           return true;
         }
       });
@@ -1154,7 +1309,7 @@ define([
       log.audit("itemScanList", itemScanList);
       return itemScanList;
     } catch (e) {
-      log.error("getItemScanByManufacturer", e.message);
+      log.error("getReturnableItemScan", e.message);
     }
   }
 
@@ -1580,29 +1735,37 @@ define([
    * @param {string} options.rrType
    * @param {string} options.inDate
    * @param {string} options.title
+   * @param {boolean} options.finalPaymentSched
    * @returns  Updated Form.
    */
   const createReturnableSublist = (options) => {
     try {
       log.debug("createReturnableSublist", options);
-      //let inDate = options.paramInDate ? " : " + options.paramInDate : "";
-      let manuf = options.paramManufacturer;
-      let mrrId = options.mrrId;
-      let rrType = options.rrType;
+
       let fieldName = [];
-      let form = options.form;
-      let sublistFields = options.sublistFields;
-      let value = options.value;
+      let {
+        form,
+        rrTranId,
+        sublistFields,
+        value,
+        isMainReturnable,
+        rrName,
+        paramManufacturer,
+        mrrId,
+        rrType,
+        inDate,
+        title,
+        finalPaymentSched,
+      } = options;
       form.clientScriptFileId = getFileId("rxrs_cs_verify_staging.js");
       let sublist;
-
       sublist = form.addSublist({
         id: "custpage_items_sublist",
         type: serverWidget.SublistType.LIST,
-        label: options.title,
+        label: title,
       });
 
-      if (manuf) {
+      if (paramManufacturer) {
         //If the user is in the Manufacturing Group. Add the following UI context below
 
         form.addButton({
@@ -1630,16 +1793,14 @@ define([
             displayType: serverWidget.FieldDisplayType[attri.updateDisplayType],
           });
       });
-
       let mainLineInfo = [];
-
       value.forEach((val) => {
         let value = Object.values(val);
         let fieldInfo = [];
         for (let i = 0; i < value.length; i++) {
           if (isEmpty(fieldName[i])) continue;
-          if (options.inDate != true && fieldName[i] == "custpage_in_date") {
-            log.debug("val", [options.inDate, fieldName[i]]);
+          if (inDate != true && fieldName[i] == "custpage_in_date") {
+            log.debug("val", [inDate, fieldName[i]]);
           } else {
             fieldInfo.push({
               fieldId: fieldName[i],
@@ -1653,8 +1814,8 @@ define([
       populateSublist({
         sublist: sublist,
         fieldInfo: mainLineInfo,
-        isMainReturnable: options.isMainReturnable,
-        isIndate: options.paramInDate,
+        isMainReturnable: isMainReturnable,
+        isIndate: inDate,
       });
     } catch (e) {
       log.error("createReturnableSublist", e.message);
@@ -1788,12 +1949,7 @@ define([
           }),
         ],
       });
-      var searchResultCount =
-        customrecord_cs_item_ret_scanSearchObj.runPaged().count;
-      log.debug("customrecord_cs_item_ret_scanSearchObj result count", {
-        searchResultCount,
-        irsId,
-      });
+
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
         inDays = result.getValue({
           name: "formulanumeric",
@@ -1806,6 +1962,42 @@ define([
     } catch (e) {
       log.error("getIndays", e.message);
     }
+  }
+
+  /**
+   * Get the total item return scan amount per MRR and Manuf Processing
+   * @param {number} options.mrrId
+   * @param {string} options.mfgProcessing
+   * @return {number} return non-returnable total amount
+   *
+   */
+  function getMrrIRSTotalAmount(options) {
+    let total = 0;
+    let { mrrId, mfgProcessing } = options;
+    const customrecord_cs_item_ret_scanSearchObj = search.create({
+      type: "customrecord_cs_item_ret_scan",
+      filters: [
+        ["custrecord_irs_master_return_request", "anyof", mrrId],
+        "AND",
+        ["custrecord_cs__mfgprocessing", "anyof", options.mfgProcessing],
+      ],
+      columns: [
+        search.createColumn({
+          name: "custrecord_wac_amount",
+          summary: "SUM",
+          label: "Wac Amount",
+        }),
+      ],
+    });
+
+    customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
+      // .run().each has a limit of 4,000 results
+      total = result.getValue({
+        name: "custrecord_wac_amount",
+        summary: "SUM",
+      });
+    });
+    return total;
   }
 
   return {
@@ -1824,6 +2016,7 @@ define([
     getManufMaxSoAmount,
     generateRedirectLink,
     getEntityFromMrr,
+    getMrrIRSTotalAmount,
     SUBLISTFIELDS,
   };
 });

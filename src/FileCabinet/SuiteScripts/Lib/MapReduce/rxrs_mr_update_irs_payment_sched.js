@@ -10,6 +10,8 @@ define([
 ], /**
  * @param{record} record
  * @param{search} search
+ * @param vs_lib
+ * @param ps_lib
  */ (record, search, vs_lib, ps_lib) => {
   /**
    * Defines the function that is executed at the beginning of the map/reduce process and generates the input data.
@@ -63,34 +65,50 @@ define([
    * @since 2015.2
    */
   const reduce = (reduceContext) => {
+    const DEFAULT = 12;
+    const contextObj = JSON.parse(reduceContext.values);
+    let irsId = contextObj.id;
+    let irsRec = record.load({
+      type: "customrecord_cs_item_ret_scan",
+      id: irsId,
+    });
     try {
-      const contextObj = JSON.parse(reduceContext.values);
-
       let inDays = vs_lib.getIndays(contextObj.id);
-      const paymentSchedId = ps_lib.getPaymentSched(inDays);
-      log.audit("InDays and Payment Sched", { inDays, paymentSchedId });
-      if (paymentSchedId) {
-        let Id = record.submitFields({
-          type: "customrecord_cs_item_ret_scan",
-          id: contextObj.id,
-          values: {
-            custrecord_scan_paymentschedule: +paymentSchedId,
-          },
-          ignoreMandatoryFields: true,
+      let isDefault = Math.sign(inDays) == -1;
+      log.audit("isDefault", {
+        isDefault: isDefault,
+        irsId: irsId,
+        inDays: inDays,
+      });
+      let paymentSchedId =
+        isDefault == true ? ps_lib.getPaymentSched(Math.abs(inDays)) : 12;
+
+      if (paymentSchedId && isDefault === true) {
+        log.audit("InDays and Payment Sched", {
+          inDays,
+          paymentSchedId,
+          irsId,
         });
-        log.debug("Updated ", Id);
+        irsRec.setValue({
+          fieldId: "custrecord_scan_paymentschedule",
+          value: +paymentSchedId,
+        });
+        irsRec.setValue({
+          fieldId: "custrecord_final_payment_schedule",
+          value: DEFAULT,
+        });
       } else {
-        let Id = record.submitFields({
-          type: "customrecord_cs_item_ret_scan",
-          id: contextObj.id,
-          values: {
-            custrecord_scan_paymentschedule: "",
-          },
-          ignoreMandatoryFields: true,
+        log.audit("Setting indated to false", irsId);
+        irsRec.setValue({
+          fieldId: "custrecord_scanindated",
+          value: false,
         });
       }
+      irsRec.save({
+        ignoreMandatoryFields: true,
+      });
     } catch (e) {
-      log.error("reduceContext", e.message);
+      log.error("Reduce Error: " + irsId, e.message);
     }
   };
 

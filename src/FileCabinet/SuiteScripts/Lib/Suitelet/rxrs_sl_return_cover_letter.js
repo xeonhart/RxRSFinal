@@ -56,11 +56,16 @@ define([
       log.debug("objClientParams", params);
       let form = serverWidget.createForm({
         title: "Return Cover Letter",
-        hideNavBar: false,
+        hideNavBar: true,
       });
-      form.clientScriptFileId = rxrs_vs_util.getFileId(
-        "rxrs_cs_return_cover_letter.js"
-      );
+      try {
+        form.clientScriptFileId = rxrs_vs_util.getFileId(
+          "rxrs_cs_validate_return.js"
+        );
+      } catch (e) {
+        log.error("setting client script Id", e.message);
+      }
+      log.audit("form", form);
 
       form = createHeaderFields({ form, params });
       return form;
@@ -76,248 +81,125 @@ define([
    * @return {*}
    */
   const createHeaderFields = (options) => {
+    let form = options.form;
+    log.debug("createHeaderFields", options.params);
+    let {
+      finalPaymentSched,
+      mrrId,
+      inDated,
+      isVerifyStaging,
+      tranId,
+      paymentSchedId,
+      paymentSchedText,
+      paymentId,
+      splitPayment,
+      remove,
+      title,
+      rclId,
+    } = options.params;
     try {
-      let form = options.form;
-      log.debug("createHeaderFields", options.params);
-      let {
-        rrId,
-        tranid,
-        mrrId,
-        paymentSchedId,
-        paymentSchedText,
-        DEA222Fees,
-      } = options.params;
+      if (remove == true || remove == "true") {
+        try {
+          let itemsReturnScan = rxrs_vs_util.getReturnableItemScan({
+            mrrId: mrrId,
+            paymentSchedId: paymentId,
+            inDated: true,
+            isVerifyStaging: true,
+            finalPaymentSched: finalPaymentSched,
+          });
+          log.error("itemReturnScan", itemsReturnScan);
+          itemsReturnScan.forEach((item) => {
+            record.submitFields.promise({
+              type: "customrecord_cs_item_ret_scan",
+              id: item.internalId,
+              values: {
+                custrecord_final_payment_schedule: 12,
+                custrecord_payment_schedule_updated: false,
+              },
+              enablesourcing: true,
+              ignoreMandatoryFields: true,
+            });
+          });
+        } catch (e) {
+          log.error("Removing Final Payment", e.message);
+        }
+        redirect.toRecord({
+          id: rclId,
+          type: "customrecord_return_cover_letter",
+          isEditMode: false,
+        });
+      }
       if (paymentSchedId) {
         let sublistFields = rxrs_vs_util.SUBLISTFIELDS.returnableManufacturer;
+
         let itemsReturnScan = rxrs_vs_util.getReturnableItemScan({
-          rrId: rrId,
+          mrrId: mrrId,
           paymentSchedId: paymentSchedId,
           inDated: true,
           isVerifyStaging: true,
+          finalPaymentSched: finalPaymentSched,
         });
+        log.emergency("itemsReturnScan", itemsReturnScan);
         rxrs_vs_util.createReturnableSublist({
           form: form,
-          rrTranId: rrId,
-          rrName: tranid,
+          rrTranId: mrrId,
+          rrName: tranId,
           sublistFields: sublistFields,
           value: itemsReturnScan,
           isMainInDated: false,
           inDate: true,
           returnList: itemsReturnScan,
-          title: `Return Request ${tranid}: Payment Schedule: ${paymentSchedText}`,
+          title: `Payment Schedule: ${paymentSchedText}`,
         });
       } else {
-        form.addFieldGroup({
-          id: "rcl",
-          label: "Return Cover Letter",
-        });
-        const today = new Date();
-        let date =
-          today.getFullYear() +
-          "-" +
-          (today.getMonth() + 1) +
-          "-" +
-          today.getDate();
-        let time =
-          today.getHours() +
-          ":" +
-          today.getMinutes() +
-          ":" +
-          today.getSeconds();
-        let dateTime = date + " " + time;
-        form
-          .addField({
-            id: "custpage_date",
-            label: "Date",
-            type: serverWidget.FieldType.TEXT,
-            container: "rcl",
-          })
-          .updateDisplayType({
-            displayType: "INLINE",
-          }).defaultValue = dateTime;
-        let customerInfo = rxrs_rcl_util.getCustomerInfo(
-          options.params.customer
-        );
-        let customerInfoText = "";
-        customerInfoText += customerInfo.name + "\n";
-        customerInfoText += customerInfo.addr1 + "\n";
-        customerInfoText +=
-          customerInfo.state + " " + customerInfo.zipcode + "\n";
-        customerInfoText += "CONTACT: " + customerInfo.contact + "\n";
-        customerInfoText += "PHONE: " + customerInfo.phone + "\n";
-        customerInfoText += "FAX: " + customerInfo.fax + "\n";
-
-        log.audit("customerInfoText", customerInfoText);
-        form
-          .addField({
-            id: "custpage_customer",
-            label: "CUSTOMER",
-            type: serverWidget.FieldType.TEXTAREA,
-            container: "rcl",
-          })
-          .updateDisplayType({
-            displayType: "INLINE",
-          }).defaultValue = customerInfoText;
-
-        form
-          .addField({
-            id: "custpage_return_num",
-            label: "Return No.",
-            type: serverWidget.FieldType.TEXT,
-            container: "rcl",
-          })
-          .updateDisplayType({
-            displayType: "INLINE",
-          }).defaultValue = options.params.rrId;
-        form
-          .addField({
-            id: "custpage_customer_num",
-            label: "Customer No.",
-            type: serverWidget.FieldType.TEXT,
-            container: "rcl",
-          })
-          .updateDisplayType({
-            displayType: "INLINE",
-          })
-          .updateLayoutType({
-            layoutType: serverWidget.FieldLayoutType.STARTROW,
-          }).defaultValue = options.params.customer;
-
-        form
-          .addField({
-            id: "custpage_dea_num",
-            label: "DEA No.",
-            type: serverWidget.FieldType.TEXT,
-            container: "rcl",
-          })
-          .updateDisplayType({
-            displayType: "INLINE",
-          })
-          .updateLayoutType({
-            layoutType: serverWidget.FieldLayoutType.STARTROW,
-          }).defaultValue = customerInfo.dea;
-        /**
-         * Cover letter Line items
-         */
-        form.addFieldGroup({
-          id: "cover_letter_line_item",
-          label: "Cover Letter Line Item",
-        });
-        const returnableAndNonReturnableAmount =
-          rxrs_rcl_util.getItemReturnScanTotal({
-            rrId: rrId,
-          });
-        log.audit(
-          "returnableAndNonReturnableAmount",
-          returnableAndNonReturnableAmount
-        );
-        form
-          .addField({
-            id: "custpage_returnable_amount",
-            label: "Returnable Amount",
-            type: serverWidget.FieldType.CURRENCY,
-            container: "cover_letter_line_item",
-          })
-          .updateDisplayType({
-            displayType: "INLINE",
-          })
-          .updateLayoutType({
-            layoutType: serverWidget.FieldLayoutType.OUTSIDE,
-          }).defaultValue = returnableAndNonReturnableAmount.returnableAmount
-          ? returnableAndNonReturnableAmount.returnableAmount
-          : 0;
-
-        form
-          .addField({
-            id: "custpage_non_returnable_amount",
-            label: "Non-Returnable Amount",
-            type: serverWidget.FieldType.CURRENCY,
-            container: "cover_letter_line_item",
-          })
-          .updateDisplayType({
-            displayType: "INLINE",
-          })
-          .updateLayoutType({
-            layoutType: serverWidget.FieldLayoutType.OUTSIDE,
-          }).defaultValue = returnableAndNonReturnableAmount.nonReturnableAmount
-          ? returnableAndNonReturnableAmount.nonReturnableAmount
-          : 0;
-
-        form
-          .addField({
-            id: "custpage_dea_222_form",
-            label: "DEA 222 Form",
-            type: serverWidget.FieldType.CURRENCY,
-            container: "cover_letter_line_item",
-          })
-          .updateDisplayType({
-            displayType: "INLINE",
-          })
-          .updateLayoutType({
-            layoutType: serverWidget.FieldLayoutType.OUTSIDE,
-          }).defaultValue = DEA222Fees;
-
-        form
-          .addField({
-            id: "custpage_credit_discount",
-            label: "Credit/Discount",
-            type: serverWidget.FieldType.TEXT,
-            container: "cover_letter_line_item",
-          })
-          .updateDisplayType({
-            displayType: "NORMAL",
-          })
-          .updateLayoutType({
-            layoutType: serverWidget.FieldLayoutType.OUTSIDE,
-          });
-        form
-          .addField({
-            id: "custpage_service_fee",
-            label: "Service Fee",
-            type: serverWidget.FieldType.TEXT,
-            container: "cover_letter_line_item",
-          })
-          .updateDisplayType({
-            displayType: "NORMAL",
-          })
-          .updateLayoutType({
-            layoutType: serverWidget.FieldLayoutType.OUTSIDE,
-          });
-
-        let customerTotalAmount =
-          rxrs_rcl_util.getCustomerTotalCreditAmount(rrId);
-        log.audit("customer Total amount ", customerTotalAmount);
-        form
-          .addField({
-            id: "custpage_total_customer_credit_amount",
-            label: "Total Customer Credit Amount",
-            type: serverWidget.FieldType.CURRENCY,
-            container: "cover_letter_line_item",
-          })
-          .updateDisplayType({
-            displayType: "INLINE",
-          })
-          .updateLayoutType({
-            layoutType: serverWidget.FieldLayoutType.OUTSIDE,
-          }).defaultValue = customerTotalAmount ? customerTotalAmount : 0;
-
+        let sublistFields;
+        if (finalPaymentSched != true || finalPaymentSched != "true") {
+          sublistFields = rxrs_vs_util.SUBLISTFIELDS.INDATED_INVENTORY;
+        } else {
+          sublistFields = rxrs_vs_util.SUBLISTFIELDS.returnCoverLetterFields;
+        }
         let itemsReturnScan = rxrs_vs_util.getReturnableItemScan({
-          rrId: rrId,
+          finalPaymentSched: finalPaymentSched,
           mrrId: mrrId,
-          inDated: true,
-          isVerifyStaging: false,
+          inDated: inDated,
+          isVerifyStaging: isVerifyStaging,
         });
         rxrs_vs_util.createReturnableSublist({
           form: form,
-          rrTranId: rrId,
-          rrName: tranid,
-          sublistFields: rxrs_vs_util.SUBLISTFIELDS.returnCoverLetterFields,
+          rrTranId: mrrId,
+          rrName: tranId,
+          sublistFields: sublistFields,
           value: itemsReturnScan,
           isMainInDated: false,
           inDate: true,
           returnList: itemsReturnScan,
-          title: `Payments`,
+          title: `In-Dated Inventory`,
         });
+      }
+      if (splitPayment == "true") {
+        try {
+          let itemsReturnScan = rxrs_vs_util.getReturnableItemScan({
+            mrrId: mrrId,
+            paymentSchedId: paymentId,
+            inDated: true,
+            isVerifyStaging: true,
+            finalPaymentSched: finalPaymentSched,
+          });
+          itemsReturnScan.forEach((item) => {
+            record.submitFields.promise({
+              type: "customrecord_cs_item_ret_scan",
+              id: item.internalId,
+              values: {
+                custrecord_final_payment_schedule: +paymentId,
+                custrecord_payment_schedule_updated: true,
+              },
+              enablesourcing: true,
+              ignoreMandatoryFields: true,
+            });
+          });
+        } catch (e) {
+          log.error("spliting payment", e.message);
+        }
       }
       return form;
     } catch (e) {
