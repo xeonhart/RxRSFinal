@@ -100,14 +100,14 @@ define([
       label: "In Date",
     }),
     search.createColumn({
-      name: "custrecord_wac_amount",
+      name: "custrecord_irc_total_amount",
       sort: search.Sort.ASC,
       label: "Amount",
     }),
   ];
   const RETURNCOVERLETTERCOLUMNSFINALYPAYMENTSCHED = [
     search.createColumn({
-      name: "custrecord_wac_amount",
+      name: "custrecord_irc_total_amount",
       summary: "SUM",
       label: "Wac Amount",
     }),
@@ -123,26 +123,9 @@ define([
     }),
   ];
 
-  const RETURNCOVERLETTERCOLUMNS = [
-    search.createColumn({
-      name: "created",
-      summary: "MAX",
-      label: "Date Created",
-    }),
-    search.createColumn({
-      name: "custrecord_wac_amount",
-      summary: "SUM",
-      label: "Amount",
-    }),
-    search.createColumn({
-      name: "custrecord_scan_paymentschedule",
-      summary: "GROUP",
-      label: "Payment Sched",
-    }),
-  ];
   const INDATED_INVENTORY_COLUMN = [
     search.createColumn({
-      name: "custrecord_wac_amount",
+      name: "custrecord_irc_total_amount",
       summary: "SUM",
       label: "Amount",
     }),
@@ -297,6 +280,12 @@ define([
         type: "CURRENCY",
         label: "Amount",
         updateDisplayType: "DISABLED",
+      },
+      {
+        id: "custpage_qty",
+        type: "TEXT",
+        label: "QTY",
+        updateDisplayType: "INLINE",
       },
       {
         id: "custpage_in_date",
@@ -795,7 +784,7 @@ define([
               selectionType: options.selectionType,
               manufacturer: manufURLName,
               rrId: rrId,
-              tranid: options.tranId,
+              tranId: options.tranId,
               inDate: inDate,
               rrType: options.rrType,
               mrrId: options.mrrId,
@@ -1031,6 +1020,27 @@ define([
   }
 
   /**
+   * Get non-returnable Amount
+   * @param rclId
+   * @return {number|Date|string|Array|boolean|*}
+   */
+  function getNonReturnableeFeeAmount(rclId) {
+    let nonReturnableAmount = 0;
+    try {
+      let rclRec = record.load({
+        type: "customrecord_return_cover_letter",
+        id: rclId,
+      });
+      nonReturnableAmount = rclRec.getValue(
+        "custrecord_rcl_non_returnable_fee_amt"
+      );
+      return nonReturnableAmount;
+    } catch (e) {
+      log.error("getNonReturnableeFeeAmount", e.message);
+    }
+  }
+
+  /**
    * Get the item return scan record based on Return request and Manufacturer and In Dated Status
    * @param {number}options.rrId - Return Request Id
    * @param {number}options.rclId - Return Cover Letter Id
@@ -1039,6 +1049,8 @@ define([
    * @param {string} options.rrType - Return Request Type
    * @param {number} options.mrrId - Master Return Request Id
    * @param {string} options.mrrName - Master Return Name
+   * @param {boolean} options.initialSplitpaymentPage - Set to true if this is supposed to be the initial splitpayment page
+   * @param {number} options.returnableFee - Returnable Fee From Vendor
    * @param {array} options.returnList - List of the return item scan
    * @param {number} options.paymentSchedId - Payment ID of the Item Return Scan
    * @param {boolean} options.finalPaymentSched - If set to true - filter to be used is the final payment schedule else initial payment sched
@@ -1062,8 +1074,17 @@ define([
       mrrId,
       finalPaymentSched,
       isVerifyStaging,
+      returnableFee,
       mrrName,
+      initialSplitpaymentPage,
     } = options;
+    let nonReturnableFeeAmount;
+    let orginalNonReturnableFeeAmount;
+    if (initialSplitpaymentPage) {
+      nonReturnableFeeAmount = getNonReturnableeFeeAmount(rclId);
+      orginalNonReturnableFeeAmount = nonReturnableFeeAmount;
+    }
+
     let columns;
     let paymentColumn;
     if (finalPaymentSched == true || finalPaymentSched == "true") {
@@ -1119,13 +1140,14 @@ define([
         }
 
         if (isVerifyStaging == true && isEmpty(paymentSchedId)) {
-          filters.push(
-            search.createFilter({
-              name: "custrecord_cs_item_manufacturer",
-              operator: "is",
-              values: manufacturer,
-            })
-          );
+          manufacturer &&
+            filters.push(
+              search.createFilter({
+                name: "custrecord_cs_item_manufacturer",
+                operator: "is",
+                values: manufacturer,
+              })
+            );
         }
         if (paymentSchedId) {
           filters.push(
@@ -1143,16 +1165,19 @@ define([
             values: 2,
           })
         );
-        filters.push(
-          search.createFilter({
-            name: "custrecord_scanindated",
-            operator: "is",
-            values: inDated,
-          })
-        );
+
+        if (inDated) {
+          filters.push(
+            search.createFilter({
+              name: "custrecord_scanindated",
+              operator: "is",
+              values: inDated,
+            })
+          );
+        }
       }
-      log.emergency("Get Item Return Scan Filter", filters);
-      log.emergency("Get Item Return Scan Columns", columns);
+      // log.emergency("Get Item Return Scan Filter", filters);
+      // log.emergency("Get Item Return Scan Columns", columns);
 
       const customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
@@ -1162,8 +1187,7 @@ define([
 
       let column = customrecord_cs_item_ret_scanSearchObj.columns;
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
-        if (isVerifyStaging == true || isEmpty(paymentSchedId)) {
-          log.error("IFFFFFFFFFFFFF");
+        if (isVerifyStaging == true || !isEmpty(paymentSchedId)) {
           let inputRate = result.getValue("custrecord_isc_inputrate");
           let isOverrideRate = result.getValue("custrecord_isc_overriderate");
           let rate = result.getValue("custrecord_scanrate") || 0;
@@ -1173,9 +1197,15 @@ define([
             name: "internalid",
             join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
           });
-          let amount = result.getValue("custrecord_wac_amount");
+
+          let amount = result.getValue("custrecord_irc_total_amount");
+          if (+returnableFee > 0) {
+            // if returnable fee has value calculate the total amount
+            amount = (+returnableFee / 100) * amount;
+          }
           let verified = result.getValue(column[0]) == true ? "T" : "F";
           let ndcName = result.getValue(column[1]);
+
           let ndcLink = generateRedirectLink({
             type: "customrecord_cs_item_ret_scan",
             id: result.id,
@@ -1197,6 +1227,7 @@ define([
             mfgProcessing: result.getText(column[8]),
             pharmaProcessing: result.getText(column[9]),
             amount: amount || 0,
+            qty: qty,
             inDate: result.getValue("custrecord_scanindate"),
             bagTagLabel: `<a href ="${bagLabelURL}" target="_blank">${bagTagLabel}</a>`,
             itemId: itemId,
@@ -1204,11 +1235,14 @@ define([
           });
           return true;
         } else {
-          log.error("IFFFFFFFFFFFFF");
           let amount = result.getValue({
-            name: "custrecord_wac_amount",
+            name: "custrecord_irc_total_amount",
             summary: "SUM",
           });
+          if (+returnableFee > 0) {
+            // if returnable fee has value calculate the total amount
+            amount = (+returnableFee / 100) * amount;
+          }
           let paymentSchedId = result.getValue({
             name: paymentFields,
             summary: "GROUP",
@@ -1251,6 +1285,21 @@ define([
                     },
                   })
                 : "";
+            if (nonReturnableFeeAmount) {
+              if (nonReturnableFeeAmount > +amount) {
+                nonReturnableFeeAmount =
+                  nonReturnableFeeAmount - parseInt(amount);
+                amount = 0;
+              } else {
+                amount = +amount - nonReturnableFeeAmount;
+                nonReturnableFeeAmount = 0;
+              }
+            }
+            try {
+              amount = amount.toFixed(2);
+            } catch (e) {
+              log.error("removing decimal", e.message);
+            }
 
             itemScanList.push({
               dateCreated: result.getValue({
@@ -1272,8 +1321,10 @@ define([
                 finalPaymentSched: finalPaymentSched,
                 inDated: inDated,
                 splitPayment: true,
+                isReload: true,
                 isVerifyStaging: isVerifyStaging,
                 paymentId: paymentSchedId,
+                initialSplitpaymentPage: true,
               },
             });
 
@@ -1282,12 +1333,20 @@ define([
               deploymentId: "customdeploy_sl_return_cover_letter",
               returnExternalUrl: false,
               params: {
+                paymentSchedId: paymentSchedId,
+                paymentSchedText: paymentSchedText,
                 mrrId: mrrId,
                 tranId: mrrName,
                 finalPaymentSched: finalPaymentSched,
                 customize: true,
               },
             });
+            try {
+              amount = amount.toFixed(2);
+            } catch (e) {
+              log.error("removing decimal", e.message);
+            }
+
             itemScanList.push({
               paymetnSchedule: `<a href="${stSuiteletUrl}" target="${target}" >${paymentSchedText} </a>`,
               amount: "$" + amount,
@@ -1298,12 +1357,35 @@ define([
           return true;
         }
       });
-
+      paymentAmount = paymentAmount - orginalNonReturnableFeeAmount;
+      log.error("paymentAmount", paymentAmount);
       if (isVerifyStaging == false) {
         itemScanList.push({
           dateCreated: " ",
           amount: "$" + paymentAmount.toFixed(2),
           paymetnSchedule: " ",
+        });
+      }
+      if (initialSplitpaymentPage) {
+        let customizedURL = url.resolveScript({
+          scriptId: "customscript_sl_return_cover_letter",
+          deploymentId: "customdeploy_sl_return_cover_letter",
+          returnExternalUrl: false,
+          params: {
+            paymentSchedId: 12,
+            paymentSchedText: "Default",
+            mrrId: mrrId,
+            tranId: mrrName,
+            finalPaymentSched: true,
+            customize: true,
+            finalPaymentSched: finalPaymentSched,
+          },
+        });
+        itemScanList.push({
+          paymetnSchedule: `<a href="${customizedURL}" target="${target}" >Create Custom Split Payment</a>`,
+          amount: " ",
+          splitPayment: " ",
+          customize: " ",
         });
       }
       log.audit("itemScanList", itemScanList);
@@ -1364,7 +1446,7 @@ define([
             selectionType: options.selectionType,
             isHazardous: isHazardous,
             rrId: rrId,
-            tranid: options.tranId,
+            tranId: options.tranId,
             rrType: options.rrType,
             mrrId: options.mrrId,
           },
@@ -1484,13 +1566,13 @@ define([
   function getDesctructionHazardous(options) {
     try {
       let returnList = [];
-      log.emergency("getDesctructionHazardous", options);
+      log.audit("getDesctructionHazardous", options);
       let bagTagLabel;
       let ISHAZARDOUS =
         options.isHazardous == true || options.isHazardous == "true"
           ? "T"
           : "F";
-      log.emergency("ISHAZARDOUS", ISHAZARDOUS);
+      log.audit("ISHAZARDOUS", ISHAZARDOUS);
       let hazardousList = [];
       const customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
@@ -1604,7 +1686,7 @@ define([
         return true;
       });
       if (options.getBagLabel == true) {
-        log.emergency("Value", { bagTagLabel, returnList });
+        log.audit("Value", { bagTagLabel, returnList });
         return { bagTagLabel, returnList };
       } else {
         return hazardousList;
@@ -1933,9 +2015,11 @@ define([
       var customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
         filters: [
-          ["custrecord_scanindated", "is", "T"],
+          ["custrecord_scanindate", "isnotempty", ""],
           "AND",
           ["internalid", "anyof", irsId],
+          "AND",
+          ["custrecord_cs__mfgprocessing", "anyof", "2", "3"],
         ],
         columns: [
           search.createColumn({
@@ -1983,7 +2067,7 @@ define([
       ],
       columns: [
         search.createColumn({
-          name: "custrecord_wac_amount",
+          name: "custrecord_irc_total_amount",
           summary: "SUM",
           label: "Wac Amount",
         }),
@@ -1993,7 +2077,7 @@ define([
     customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
       // .run().each has a limit of 4,000 results
       total = result.getValue({
-        name: "custrecord_wac_amount",
+        name: "custrecord_irc_total_amount",
         summary: "SUM",
       });
     });

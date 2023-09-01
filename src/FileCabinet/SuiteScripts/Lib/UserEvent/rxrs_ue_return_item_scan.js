@@ -19,15 +19,15 @@ define([
   };
 
   const beforeSubmit = (context) => {
+    const rec = context.newRecord;
+    const fulPartialPackage = rec.getValue(
+      "custrecord_cs_full_partial_package"
+    );
+    const item = rec.getValue("custrecord_cs_return_req_scan_item");
+    const qty = rec.getValue("custrecord_cs_qty");
+    const packageSize = rec.getValue("custrecord_cs_package_size") || 0;
+    const partialCount = rec.getValue("custrecord_scanpartialcount") || 0;
     try {
-      const rec = context.newRecord;
-      const fulPartialPackage = rec.getValue(
-        "custrecord_cs_full_partial_package"
-      );
-      const item = rec.getValue("custrecord_cs_return_req_scan_item");
-      const qty = rec.getValue("custrecord_cs_qty");
-      const packageSize = rec.getValue("custrecord_cs_package_size");
-      const partialCount = rec.getValue("custrecord_scanpartialcount");
       const rate = rxrs_util.getWACPrice(item);
       let amount = 0;
       const isOverrideRate = rec.getValue("custrecord_isc_overriderate");
@@ -44,6 +44,13 @@ define([
         amount =
           isOverrideRate == true ? +inputRate * +qty : +selectedRate * qty;
       } else {
+        log.audit("else", {
+          isOverrideRate,
+          qty,
+          partialCount,
+          packageSize,
+          inputRate,
+        });
         //[Quantity x (Partial Count/Std Pkg Size (Item Record))] * Rate
         amount =
           isOverrideRate == true
@@ -68,34 +75,57 @@ define([
     try {
       const DEFAULT = 12;
       const rec = context.newRecord;
-      if (rec.getValue("custrecord_scanindated") != true) return;
+      let irsRec = record.load({
+        type: "customrecord_cs_item_ret_scan",
+        id: rec.id,
+        isDefault: true,
+      });
       let inDays = rxrs_util.getIndays(rec.id);
-      let isDefault = Math.sign(inDays);
-      log.debug("afterSubmit", { inDays, isDefault });
-      if (inDays && isDefault == -1) {
-        inDays = Math.abs(inDays);
-        let paymentSchedId = rxrsPayment_lib.getPaymentSched(
-          JSON.stringify(inDays)
-        );
-        log.debug("values", { paymentSchedId, inDays });
-        record.submitFields({
-          type: "customrecord_cs_item_ret_scan",
-          id: rec.id,
-          values: {
-            custrecord_scan_paymentschedule: +paymentSchedId,
-          },
-          ignoreMandatoryFields: true,
+      let isDefault = Math.sign(inDays) == -1;
+      let paymentSchedId =
+        isDefault == true
+          ? rxrsPayment_lib.getPaymentSched(Math.abs(inDays))
+          : 12;
+      log.audit("InDays and Payment Sched", {
+        inDays,
+        paymentSchedId,
+        isDefault,
+      });
+      if (paymentSchedId && isDefault === true) {
+        irsRec.setValue({
+          fieldId: "custrecord_scan_paymentschedule",
+          value: +paymentSchedId,
+        });
+        irsRec.setValue({
+          fieldId: "custrecord_final_payment_schedule",
+          value: DEFAULT,
+        });
+        irsRec.setValue({
+          fieldId: "custrecord_scanindated",
+          value: true,
         });
       } else {
-        record.submitFields({
-          type: "customrecord_cs_item_ret_scan",
-          id: rec.id,
-          values: {
-            custrecord_scan_paymentschedule: DEFAULT,
-          },
-          ignoreMandatoryFields: true,
+        log.audit("Setting indated to false", rec.id);
+        irsRec.setValue({
+          fieldId: "custrecord_scanindated",
+          value: false,
         });
       }
+      let isIndate = irsRec.getValue("custrecord_scanindated");
+      let mfgProcessing = irsRec.getValue("custrecord_cs__mfgprocessing");
+      if (isIndate == false && mfgProcessing == 2) {
+        irsRec.setValue({
+          fieldId: "custrecord_final_payment_schedule",
+          value: DEFAULT,
+        });
+        irsRec.setValue({
+          fieldId: "custrecord_scan_paymentschedule",
+          value: DEFAULT,
+        });
+      }
+      irsRec.save({
+        ignoreMandatoryFields: true,
+      });
     } catch (e) {
       log.error("afterSubmit", e.message);
     }

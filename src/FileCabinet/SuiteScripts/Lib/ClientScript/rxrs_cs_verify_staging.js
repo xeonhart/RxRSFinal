@@ -10,17 +10,29 @@ define([
   "N/ui/message",
   "N/record",
   "N/https",
+  "../rxrs_return_cover_letter_lib",
 ], /**
  * @param{runtime} runtime
  * @param{url} url
  * @param currentRecord
  * @param message
  * @param record
- */ function (runtime, url, currentRecord, message, record, https) {
+ * @param https
+ * @param rxrs_rcl_lib
+ */ function (
+  runtime,
+  url,
+  currentRecord,
+  message,
+  record,
+  https,
+  rxrs_rcl_lib
+) {
   let suitelet = null;
   const RETURNABLESUBLIST = "custpage_items_sublist";
   let urlParams;
   let lineTobeUpdated = [];
+  let initialPaymentName;
 
   /**
    * Function to be executed after page is initialized.
@@ -35,10 +47,11 @@ define([
     suitelet = scriptContext.currentRecord;
     let arrTemp = window.location.href.split("?");
     urlParams = new URLSearchParams(arrTemp[1]);
-
-    if (window.location.href.indexOf("splitPayment") != -1) {
-      let splitPayment = urlParams.get("splitPayment");
-      if (splitPayment == true || splitPayment == "true") {
+    initialPaymentName = suitelet.getValue("custpage_payment_name");
+    if (window.location.href.indexOf("isReload") != -1) {
+      let isReload = urlParams.get("isReload");
+      console.log("isReload" + isReload);
+      if (isReload == true || isReload == "true") {
         setTimeout(function () {
           opener.location.reload();
           if (!window.location.hash) {
@@ -90,7 +103,7 @@ define([
           params.isMainInDated = true;
         }
         params.selectionType = selection;
-        params.tranid = tranId;
+        params.tranId = tranId;
         params.rrId = rrId;
         params.rrType = rrType;
         params.mrrId = mrrId;
@@ -118,7 +131,7 @@ define([
     let tranId = suitelet.getValue("custpage_tranid");
     let rrType = suitelet.getValue("custpage_rr_type");
     let mrrId = suitelet.getValue("custpage_mrrid");
-    params.tranid = tranId;
+    params.tranId = tranId;
     params.rrId = rrId;
     params.rrType = rrType;
     params.mrrId = mrrId;
@@ -286,8 +299,76 @@ define([
     }
   }
 
-  function hey() {
-    alert("test");
+  /**
+   * Create Payment Record and Assign it to item return scan
+   */
+  function createPayment(mrrId, paymentText) {
+    try {
+      let internalIds = [];
+      let rec = currentRecord.get();
+
+      let paymentName = rec.getValue("custpage_payment_name");
+      let dueDate = rec.getValue("custpage_due_date");
+      let paymentSublistCount = rec.getLineCount({
+        sublistId: RETURNABLESUBLIST,
+      });
+      for (let i = 0; i < paymentSublistCount; i++) {
+        if (
+          rec.getSublistValue({
+            sublistId: RETURNABLESUBLIST,
+            fieldId: "custpage_verified",
+            line: i,
+          }) !== true
+        )
+          continue;
+        let internalId = rec.getSublistValue({
+          sublistId: RETURNABLESUBLIST,
+          fieldId: "custpage_internalid",
+          line: i,
+        });
+        internalIds.push(internalId);
+      }
+      console.log(internalIds.length);
+      if (internalIds.length == 0) {
+        alert("Please select item");
+        return;
+      }
+      if (paymentName == "" || paymentName == null) {
+        alert("Please enter Payment name");
+        return;
+      }
+
+      let returnList = JSON.stringify(internalIds.join("_"));
+
+      if (paymentName == initialPaymentName) {
+        alert("Please enter a different payment name");
+        return;
+      }
+      let createdPaymentId = rxrs_rcl_lib.createPaymentSched({
+        paymentName: paymentName,
+        dueDate: dueDate,
+      });
+      console.log("createdPaymentId: " + createdPaymentId);
+
+      let rclSuiteletURL = url.resolveScript({
+        scriptId: "customscript_sl_return_cover_letter",
+        deploymentId: "customdeploy_sl_return_cover_letter",
+        returnExternalUrl: false,
+        params: {
+          mrrId: mrrId,
+          isReload: true,
+          inDated: true,
+          isVerifyStaging: false,
+          returnList: returnList,
+          createdPaymentId: createdPaymentId,
+          title: "In-Dated Inventory",
+          finalPaymentSched: false,
+        },
+      });
+      window.open(`${rclSuiteletURL}`, "_self");
+    } catch (e) {
+      console.error("createPayment" + e.message);
+    }
   }
 
   function destroyModal() {
@@ -300,5 +381,6 @@ define([
     verify: verify,
     backToReturnable: backToReturnable,
     showMessage: showMessage,
+    createPayment: createPayment,
   };
 });

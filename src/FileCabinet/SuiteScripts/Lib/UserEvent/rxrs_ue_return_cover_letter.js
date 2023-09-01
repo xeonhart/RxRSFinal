@@ -32,14 +32,22 @@ define([
       let mrrId = rec.getValue("custrecord_rcl_master_return");
       let form = scriptContext.form;
       let tranName = rec.getText("custrecord_rcl_master_return");
-
+      let nonReturnableFeeAmount = 0;
+      let returnableFeePercent = 0;
+      nonReturnableFeeAmount = rec.getValue(
+        "custrecord_rcl_non_returnable_fee_amt"
+      );
+      returnableFeePercent = rec.getValue("custrecord_rcl_returnable_fee");
+      let returnableFee = 100 - parseFloat(returnableFeePercent);
       let itemsReturnScan = rxrs_vs_util.getReturnableItemScan({
         finalPaymentSched: true,
         mrrId: mrrId,
         rclId: rec.id,
-        inDated: true,
         isVerifyStaging: false,
         mrrName: tranName,
+        returnableFee: returnableFee,
+        nonReturnableFeeAmount: nonReturnableFeeAmount,
+        initialSplitpaymentPage: true,
       });
       rxrs_vs_util.createReturnableSublist({
         form: form,

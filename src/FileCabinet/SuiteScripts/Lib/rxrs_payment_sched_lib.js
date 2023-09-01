@@ -47,5 +47,27 @@ define(["N/record", "N/search"], /**
     }
   }
 
-  return { getPaymentSched };
+  /**
+   * Delete Payment Record
+   * @param {number} paymentId
+   */
+  function deletePaymentSched(paymentId) {
+    try {
+      let paymentSearch = search.lookupFields({
+        type: "customrecord_kd_payment_schedule",
+        id: paymentId,
+        columns: ["custrecord_psf_custom_payment"],
+      });
+
+      if (paymentSearch.custrecord_psf_custom_payment == false) return;
+      record.delete({
+        type: "customrecord_kd_payment_schedule",
+        id: paymentId,
+      });
+    } catch (e) {
+      log.error("deletePaymentSched", e.message);
+    }
+  }
+
+  return { getPaymentSched, deletePaymentSched };
 });

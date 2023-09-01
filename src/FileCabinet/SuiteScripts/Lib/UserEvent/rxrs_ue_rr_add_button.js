@@ -56,7 +56,14 @@ define(["N/record", "N/url"], /**
         if (rec.type == "customrecord_return_cover_letter") {
           let mrrId = rec.getValue("custrecord_rcl_master_return");
           let tranId = rec.getText("custrecord_rcl_master_return");
-          let rclSuiteletURL = url.resolveScript({
+          let nonReturnableFeeAmount = 0;
+          let returnableFeePercent = 0;
+          nonReturnableFeeAmount = rec.getValue(
+            "custrecord_rcl_non_returnable_fee_amt"
+          );
+          returnableFeePercent = rec.getValue("custrecord_rcl_returnable_fee");
+          let returnableFee = 100 - parseFloat(returnableFeePercent);
+          rclSuiteletURL = url.resolveScript({
             scriptId: "customscript_sl_return_cover_letter",
             deploymentId: "customdeploy_sl_return_cover_letter",
             returnExternalUrl: false,
@@ -64,8 +71,10 @@ define(["N/record", "N/url"], /**
               finalPaymentSched: false,
               mrrId: mrrId,
               tranId: tranId,
-              inDated: true,
               isVerifyStaging: false,
+              initialSplitpaymentPage: true,
+              returnableFee: returnableFee,
+              nonReturnableFeeAmount: nonReturnableFeeAmount,
               title: "In-Dated Inventory",
             },
           });
@@ -76,7 +85,7 @@ define(["N/record", "N/url"], /**
             functionName:
               'window.open("' +
               rclSuiteletURL +
-              ' ","_blank","width=1500,height=1200,left=150,top=1000")',
+              ' ","_blank","width=1500,height=1200,left=100,top=1000")',
           });
         }
       }

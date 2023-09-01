@@ -97,6 +97,10 @@ define([
           fieldId: "custrecord_final_payment_schedule",
           value: DEFAULT,
         });
+        irsRec.setValue({
+          fieldId: "custrecord_scanindated",
+          value: true,
+        });
       } else {
         log.audit("Setting indated to false", irsId);
         irsRec.setValue({

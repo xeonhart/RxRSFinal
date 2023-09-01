@@ -5,6 +5,13 @@ define(["N/record", "N/search"], /**
  * @param{record} record
  * @param{search} search
  */ (record, search) => {
+  const SUBLIST_TO_HIDE_IN_RCL = [
+    "custpage_internalid",
+    "custpage_verified",
+    "custpage_pharmaprocessing",
+    "custpage_bag_tag_label",
+  ];
+
   /**
    * Get customer information
    * @param {number} customerId
@@ -100,6 +107,52 @@ define(["N/record", "N/search"], /**
   }
 
   /**
+   * Create custom payment Schedule
+   * @param {string} options.paymentName
+   * @param {string} options.dueDate
+   * @param {number} options.minDays
+   * @param {number} options.maxDays
+   */
+  function createPaymentSched(options) {
+    let { paymentName, dueDate, minDays, maxDays } = options;
+    try {
+      const paymentRec = record.create({
+        type: "customrecord_kd_payment_schedule",
+      });
+      paymentName &&
+        paymentRec.setValue({
+          fieldId: "name",
+          value: paymentName,
+        });
+      dueDate &&
+        paymentRec.setValue({
+          fieldId: "custrecord_psf_due_date",
+          value: dueDate,
+        });
+      minDays &&
+        paymentRec.setValue({
+          fieldId: "custrecord_kd_paysched_min_days",
+          value: minDays,
+        });
+      maxDays &&
+        paymentRec.setValue({
+          fieldId: "custrecord_kd_paysched_max_days",
+          value: maxDays,
+        });
+
+      paymentRec.setValue({
+        fieldId: "custrecord_psf_custom_payment",
+        value: true,
+      });
+      return paymentRec.save({
+        ignoreMandatoryFields: true,
+      });
+    } catch (e) {
+      log.error("createPaymentSched", e.message);
+    }
+  }
+
+  /**
    * Get the Customer total Credit amount
    * @param {number}rrId
    * @return {currency} return the sum of the item return scan with Payment Sched
@@ -136,9 +189,40 @@ define(["N/record", "N/search"], /**
     }
   }
 
+  /**
+   * Hide Sublist
+   *@param {array}options.sublistToHide - list of sublist to hide
+   *@param {array}options.sublist - orignal sublist
+   *@param {boolean}options.showSelect
+   * @return {array} return sublist with hidden fields
+   */
+  function hideSublist(options) {
+    try {
+      let { sublistToHide, sublist, showSelect } = options;
+      sublistToHide.forEach((id) => {
+        const index = sublist.findIndex((object) => {
+          return object.id === id;
+        });
+        if (index !== -1) {
+          if (showSelect === true && id == "custpage_verified") {
+            sublist[index].label = "SELECT";
+          } else {
+            sublist[index].updateDisplayType = "HIDDEN";
+          }
+        }
+      });
+      return sublist;
+    } catch (e) {
+      log.error("hideSublist", e.message);
+    }
+  }
+
   return {
     getCustomerInfo,
     getItemReturnScanTotal,
     getCustomerTotalCreditAmount,
+    createPaymentSched,
+    hideSublist,
+    SUBLIST_TO_HIDE_IN_RCL,
   };
 });
