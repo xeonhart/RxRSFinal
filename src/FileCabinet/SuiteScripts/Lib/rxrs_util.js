@@ -670,6 +670,13 @@ define([
     }
   }
 
+  function formatDate(date) {
+    date = date.split("/");
+    let day = +date[0] < 10 ? 0 + date[0] : date[0];
+    let month = +date[1] < 10 ? 0 + date[1] : date[1];
+    return day + "/" + month + "/" + date[2];
+  }
+
   return {
     rxrsItem,
     RRCATEGORY,
@@ -689,5 +696,6 @@ define([
     getItemRate,
     getFileId,
     getFolderId,
+    formatDate,
   };
 });

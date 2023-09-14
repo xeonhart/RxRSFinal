@@ -234,25 +234,27 @@ define([
         returnType: returnType,
       };
 
-      let stSuiteletUrl = url.resolveScript({
-        scriptId: "customscript_sl_validate_return",
-        deploymentId: "customdeploy_sl_validate_return",
-        params: params,
-      });
-      let response = https.post({
-        url: stSuiteletUrl,
-      });
+      handleButtonClick();
+      setTimeout(function () {
+        let stSuiteletUrl = url.resolveScript({
+          scriptId: "customscript_sl_validate_return",
+          deploymentId: "customdeploy_sl_validate_return",
+          params: params,
+        });
+        let response = https.post({
+          url: stSuiteletUrl,
+        });
 
-      if (response.body) {
-        if (response.body.includes("ERROR")) {
-          alert(response.body);
-        } else {
-          handleButtonClick();
-          setTimeout(function () {
-            location.reload();
-          }, 300);
+        if (response.body) {
+          if (response.body.includes("ERROR")) {
+            alert(response.body);
+          } else {
+            setTimeout(function () {
+              location.reload();
+            }, 300);
+          }
         }
-      }
+      }, 100);
     } catch (e) {
       console.error("verify", e.message);
     }
@@ -271,28 +273,13 @@ define([
 
   function handleButtonClick() {
     try {
-      jQuery("#_loading_dialog").attr(
-        "title",
-        "Updating Verify Status and Creating Bag Label"
-      );
-      jQuery("#_loading_dialog").html(
-        `<div style="text-align: center; margin-left:230px; font-style: italic;">Please wait.</div>
-        <br><br>
-        <div style="text-align: center; margin-left:110px; width:100%;">
-        <i class="fas fa-cog fa-spin" data-fa-transform="grow-20" ></i>
-        </div>`
-      );
-      jQuery("#_loading_dialog").dialog({
-        modal: true,
-        width: 10,
-        height: 150,
-        resizable: false,
-        closeOnEscape: false,
-        position: { my: "top", at: "top+160", of: "#main_form" },
-        open: function (evt, ui) {
-          // jQuery(".ui-dialog-titlebar-close").hide();
-          setTimeout(function () {}, 100);
-        },
+      jQuery("body").loadingModal({
+        position: "auto",
+        text: "Updating Verify Status and Creating Bag Label. Please wait...",
+        color: "#fff",
+        opacity: "0.7",
+        backgroundColor: "rgb(220,220,220)",
+        animation: "doubleBounce",
       });
     } catch (e) {
       console.error("handleButtonClick", e.message);

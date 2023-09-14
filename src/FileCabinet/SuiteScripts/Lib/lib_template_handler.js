@@ -3,12 +3,12 @@
  * @NModuleScope Public
  */
 
-define(["N/file", "N/xml", "N/render"], /**
+define(["N/file", "N/xml", "N/render"]
+/**
  * @param{file} file
  * @param{xml} xml
  * @param render
- */
-function (file, xml, render) {
+ */, function (file, xml, render) {
   /**
    * Build XMLDoc file from template with content Data
    * @param {number} options.templateID - Template Id
@@ -19,8 +19,8 @@ function (file, xml, render) {
    */
   function buildFileFromTemplate(options) {
     try {
-      var objRender = render.create();
-      var xmlTmpFile = file.load(options.templateID);
+      const objRender = render.create();
+      const xmlTmpFile = file.load(options.templateID);
       objRender.templateContent = xmlTmpFile.getContents();
 
       objRender.addCustomDataSource({

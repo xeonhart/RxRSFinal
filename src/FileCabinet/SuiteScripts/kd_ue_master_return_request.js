@@ -390,29 +390,29 @@ define([
 
       generateFinStatamentPdfUrl += "&id=" + context.newRecord.id;
 
-      /*context.form.addButton({
-                    id : 'custpage_btn_print_fin_statement',
-                    label : 'Print Final Statement',
-                    functionName: "window.open('" + generateFinStatamentPdfUrl + "');"
-                });*/
+      context.form.addButton({
+        id: "custpage_btn_print_fin_statement",
+        label: "Print Final Statement",
+        functionName: "window.open('" + generateFinStatamentPdfUrl + "');",
+      });
 
       /*log.debug('test', runtime.getCurrentUser().role + ' : ' + context.newRecord.getValue('custrecord_kd_ready_for_approval'))
-              if((runtime.getCurrentUser().role == 3 || runtime.getCurrentUser().role == 1028) && context.newRecord.getValue('custrecord_kd_ready_for_approval') == true && context.newRecord.getValue('custrecord_kod_mr_status') != 10){
-                  //{custbody_kd_rr_category.id}=3 and {userrole.id} in (3,1028) and {custbody_kd_c2_no_of_labels} is not null
-                  context.form.addButton({
-                      id : 'custpage_btn_approve',
-                      label : 'Approve',
-                      functionName: "approve"
-                  });
-                  var fileId = search.create({
-                      type: 'file',
-                      filters: [
-                          ['name', 'is', SCR_FILE_NAME_CS_MRR]
-                      ]
-                  }).run().getRange({ start: 0, end: 1 });
-                  log.debug('beforeLoad', 'cs file id: ' + fileId[0].id);
-                  context.form.clientScriptFileId = fileId[0].id;
-              }*/
+                    if((runtime.getCurrentUser().role == 3 || runtime.getCurrentUser().role == 1028) && context.newRecord.getValue('custrecord_kd_ready_for_approval') == true && context.newRecord.getValue('custrecord_kod_mr_status') != 10){
+                        //{custbody_kd_rr_category.id}=3 and {userrole.id} in (3,1028) and {custbody_kd_c2_no_of_labels} is not null
+                        context.form.addButton({
+                            id : 'custpage_btn_approve',
+                            label : 'Approve',
+                            functionName: "approve"
+                        });
+                        var fileId = search.create({
+                            type: 'file',
+                            filters: [
+                                ['name', 'is', SCR_FILE_NAME_CS_MRR]
+                            ]
+                        }).run().getRange({ start: 0, end: 1 });
+                        log.debug('beforeLoad', 'cs file id: ' + fileId[0].id);
+                        context.form.clientScriptFileId = fileId[0].id;
+                    }*/
 
       if (
         (runtime.getCurrentUser().role == 3 ||
@@ -478,7 +478,7 @@ define([
     //TMP FOR TEST OF INVOICE CREATION
     //createPharmacyInvoice(context.newRecord.id);
     //END TMP FOR TEST;
-    return;
+
   }
 
   function anotherDeploymentIsExecuting() {
@@ -702,8 +702,7 @@ define([
       });
 
       log.debug("afterSubmit", JSON.stringify(lookupRs));
-      var customerName =
-        lookupRs.entityid
+      var customerName = lookupRs.entityid;
       log.audit("customerName", customerName);
       var customerFolder = getCustomerFolder(customerName);
       var customerMrrFolder = getCustomerMrrFolder(
@@ -783,55 +782,55 @@ define([
 
       //if(context.type == 'create'){
       /*record.submitFields({
-                    type: REC_MRR,
-                    id: mrrRec.id,
-                    values: {
-                        custrecord_kd_mrr_for_csv_import: true
-                    },
-                    options: {
-                        enableSourcing: false,
-                        ignoreMandatoryFields : true
-                    }
-                });
-                try{
-                    var mrTask = task.create({
-                        taskType: task.TaskType.MAP_REDUCE,
-                        scriptId: 'customscript_kd_mr_create_item_requested',
-                        deploymentId: 'customdeploy_kd_mr_create_it_requested'
-                    });
-                    var mrTaskId = mrTask.submit();
-                    var mrTaskStatus = task.checkStatus({
-                        taskId: mrTaskId
-                    });
-                    log.debug('TEST', 'MR Task Status ' + mrTaskStatus);
-                    //if(mrTaskStatus == FAILED)
-                }catch(ex){
-                    log.error({title: 'map/reduce task creation', details: ex });
-                }*/
+                          type: REC_MRR,
+                          id: mrrRec.id,
+                          values: {
+                              custrecord_kd_mrr_for_csv_import: true
+                          },
+                          options: {
+                              enableSourcing: false,
+                              ignoreMandatoryFields : true
+                          }
+                      });
+                      try{
+                          var mrTask = task.create({
+                              taskType: task.TaskType.MAP_REDUCE,
+                              scriptId: 'customscript_kd_mr_create_item_requested',
+                              deploymentId: 'customdeploy_kd_mr_create_it_requested'
+                          });
+                          var mrTaskId = mrTask.submit();
+                          var mrTaskStatus = task.checkStatus({
+                              taskId: mrTaskId
+                          });
+                          log.debug('TEST', 'MR Task Status ' + mrTaskStatus);
+                          //if(mrTaskStatus == FAILED)
+                      }catch(ex){
+                          log.error({title: 'map/reduce task creation', details: ex });
+                      }*/
       /*}else if(context.type == 'edit'){
-                    var objMrrRec;
-                    if(rxOtcFileId != null || c35FileId != null || c2FileId != null){
-                        var objRecord = record.load({
-                            type: REC_MRR,
-                            id: mrrRec.id
-                        });
-
-                        objRecord.setValue({
-                            fieldId: 'custrecord_kd_mrr_rx_otc_file',
-                            value: rxOtcFileId
-                        });
-
-                        objRecord.setValue({
-                            fieldId: 'custrecord_kd_mrr_c3_5_file',
-                            value: c35FileId
-                        });
-
-                        objRecord.setValue({
-                            fieldId: 'custrecord_kd_mrr_c2_file',
-                            value: c2FileId
-                        });
-                    }
-                }*/
+                          var objMrrRec;
+                          if(rxOtcFileId != null || c35FileId != null || c2FileId != null){
+                              var objRecord = record.load({
+                                  type: REC_MRR,
+                                  id: mrrRec.id
+                              });
+      
+                              objRecord.setValue({
+                                  fieldId: 'custrecord_kd_mrr_rx_otc_file',
+                                  value: rxOtcFileId
+                              });
+      
+                              objRecord.setValue({
+                                  fieldId: 'custrecord_kd_mrr_c3_5_file',
+                                  value: c35FileId
+                              });
+      
+                              objRecord.setValue({
+                                  fieldId: 'custrecord_kd_mrr_c2_file',
+                                  value: c2FileId
+                              });
+                          }
+                      }*/
       //}
     }
 
@@ -856,13 +855,13 @@ define([
 
         //generate final statement
         /*var generatePdfUrl = url.resolveScript({
-                        scriptId: 'SCR_ID_GENERATE_FORM_222',
-                        deploymentId: DPLYMNT_GENERATE_FORM_222
-                    });
-                    log.debug('afterSubmit', generatePdfUrl);
-                    redirect.redirect({
-                        url: generatePdfUrl+'&id='+context.newRecord.id
-                    });*/
+                                scriptId: 'SCR_ID_GENERATE_FORM_222',
+                                deploymentId: DPLYMNT_GENERATE_FORM_222
+                            });
+                            log.debug('afterSubmit', generatePdfUrl);
+                            redirect.redirect({
+                                url: generatePdfUrl+'&id='+context.newRecord.id
+                            });*/
 
         var generateFinStatamentPdfUrl = url.resolveScript({
           scriptId: "customscript_kd_sl_gen_final_statement",
@@ -875,8 +874,8 @@ define([
           "generateFinalStatementPdfUrl> " + generateFinStatamentPdfUrl
         );
         /*redirect.redirect({
-                        url: generateFinStatamentPdfUrl
-                    });*/
+                                url: generateFinStatamentPdfUrl
+                            });*/
         redirect.toSuitelet({
           scriptId: "630",
           deploymentId: "882",

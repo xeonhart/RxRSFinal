@@ -107,6 +107,12 @@ define([
   ];
   const RETURNCOVERLETTERCOLUMNSFINALYPAYMENTSCHED = [
     search.createColumn({
+      name: "internalid",
+      sort: search.Sort.ASC,
+      summary: "MIN",
+      label: "Internal ID",
+    }),
+    search.createColumn({
       name: "custrecord_irc_total_amount",
       summary: "SUM",
       label: "Wac Amount",
@@ -1360,13 +1366,23 @@ define([
       paymentAmount = paymentAmount - orginalNonReturnableFeeAmount;
       log.error("paymentAmount", paymentAmount);
       if (isVerifyStaging == false) {
+        record.submitFields({
+          type: "customrecord_return_cover_letter",
+          id: rclId,
+          values: {
+            custrecord_rcl_total_customer_credit_amt: paymentAmount,
+          },
+        });
         itemScanList.push({
           dateCreated: " ",
           amount: "$" + paymentAmount.toFixed(2),
           paymetnSchedule: " ",
         });
       }
-      if (initialSplitpaymentPage) {
+      if (
+        initialSplitpaymentPage == "true" ||
+        initialSplitpaymentPage == true
+      ) {
         let customizedURL = url.resolveScript({
           scriptId: "customscript_sl_return_cover_letter",
           deploymentId: "customdeploy_sl_return_cover_letter",
@@ -2063,7 +2079,7 @@ define([
       filters: [
         ["custrecord_irs_master_return_request", "anyof", mrrId],
         "AND",
-        ["custrecord_cs__mfgprocessing", "anyof", options.mfgProcessing],
+        ["custrecord_cs__mfgprocessing", "anyof", mfgProcessing],
       ],
       columns: [
         search.createColumn({

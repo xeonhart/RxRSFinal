@@ -73,9 +73,13 @@ define([
    * @param {string} scriptContext.type - Trigger type; use values from the context.UserEventType enum
    * @since 2015.2
    */
-  const beforeSubmit = (scriptContext) => {
+  const afterSubmit = (scriptContext) => {
     let nonReturnableFeeAmount = 0;
-    const rec = scriptContext.newRecord;
+    const curRec = scriptContext.newRecord;
+    const rec = record.load({
+      type: "customrecord_return_cover_letter",
+      id: curRec.id,
+    });
     try {
       let mrrId = rec.getValue("custrecord_rcl_master_return");
       let nonReturnableFeePercent = rec.getValue(
@@ -108,6 +112,9 @@ define([
         fieldId: "custrecord_rcl_non_returnable_fee_amt",
         value: nonReturnableFeeAmount.toFixed(4),
       });
+      rec.save({
+        ignoreMandatoryFields: true,
+      });
     } catch (e) {
       log.error("beforeSubmit", e.message);
     }
@@ -121,7 +128,6 @@ define([
    * @param {string} scriptContext.type - Trigger type; use values from the context.UserEventType enum
    * @since 2015.2
    */
-  const afterSubmit = (scriptContext) => {};
 
-  return { beforeLoad, beforeSubmit, afterSubmit };
+  return { beforeLoad, afterSubmit };
 });

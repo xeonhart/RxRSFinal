@@ -53,6 +53,8 @@ define(["N/record", "N/url"], /**
               ' ","_blank","width=1900,height=1200")',
           });
         }
+      }
+      if (context.type != "create") {
         if (rec.type == "customrecord_return_cover_letter") {
           let mrrId = rec.getValue("custrecord_rcl_master_return");
           let tranId = rec.getText("custrecord_rcl_master_return");
@@ -72,7 +74,7 @@ define(["N/record", "N/url"], /**
               mrrId: mrrId,
               tranId: tranId,
               isVerifyStaging: false,
-              initialSplitpaymentPage: true,
+              initialSplitpaymentPage: false,
               returnableFee: returnableFee,
               nonReturnableFeeAmount: nonReturnableFeeAmount,
               title: "In-Dated Inventory",
@@ -86,6 +88,35 @@ define(["N/record", "N/url"], /**
               'window.open("' +
               rclSuiteletURL +
               ' ","_blank","width=1500,height=1200,left=100,top=1000")',
+          });
+          let printReturnSummaryURL = url.resolveScript({
+            scriptId: "customscript_sl_print_return_summary",
+            deploymentId: "customdeploy_sl_print_return_summary",
+            returnExternalUrl: false,
+            params: {
+              rclId: rec.id,
+            },
+          });
+
+          context.form.addButton({
+            id: "custpage_print_return_summary",
+            label: "Print Return Summary",
+            functionName:
+              'window.open("' + printReturnSummaryURL + ' ","_blank",)',
+          });
+          let printReturnCoverLetterURL = url.resolveScript({
+            scriptId: "customscript_sl_print_return_cover_lette",
+            deploymentId: "customdeploy_sl_print_return_cover_lette",
+            returnExternalUrl: false,
+            params: {
+              rclId: rec.id,
+            },
+          });
+          context.form.addButton({
+            id: "custpage_print_cover_letter",
+            label: "Print Return Cover Letter",
+            functionName:
+              'window.open("' + printReturnCoverLetterURL + ' ","_blank",)',
           });
         }
       }
