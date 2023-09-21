@@ -8,10 +8,13 @@
  * Date: 08/15/2023
  * Update:
  */
-define(["N/record", "N/url"], /**
+define(["N/record", "N/url", "../rxrs_util", "N/ui/serverWidget", "N/file"], /**
  * @param{record} record
  * @param{url} url
- */ (record, url) => {
+ * @param rxrs_util
+ * @param serverWidget
+ * @param file
+ */ (record, url, rxrs_util, serverWidget, file) => {
   /**
    * Defines the function definition that is executed before record is loaded.
    * @param {Object} scriptContext
@@ -26,6 +29,7 @@ define(["N/record", "N/url"], /**
     const id = rec.id;
     log.audit("recType", rec.type);
     try {
+      context.form.clientScriptFileId = rxrs_util.getFileId("rxrs_cs_rr.js");
       if (context.type == "view") {
         if (rec.type != "customrecord_return_cover_letter") {
           const tranId = rec.getValue("tranid");
@@ -44,14 +48,14 @@ define(["N/record", "N/url"], /**
               rrType: rec.type,
             },
           });
-          context.form.addButton({
-            id: "custpage_verify",
-            label: "Verify Items",
-            functionName:
-              'window.open("' +
-              forVerificationSLUrl +
-              ' ","_blank","width=1900,height=1200")',
-          });
+          // context.form.addButton({
+          //   id: "custpage_verify",
+          //   label: "Verify Items",
+          //   functionName:
+          //     'window.open("' +
+          //     forVerificationSLUrl +
+          //     ' ","_blank","width=1900,height=1200")',
+          // });
         }
       }
       if (context.type != "create") {

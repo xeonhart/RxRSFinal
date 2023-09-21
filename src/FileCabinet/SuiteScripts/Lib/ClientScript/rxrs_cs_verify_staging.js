@@ -59,6 +59,7 @@ define([
             window.location = window.location + "#loaded";
             //using reload() method to reload web page
             window.location.reload();
+            window.close();
           }
         }, 100);
       }
@@ -289,7 +290,7 @@ define([
   /**
    * Create Payment Record and Assign it to item return scan
    */
-  function createPayment(mrrId, paymentText) {
+  function createPayment(mrrId) {
     try {
       let internalIds = [];
       let rec = currentRecord.get();
@@ -320,22 +321,8 @@ define([
         alert("Please select item");
         return;
       }
-      if (paymentName == "" || paymentName == null) {
-        alert("Please enter Payment name");
-        return;
-      }
 
       let returnList = JSON.stringify(internalIds.join("_"));
-
-      if (paymentName == initialPaymentName) {
-        alert("Please enter a different payment name");
-        return;
-      }
-      let createdPaymentId = rxrs_rcl_lib.createPaymentSched({
-        paymentName: paymentName,
-        dueDate: dueDate,
-      });
-      console.log("createdPaymentId: " + createdPaymentId);
 
       let rclSuiteletURL = url.resolveScript({
         scriptId: "customscript_sl_return_cover_letter",
@@ -347,9 +334,10 @@ define([
           inDated: true,
           isVerifyStaging: false,
           returnList: returnList,
-          createdPaymentId: createdPaymentId,
+          createdPaymentId: paymentName,
           title: "In-Dated Inventory",
           finalPaymentSched: false,
+          initialSplitpaymentPage: false,
         },
       });
       window.open(`${rclSuiteletURL}`, "_self");

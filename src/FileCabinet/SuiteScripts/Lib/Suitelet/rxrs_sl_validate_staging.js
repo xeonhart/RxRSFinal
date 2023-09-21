@@ -267,6 +267,7 @@ define([
           inDated: false,
           selectionType: paramSelectionType,
         });
+        log.audit("Manufacturer", manufacturer);
         //create sublist for Returnables
         log.audit(paramManufacturer);
         if (rxrs_vs_util.isEmpty(paramManufacturer)) {

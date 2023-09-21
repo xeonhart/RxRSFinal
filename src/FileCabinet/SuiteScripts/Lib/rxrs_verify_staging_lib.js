@@ -108,8 +108,7 @@ define([
   const RETURNCOVERLETTERCOLUMNSFINALYPAYMENTSCHED = [
     search.createColumn({
       name: "internalid",
-      sort: search.Sort.ASC,
-      summary: "MIN",
+      summary: "MAX",
       label: "Internal ID",
     }),
     search.createColumn({
@@ -126,6 +125,13 @@ define([
       name: "custrecord_final_payment_schedule",
       summary: "GROUP",
       label: "Final Payment Schedule",
+    }),
+    search.createColumn({
+      name: "internalid",
+      join: "CUSTRECORD_FINAL_PAYMENT_SCHEDULE",
+      summary: "GROUP",
+      sort: search.Sort.ASC,
+      label: "Internal ID",
     }),
   ];
 
@@ -648,15 +654,16 @@ define([
           mrrId: options.mrrId,
           isVerifyStaging: true,
         });
+
         let currentAmount = 0;
         returnableScanList.forEach((ret) => (currentAmount += +ret.amount));
-        log.error("returnableScanList", { manufName, returnableScanList });
+        log.audit("returnableScanList", { manufName, returnableScanList });
         let manufId = getManufactuerId(manufName);
         //fixed issue in the URL when there is an ampersand symbol in Manuf Name
         let manufMaximumAmount = getManufMaxSoAmount(manufId)
           ? getManufMaxSoAmount(manufId)
           : 0;
-        log.error("new info", { manufName, manufMaximumAmount, currentAmount });
+        log.audit("new info", { manufName, manufMaximumAmount, currentAmount });
         let numberOfBags;
         numberOfBags =
           +manufMaximumAmount > +currentAmount
@@ -832,6 +839,7 @@ define([
    */
   function checkIfReturnScanIsVerified(options) {
     try {
+      log.audit("checkIfReturnScanIsVerified", options);
       let ISVERIFIED = true;
       let bagLabel;
       let filters = [];
@@ -1069,7 +1077,7 @@ define([
     let filters = [];
     let target;
     let paymentFields;
-    log.error("options", options);
+    log.audit("getReturnableItemScan", options);
     let {
       rclId,
       returnList,
@@ -1102,13 +1110,15 @@ define([
       paymentColumn = INDATED_INVENTORY_COLUMN;
       target = "_self";
       // Remove the updated item return scan in the list
-      filters.push(
-        search.createFilter({
-          name: "custrecord_payment_schedule_updated",
-          operator: "is",
-          values: "F",
-        })
-      );
+      if (!isVerifyStaging) {
+        filters.push(
+          search.createFilter({
+            name: "custrecord_payment_schedule_updated",
+            operator: "is",
+            values: "F",
+          })
+        );
+      }
     }
 
     try {
@@ -1182,8 +1192,8 @@ define([
           );
         }
       }
-      // log.emergency("Get Item Return Scan Filter", filters);
-      // log.emergency("Get Item Return Scan Columns", columns);
+      log.audit("Get Item Return Scan Filter", filters);
+      log.audit("Get Item Return Scan Columns", columns);
 
       const customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
@@ -1306,16 +1316,32 @@ define([
             } catch (e) {
               log.error("removing decimal", e.message);
             }
+            /**
+             * Push the default in the first result
+             */
+            if (paymentSchedText == "Default") {
+              itemScanList.unshift({
+                dateCreated: result.getValue({
+                  name: "created",
+                  summary: "MAX",
+                }),
+                amount: "$" + amount,
+                paymetnSchedule: `<a href="${stSuiteletUrl}" target="${target}" >${paymentSchedText} </a>`,
+                delete: `<a href="${deleteURL}" target="_self" >${deleteWord}</a>`,
+              });
+            } else {
+              itemScanList.push({
+                dateCreated: result.getValue({
+                  name: "created",
+                  summary: "MAX",
+                }),
+                amount: "$" + amount,
+                paymetnSchedule: `<a href="${stSuiteletUrl}" target="${target}" >${paymentSchedText} </a>`,
+                delete: `<a href="${deleteURL}" target="_self" >${deleteWord}</a>`,
+              });
+            }
 
-            itemScanList.push({
-              dateCreated: result.getValue({
-                name: "created",
-                summary: "MAX",
-              }),
-              amount: "$" + amount,
-              paymetnSchedule: `<a href="${stSuiteletUrl}" target="${target}" >${paymentSchedText} </a>`,
-              delete: `<a href="${deleteURL}" target="_self" >${deleteWord}</a>`,
-            });
+            log.error("itemScanList", itemScanList);
           } else {
             let splitPaymentURL = url.resolveScript({
               scriptId: "customscript_sl_return_cover_letter",
@@ -1330,7 +1356,7 @@ define([
                 isReload: true,
                 isVerifyStaging: isVerifyStaging,
                 paymentId: paymentSchedId,
-                initialSplitpaymentPage: true,
+                initialSplitpaymentPage: false,
               },
             });
 
@@ -1370,7 +1396,7 @@ define([
           type: "customrecord_return_cover_letter",
           id: rclId,
           values: {
-            custrecord_rcl_total_customer_credit_amt: paymentAmount,
+            custrecord_rcl_total_customer_credit_amt: paymentAmount.toFixed(2),
           },
         });
         itemScanList.push({
@@ -1380,8 +1406,8 @@ define([
         });
       }
       if (
-        initialSplitpaymentPage == "true" ||
-        initialSplitpaymentPage == true
+        initialSplitpaymentPage == "false" ||
+        initialSplitpaymentPage == false
       ) {
         let customizedURL = url.resolveScript({
           scriptId: "customscript_sl_return_cover_letter",
@@ -1392,9 +1418,8 @@ define([
             paymentSchedText: "Default",
             mrrId: mrrId,
             tranId: mrrName,
-            finalPaymentSched: true,
             customize: true,
-            finalPaymentSched: finalPaymentSched,
+            finalPaymentSched: true,
           },
         });
         itemScanList.push({

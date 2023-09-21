@@ -152,7 +152,7 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
         ignoreMandatoryFields: true,
       });
     } catch (e) {
-      log.error(addInventoryAdjustmentLine, e.message);
+      log.error("addInventoryAdjustmentLine", e.message);
     }
   }
 
@@ -242,13 +242,16 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
   /**
    * Create PO if the type of the Return Request is RRPO
    * @param {number}options.mrrId
-   * @param {string}options.rrId
+   * @param {number}options.rrId
+   * @param {number}options.entity
    */
   function createPO(options) {
+    let { mrrId, rrId, entity } = options;
+    let poLinesInfo = [];
     try {
       log.debug("createPO", options);
       let poId = checkITransAlreadyExist({
-        mrrId: options.mrrId,
+        mrrId: mrrId,
         searchType: "po",
       });
       let poRec;
@@ -266,20 +269,30 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
       }
       poRec.setValue({
         fieldId: "entity",
-        value: rxrsUtil_vl.getEntityFromMrr({ mrrId: options.mrrId }),
+        value: entity,
       });
       poRec.setValue({
         fieldId: "custbody_kd_master_return_id",
-        value: +options.mrrId,
+        value: +mrrId,
       });
-      poRec.setValue({
-        fieldId: "custbody_kd_return_request2",
-        value: options.rrId,
-      });
-      let poLines = getIRSPOLine({ rrId: options.rrId });
+      let rrIds = poRec.getValue("custbody_kd_return_request2"); // add multiple return request
+      if (rrIds.length > 0) {
+        rrIds.push(rrId);
+        poRec.setValue({
+          fieldId: "custbody_kd_return_request2",
+          value: rrIds,
+        });
+      } else {
+        poRec.setValue({
+          fieldId: "custbody_kd_return_request2",
+          value: rrId,
+        });
+      }
+
+      let poLines = getIRSPOLine({ rrId: rrId });
       log.audit("poLines", poLines);
       if (poLines.length < 1) throw "No Lines can be set on the Purchase Order";
-
+      let line = 0;
       poLines.forEach((item) => {
         try {
           poRec.selectNewLine({
@@ -315,7 +328,21 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
             fieldId: "amount",
             value: item.amount ? item.amount : 0,
           });
+          const subRec = poRec.getCurrentSublistSubrecord({
+            sublistId: "item",
+            fieldId: "inventorydetail",
+          });
+          setInventoryDetails({
+            inventoryDetailSubrecord: subRec,
+            quantity: item.quantity,
+            serialLotNumber: item.serialLotNumber,
+          });
+          poLinesInfo.push({
+            line: line,
+            quantity: +item.quantity,
+          });
           poRec.commitLine("item");
+          line++;
         } catch (e) {
           log.error("Setting PO Lines", e.message);
         }
@@ -323,9 +350,28 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
       let POID = poRec.save({
         ignoreMandatoryFields: true,
       });
-      log.audit("PO Id", POID);
+      if (POID) {
+        let resMessage;
+        const IRId = transformRecord({
+          fromType: record.Type.PURCHASE_ORDER,
+          toType: record.Type.ITEM_RECEIPT,
+          fromId: POID,
+          rrId: rrId,
+        });
+
+        // log.audit("IRID", IRId);
+        // log.audit("PO Id", POID);
+        resMessage = `Successfully Created PO: ${POID}`;
+        if (IRId) {
+          resMessage += ` And Successfully Created PO: ${IRId}`;
+        }
+        return {
+          resMessage: resMessage,
+        };
+      }
     } catch (e) {
       log.error("createPO", e.message);
+      return { error: e.message };
     }
   }
 
@@ -363,12 +409,16 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
             name: "custrecord_irc_total_amount",
             label: "Amount ",
           }),
+          search.createColumn({
+            name: "custrecord_scanorginallotnumber",
+          }),
         ],
       });
 
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
         let amount = 0;
-        amount = result.getValue("amount");
+
+        amount = result.getValue("custrecord_irc_total_amount");
         poLines.push({
           item: result.getValue("custrecord_cs_return_req_scan_item"),
           manufacturer: result.getValue("custrecord_scanmanufacturer"),
@@ -376,12 +426,82 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
           pharmaProcessing: result.getValue("custrecord_cs__rqstprocesing"),
           quantity: result.getValue("custrecord_cs_qty"),
           amount: amount,
+          serialLotNumber: result.getValue("custrecord_scanorginallotnumber"),
         });
         return true;
       });
       return poLines;
     } catch (e) {
       log.error("getIRSPOLine", e.message);
+    }
+  }
+
+  /**
+   *Set inventory Detail Subrecord
+   * @param {object}options.inventoryDetailSubrecord
+   * @param {number}options.quantity
+   * @param {string}options.serialLotNumber
+   * @param {string}options.expirationDate
+   */
+  function setInventoryDetails(options) {
+    let {
+      inventoryDetailSubrecord,
+      quantity,
+      serialLotNumber,
+      expirationDate,
+    } = options;
+    try {
+      inventoryDetailSubrecord.selectNewLine({
+        sublistId: "inventoryassignment",
+      });
+      inventoryDetailSubrecord.setCurrentSublistValue({
+        sublistId: "inventoryassignment",
+        fieldId: "receiptinventorynumber",
+        value: serialLotNumber,
+      });
+      inventoryDetailSubrecord.setCurrentSublistValue({
+        sublistId: "inventoryassignment",
+        fieldId: "quantity",
+        value: quantity,
+      });
+      expirationDate &&
+        inventoryDetailSubrecord.setCurrentSublistValue({
+          sublistId: "inventoryassignment",
+          fieldId: "expirationdate",
+          value: expirationDate,
+        });
+      return inventoryDetailSubrecord.commitLine({
+        sublistId: "inventoryassignment",
+      });
+    } catch (e) {
+      log.error("Setting Inventory Details", e.message);
+    }
+  }
+
+  /**
+   * Transform Record
+   * @param {string}options.fromType
+   * @param {string}options.toType
+   * @param {number}options.fromId
+   * @param {number}options.rrId
+   */
+  function transformRecord(options) {
+    log.audit("transformRecord params", options);
+    let { fromType, toType, fromId, rrId } = options;
+    try {
+      const objRecord = record.transform({
+        fromType: fromType,
+        fromId: fromId,
+        toType: toType,
+        isDynamic: true,
+      });
+      objRecord.setValue({
+        fieldId: "custbody_kd_return_request2",
+        value: rrId,
+      });
+      return objRecord.save({ ignoreMandatoryFields: true });
+    } catch (e) {
+      log.error("transfromRecord", e.message);
     }
   }
 
