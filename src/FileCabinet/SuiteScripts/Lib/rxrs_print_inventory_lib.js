@@ -25,7 +25,7 @@ define(["N/record", "N/search"], /**
         .getValue("custbody_location_address")
         .replaceAll("\r\n", ",");
 
-      if(options.manufId){
+      if (options.manufId) {
         const manufRec = record.load({
           type: "customrecord_csegmanufacturer",
           id: options.manufId,

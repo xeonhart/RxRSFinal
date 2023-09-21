@@ -42,9 +42,9 @@ define([
       const objRequest = context.request;
       let rclId = objRequest.parameters.rclId;
 
-      const RETURNCOVERLETTER_TMPLT = "return_cover_letter_pdf.xml";
-      const xmlFileId = rxrsUtil.getFileId(RETURNCOVERLETTER_TMPLT);
-
+      const RETURNSUMARY_TMPLT = "return_summary_pdf.xml";
+      const xmlFileId = rxrsUtil.getFileId(RETURNSUMARY_TMPLT);
+      log.debug("xmlFileId", xmlFileId);
       let rec = record.load({
         type: "customrecord_return_cover_letter",
         id: rclId,
@@ -52,7 +52,7 @@ define([
       let date = rec.getText("created");
 
       date = date.split(" ");
-
+      log.debug("date", rxrsUtil.formatDate(date));
       let data = {
         address: rec.getValue("custrecord_rcl_address"),
         custrecord_rcl_master_return: rec.getValue(
@@ -85,47 +85,14 @@ define([
           "custrecord_rcl_credit_discount"
         ),
         custrecord_rcl_service_fee: rec.getValue("custrecord_rcl_service_fee"),
-        created: date[0],
-        custrecord_rcl_customer: rec.getText("custrecord_rcl_customer"),
-        custrecord_rcl_customer_number: rec.getValue(
-          "custrecord_rcl_customer_number"
-        ),
+        created: rxrsUtil.formatDate(date),
       };
-      data.payments = [];
-      for (
-        let i = 0;
-        i <= rec.getLineCount("custpage_items_sublist") - 2;
-        i++
-      ) {
-        let dateCreated = rec.getSublistValue({
-          sublistId: "custpage_items_sublist",
-          fieldId: "custpage_date_created",
-          line: i,
-        });
-        dateCreated = dateCreated.split(" ");
-        let paymentType = rec.getSublistValue({
-          sublistId: "custpage_items_sublist",
-          fieldId: "custpage_payment_type",
-          line: i,
-        });
-        paymentType = getPaymentTypeName(paymentType);
-        let amount = rec.getSublistValue({
-          sublistId: "custpage_items_sublist",
-          fieldId: "custpage_amount",
-          line: i,
-        });
-        data.payments.push({
-          tranid: paymentType,
-          date: rxrsUtil.formatDate(dateCreated[0]),
-          amount: amount,
-        });
-      }
       log.audit("data", data);
 
       const folderId = rxrsUtil.getFolderId("Return Summary PDF");
-      //  log.debug("folderId", folderId);
-      // log.audit("Folder ID", folderId);
-      let fileName = `RetrunCoverLetter_${data.custrecord_rcl_master_return}.pdf`;
+      log.debug("folderId", folderId);
+      log.audit("Folder ID", folderId);
+      let fileName = `RetrunSummary_${rclId}.pdf`;
       const XMLCOntent = templateHandler.buildFileFromTemplate({
         templateID: xmlFileId,
         content: data,
@@ -143,24 +110,6 @@ define([
       log.error("onRequest", e.message);
     }
   };
-
-  /**
-   * Get the payment name using
-   * @param {string} paymentLink
-   */
-  function getPaymentTypeName(paymentLink) {
-    try {
-      let paymentName;
-      paymentName = paymentLink.split("&");
-      paymentName = paymentName[4];
-      paymentName = paymentName.split("=");
-      paymentName = paymentName[1].replaceAll("+", " ");
-      log.debug("paymentName", paymentName);
-      return paymentName;
-    } catch (e) {
-      log.error("getPaymentTypeName", e.message);
-    }
-  }
 
   return { onRequest };
 });

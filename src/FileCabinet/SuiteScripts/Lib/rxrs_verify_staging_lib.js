@@ -108,8 +108,7 @@ define([
   const RETURNCOVERLETTERCOLUMNSFINALYPAYMENTSCHED = [
     search.createColumn({
       name: "internalid",
-      sort: search.Sort.ASC,
-      summary: "MIN",
+      summary: "MAX",
       label: "Internal ID",
     }),
     search.createColumn({
@@ -126,6 +125,13 @@ define([
       name: "custrecord_final_payment_schedule",
       summary: "GROUP",
       label: "Final Payment Schedule",
+    }),
+    search.createColumn({
+      name: "internalid",
+      join: "CUSTRECORD_FINAL_PAYMENT_SCHEDULE",
+      summary: "GROUP",
+      sort: search.Sort.ASC,
+      label: "Internal ID",
     }),
   ];
 
@@ -1306,16 +1312,32 @@ define([
             } catch (e) {
               log.error("removing decimal", e.message);
             }
+            /**
+             * Push the default in the first result
+             */
+            if (paymentSchedText == "Default") {
+              itemScanList.unshift({
+                dateCreated: result.getValue({
+                  name: "created",
+                  summary: "MAX",
+                }),
+                amount: "$" + amount,
+                paymetnSchedule: `<a href="${stSuiteletUrl}" target="${target}" >${paymentSchedText} </a>`,
+                delete: `<a href="${deleteURL}" target="_self" >${deleteWord}</a>`,
+              });
+            } else {
+              itemScanList.push({
+                dateCreated: result.getValue({
+                  name: "created",
+                  summary: "MAX",
+                }),
+                amount: "$" + amount,
+                paymetnSchedule: `<a href="${stSuiteletUrl}" target="${target}" >${paymentSchedText} </a>`,
+                delete: `<a href="${deleteURL}" target="_self" >${deleteWord}</a>`,
+              });
+            }
 
-            itemScanList.push({
-              dateCreated: result.getValue({
-                name: "created",
-                summary: "MAX",
-              }),
-              amount: "$" + amount,
-              paymetnSchedule: `<a href="${stSuiteletUrl}" target="${target}" >${paymentSchedText} </a>`,
-              delete: `<a href="${deleteURL}" target="_self" >${deleteWord}</a>`,
-            });
+            log.error("itemScanList", itemScanList);
           } else {
             let splitPaymentURL = url.resolveScript({
               scriptId: "customscript_sl_return_cover_letter",
@@ -1330,7 +1352,7 @@ define([
                 isReload: true,
                 isVerifyStaging: isVerifyStaging,
                 paymentId: paymentSchedId,
-                initialSplitpaymentPage: true,
+                initialSplitpaymentPage: false,
               },
             });
 
@@ -1370,7 +1392,7 @@ define([
           type: "customrecord_return_cover_letter",
           id: rclId,
           values: {
-            custrecord_rcl_total_customer_credit_amt: paymentAmount,
+            custrecord_rcl_total_customer_credit_amt: paymentAmount.toFixed(2),
           },
         });
         itemScanList.push({
@@ -1380,8 +1402,8 @@ define([
         });
       }
       if (
-        initialSplitpaymentPage == "true" ||
-        initialSplitpaymentPage == true
+        initialSplitpaymentPage == "false" ||
+        initialSplitpaymentPage == false
       ) {
         let customizedURL = url.resolveScript({
           scriptId: "customscript_sl_return_cover_letter",
@@ -1392,9 +1414,8 @@ define([
             paymentSchedText: "Default",
             mrrId: mrrId,
             tranId: mrrName,
-            finalPaymentSched: true,
             customize: true,
-            finalPaymentSched: finalPaymentSched,
+            finalPaymentSched: true,
           },
         });
         itemScanList.push({

@@ -59,6 +59,7 @@ define([
             window.location = window.location + "#loaded";
             //using reload() method to reload web page
             window.location.reload();
+            window.close();
           }
         }, 100);
       }
@@ -289,7 +290,7 @@ define([
   /**
    * Create Payment Record and Assign it to item return scan
    */
-  function createPayment(mrrId, paymentText) {
+  function createPayment(mrrId) {
     try {
       let internalIds = [];
       let rec = currentRecord.get();
@@ -350,6 +351,7 @@ define([
           createdPaymentId: createdPaymentId,
           title: "In-Dated Inventory",
           finalPaymentSched: false,
+          initialSplitpaymentPage: false,
         },
       });
       window.open(`${rclSuiteletURL}`, "_self");

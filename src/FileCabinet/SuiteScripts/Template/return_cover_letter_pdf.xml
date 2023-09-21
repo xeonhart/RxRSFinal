@@ -24,10 +24,9 @@
         <macro id="nlheader">
             <table class="header" style="width: 100%;">
                 <tr>
-                    <td width="30%" rowspan="3"><#if companyInformation.logoUrl?length != 0>
-                        <img src="${companyInformation.logoUrl}"
+                    <td width="30%" rowspan="3">
+                        <img src="https://6816904.secure.netsuite.com/core/media/media.nl?id=24947&amp;c=6816904&amp;h=RbWH5-6fBQnHvgwQJOqsKVz9cPQZoKI6QLQOevBFS1IEilYo"
                              style="float: left; margin: 7px; width: 103px; height: 46px"/>
-                    </#if>
                 </td>
                 <td width="40%" colspan="2" style="font-size:14pt; align: center">Initial Inventory Report</td>
                 <td width="30%">&nbsp;</td>
@@ -60,11 +59,8 @@
         <table width="100%">
             <tr>
                 <td width="100%">
-                    <span font-size="25pt">
-                        <b>YOU FOR TRUSTING</b>
-                    </span>
-                    <strong><span style="color:#093e52;"><span class="title">RX</span></span></strong>
-                    <span style="color:#cccccc;"><span class="title"> Return Services</span></span>
+                    <img src="https://6816904.secure.netsuite.com/core/media/media.nl?id=24948&amp;c=6816904&amp;h=KetDjHJHmo22HxQTOL21CATrfipYgXqttVpsYZZs9WeEzakf"
+                         style="top:35px;width: 125%;height:125%; right: 10000px; margin-left: -30px" />
                 </td>
             </tr>
         </table>
@@ -162,56 +158,56 @@ font-family: NotoSans, sans-serif;
         }
         </style>
         </head>
-<body header="" header-height="15%" footer="nlfooter" footer-height="20pt" size="Letter">
-<table width="100%" background-color="#fff">
+<body header="" header-height="15%" footer="nlfooter"  padding="0 0 0 0" footer-height="10%" size="Letter">
+<table width="100%"  background-color="#1e1e1e">
+    <tr><td rowspan="1"><br /><br /><br /></td></tr>
     <tr>
-        <td width="35%" rowspan="5"><#if companyInformation.logoUrl?length != 0>
-            <img src="${companyInformation.logoUrl}" style="float: left; margin: 7px;"/>
+        <td margin-left="15px" width="30%" rowspan="5"><#if companyInformation.logoUrl?length != 0>
+            <img src="https://6816904.secure.netsuite.com/core/media/media.nl?id=24946&amp;c=6816904&amp;h=Ex5XfvQgUBEXJ8-t0zmg-QTzJ7LqI2ojlg7H0ldm2KDBP7i2" style="float: left; margin: 7px; height: 80%; width: 80%"/>
         </#if>
     </td>
     <td width="30%" rowspan="5"></td>
-    <td width="30%" font-size="18pt">RX Return Services</td>
+    <td  color="#FFFFFF" width="30%" font-size="18pt"><img src="https://6816904.secure.netsuite.com/core/media/media.nl?id=24949&amp;c=6816904&amp;h=ViKfAOEr8rjUo_KpLjZZtNin7Z71VjnBo7POgVaxZFFi-1SH" style="height: 60%; width: 60%"/></td>
 </tr>
 <tr>
-    <td font-size="12pt">1115 N OLD COACHMAN<br/>RD,Clearwater, FL 33765
+    <td font-size="12pt" color="#FFFFFF">1115 N OLD COACHMAN<br/>RD,Clearwater, FL 33765
     </td>
 </tr>
 <tr>
-    <td font-size="12pt">
-        <b>CREDIT TO:</b>
+    <td color="#FFFFFF"  font-size="12pt">
+        CREDIT TO:
     </td>
 </tr>
 <tr>
-    <td font-size="12pt">
-        <b>ACCOUNT:</b>
+    <td color="#FFFFFF" font-size="12pt">
+        ACCOUNT
         ${record.custrecord_rcl_customer_number}
-        <br/>
+        <br/>: <br/>
         ${record.custrecord_rcl_customer}
     </td>
 </tr>
 <tr>
-    <td font-size="12pt">${record.customer}</td>
+    <td color="#FFFFFF" font-size="12pt">${record.customer}</td>
 </tr>
 <tr>
     <td>&nbsp;</td>
 </tr>
 <tr>
-    <td font-size="12pt">
-        <b>RO Number:</b>
+    <td margin-left="30px" color="#FFFFFF" font-size="12pt">
+       <span stype="color:#FFF">RO Number:</span>
         ${record.custrecord_rcl_master_return}
     </td>
 </tr>
 <tr>
-    <td font-size="12pt">
-        <b>Date:</b>
-        ${record.requestdate}
+    <td font-size="12pt" margin-left="15px" color="#FFFFFF">
+
     </td>
 </tr>
 </table>
 <table width="100%">
 <tr>
     <td width="30%" margin-right="10px">
-        <table width="100%">
+        <table width="100%" margin-left="20px">
             <tr>
                 <td width="50%"></td>
                 <td width="50%"></td>
@@ -220,35 +216,33 @@ font-family: NotoSans, sans-serif;
                 <td font-size="20pt" colspan="2">RETURN COVER LETTER</td>
             </tr>
             <tr>
-                <td font-size="10pt" rowspan="2" align="center" valign="middle" background-color="#4FBD24" border="1"><span style="color:white; text-align:justify"> TOTAL CREDIT<br/>&nbsp;&nbsp;&nbsp;&nbsp;AMOUNT</span>
+                <td font-size="10pt" rowspan="2" align="center" valign="middle" background-color="#4FBD24" border="2"><span style="color:white; text-align:justify"> TOTAL CREDIT<br/>&nbsp;&nbsp;&nbsp;&nbsp;AMOUNT</span>
                 </td>
-                <td font-size="10pt" rowspan="2" align="center" valign="middle" border-top="1" border-bottom="1"
-                    border-right="1">$${record.custrecord_rcl_total_customer_credit_amt}
+                <td font-size="10pt" rowspan="2" align="center" valign="middle" border-top="2" border-bottom="2"
+                    border-right="2">$${record.custrecord_rcl_total_customer_credit_amt}
                 </td>
             </tr>
         </table>
     </td>
-    <td width="10%">
 
-    </td>
-    <td width="40%" margin-right="60" right="200px">
-        <table width="100%">
+    <td width="30%" margin-right="100" right="400px">
+        <table width="80%">
             <tr>
-                <td width="50%"></td>
-                <td width="50%"></td>
+                <td width="30%"></td>
+                <td width="10%"></td>
             </tr>
             <tr>
-                <td font-size="20pt" colspan="2" valign="bottom">TOTAL&nbsp; SUMMARY</td>
+                <td font-size="16pt" colspan="2" valign="bottom">TOTAL&nbsp; SUMMARY</td>
             </tr>
             <tr>
                 <td width="20%" background-color="#000000" color="#FFFFFF" border-color="#FFFFFF" border-right="1">
                     ITEM
                 </td>
-                <td width="20%" background-color="#000000" color="#FFFFFF" align="right">AMOUNT</td>
+                <td width="10px" background-color="#000000" color="#FFFFFF" align="right">AMOUNT</td>
             </tr>
             <tr>
-                <td width="20%">RETURNABLE VALUE:</td>
-                <td width="30%" align="right">$${record.custrecord_rcl_returnable_amount}</td>
+                <td width="20%" font-size="7pt">RETURNABLE VALUE:</td>
+                <td width="10px" align="right">$${record.custrecord_rcl_returnable_amount}</td>
             </tr>
             <tr>
                 <td>TOTAL FEES:</td>
@@ -280,15 +274,15 @@ font-family: NotoSans, sans-serif;
     </table>
 </td>
 <td width="50%">
-    <table width="100%">
+    <table width="85%">
         <tr>
             <td width="45%"></td>
             <td width="35%"></td>
             <td width="20%"></td>
         </tr>
         <tr>
-            <td colspan="3" font-size="18pt">
-                <b>PAYMENT SCHEDULE</b>
+            <td colspan="3" font-size="30pt">
+               PAYMENT SCHEDULE
             </td>
         </tr>
         <tr>
@@ -296,14 +290,14 @@ font-family: NotoSans, sans-serif;
             <td background-color="#000000" color="#FFFFFF" border-color="#FFFFFF" border-right="1" align="right">
                 AMOUNT
             </td>
-            <td background-color="#000000" color="#FFFFFF" align="right" text-align="right">DATE</td>
+            <td background-color="#000000" color="#FFFFFF" align="right" text-align="right" >DATE</td>
         </tr>
         <#if record.payments?has_content>
         <#list record.payments as payment>
         <tr>
-            <td>${payment.tranid}</td>
-            <td>${payment.amount}</td>
-            <td>${payment.date}</td>
+            <td font-size="7pt" >${payment.tranid}</td>
+            <td font-size="7pt" align="right">${payment.amount}</td>
+            <td font-size="7pt" align="right">${payment.date}</td>
         </tr>
     </#list>
 </#if>
