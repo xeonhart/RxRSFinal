@@ -35,9 +35,9 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
         },
       });
       let inventoryAdjRec;
-      let IAExist = checkITransAlreadyExist({
+      let IAExist = checkIfTransAlreadyExist({
         mrrId: mrrId,
-        searchType: "so",
+        searchType: "InvAdjst",
       });
       log.debug("createInventoryAdjustment IAExist", IAExist);
       if (IAExist == null) {
@@ -86,8 +86,8 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
    */
   function addInventoryAdjustmentLine(options) {
     try {
-      let inventoryAdjRec = options.inventoryAdjRec;
-      let items = getReturnRequestLine(options.rrId);
+      let { inventoryAdjRec, rrId } = options;
+      let items = getIRSLine({ rrId: rrId });
       items.forEach((IRFields) => {
         inventoryAdjRec.selectNewLine({
           sublistId: "inventory",
@@ -105,12 +105,12 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
         inventoryAdjRec.setCurrentSublistValue({
           sublistId: "inventory",
           fieldId: "adjustqtyby",
-          value: +IRFields.qty,
+          value: +IRFields.quantity,
         });
         inventoryAdjRec.setCurrentSublistValue({
           sublistId: "inventory",
           fieldId: "unitcost",
-          value: +IRFields.wacAmount,
+          value: +IRFields.amount,
         });
 
         /**
@@ -127,13 +127,13 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
         subrec.setCurrentSublistValue({
           sublistId: "inventoryassignment",
           fieldId: "quantity",
-          value: IRFields.qty,
+          value: IRFields.quantity,
         });
 
         subrec.setCurrentSublistValue({
           sublistId: "inventoryassignment",
           fieldId: "receiptinventorynumber",
-          value: IRFields.serialLot,
+          value: IRFields.serialLotNumber,
         });
         let expDate = new Date(IRFields.expDate);
         subrec.setCurrentSublistValue({
@@ -157,85 +157,47 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
   }
 
   /**
-   * Get the item return scan details
-   * @param {number}rrid
-   * @return {array} return the item return scan item list
-   */
-  function getReturnRequestLine(rrid) {
-    try {
-      let IRSItems = [];
-      const customrecord_cs_item_ret_scanSearchObj = search.create({
-        type: "customrecord_cs_item_ret_scan",
-        filters: [["custrecord_cs_ret_req_scan_rrid", "anyof", rrid]],
-        columns: [
-          search.createColumn({
-            name: "custrecord_cs_return_req_scan_item",
-            label: "Item",
-          }),
-          search.createColumn({
-            name: "custrecord_cs_lotnum",
-            label: "Serial/Lot Number",
-          }),
-          search.createColumn({
-            name: "custrecord_cs_expiration_date",
-            label: "Expiration Date",
-          }),
-          search.createColumn({ name: "custrecord_cs_qty", label: "Qty" }),
-          search.createColumn({
-            name: "custrecord_wac_amount",
-            sort: search.Sort.ASC,
-            label: "Amount",
-          }),
-        ],
-      });
-
-      customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
-        IRSItems.push({
-          item: result.getValue("custrecord_cs_return_req_scan_item"),
-          qty: result.getValue("custrecord_cs_qty"),
-          serialLot: result.getValue("custrecord_cs_lotnum"),
-          expDate: result.getValue("custrecord_cs_expiration_date"),
-          wacAmount: result.getValue("custrecord_wac_amount"),
-        });
-        return true;
-      });
-      log.audit("IRSItems", IRSItems);
-      return IRSItems;
-    } catch (e) {
-      log.error("getReturnRequestLine", e.message);
-    }
-  }
-
-  /**
-   * Check if the PO or Inventory Adjustment Already Exist
+   * Check transaction Already Exist
    *@param {number} options.mrrId - Internal Id of the Return Request
-   *@param {string} options.searchType - Use po or so
-   *@return  null if no IA created | return the internal Id if the IA exists
+   *@param {string} options.searchType - Transaction Type
+   *@param {number} options.finalPaymentSchedule - Final Payment Schedule
+   *@return  null if no transaction is created yet | return the internal Id if the transaction exists
    */
-  function checkITransAlreadyExist(options) {
+  function checkIfTransAlreadyExist(options) {
+    log.audit("checkIfTransAlreadyExist", options);
+    let { searchType, mrrId, finalPaymentSchedule } = options;
+
     try {
-      let Searchtype = options.searchType == "po" ? "PurchOrd" : "InvAdjst";
-      let invAdId;
+      let tranId;
       const inventoryadjustmentSearchObj = search.create({
         type: "transaction",
         filters: [
-          ["type", "anyof", Searchtype],
+          ["type", "anyof", searchType],
           "AND",
-          ["custbody_kd_master_return_id", "anyof", options.mrrId],
+          ["custbody_kd_master_return_id", "anyof", mrrId],
           "AND",
           ["mainline", "is", "T"],
         ],
       });
+      if (finalPaymentSchedule) {
+        inventoryadjustmentSearchObj.filters.push(
+          search.createFilter({
+            name: "custbody_kodpaymentsched",
+            operator: "anyof",
+            values: finalPaymentSchedule,
+          })
+        );
+      }
       const searchResultCount = inventoryadjustmentSearchObj.runPaged().count;
       if (searchResultCount < 1) return null;
 
       inventoryadjustmentSearchObj.run().each(function (result) {
-        invAdId = result.id;
+        tranId = result.id;
         return true;
       });
-      return invAdId;
+      return tranId;
     } catch (e) {
-      log.error("checkITransAlreadyExist", e.message);
+      log.error("checkIfTransAlreadyExist", e.message);
     }
   }
 
@@ -250,9 +212,9 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
     let poLinesInfo = [];
     try {
       log.debug("createPO", options);
-      let poId = checkITransAlreadyExist({
+      let poId = checkIfTransAlreadyExist({
         mrrId: mrrId,
-        searchType: "po",
+        searchType: "PurchOrd",
       });
       let poRec;
       if (poId !== null) {
@@ -289,7 +251,7 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
         });
       }
 
-      let poLines = getIRSPOLine({ rrId: rrId });
+      let poLines = getIRSLine({ rrId: rrId });
       log.audit("poLines", poLines);
       if (poLines.length < 1) throw "No Lines can be set on the Purchase Order";
       let line = 0;
@@ -376,20 +338,27 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
   }
 
   /**
-   * Get verified Item Return Scan Details for PO
+   * Get Item Return Scan Details
    * @param {number}options.rrId - Return Request Id
+   * @param {number}options.mrrId - Master Return Request Id
+   * @param {number}options.finalyPaymentSchedule
    * @return {array} return list of verified Item Return Scan
    */
-  function getIRSPOLine(options) {
+  function getIRSLine(options) {
+    let { rrId, finalyPaymentSchedule, mrrId } = options;
     try {
       let poLines = [];
       const customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
-        filters: [["custrecord_cs_ret_req_scan_rrid", "anyof", options.rrId]],
+        filters: [],
         columns: [
           search.createColumn({
             name: "custrecord_cs_return_req_scan_item",
             label: "Item",
+          }),
+          search.createColumn({
+            name: "custrecord_cs_expiration_date",
+            label: "Expiration Date",
           }),
           search.createColumn({
             name: "custrecord_scanmanufacturer",
@@ -414,6 +383,42 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
           }),
         ],
       });
+      if (rrId) {
+        customrecord_cs_item_ret_scanSearchObj.filters.push(
+          search.createFilter({
+            name: "custrecord_cs_ret_req_scan_rrid",
+            operator: "anyof",
+            values: rrId,
+          })
+        );
+      }
+      if (finalyPaymentSchedule) {
+        customrecord_cs_item_ret_scanSearchObj.filters.push(
+          search.createFilter({
+            name: "custrecord_final_payment_schedule",
+            operator: "anyof",
+            values: finalyPaymentSchedule,
+          })
+        );
+      }
+      if (finalyPaymentSchedule) {
+        customrecord_cs_item_ret_scanSearchObj.filters.push(
+          search.createFilter({
+            name: "custrecord_final_payment_schedule",
+            operator: "anyof",
+            values: finalyPaymentSchedule,
+          })
+        );
+      }
+      if (mrrId) {
+        customrecord_cs_item_ret_scanSearchObj.filters.push(
+          search.createFilter({
+            name: "custrecord_irs_master_return_request",
+            operator: "anyof",
+            values: mrrId,
+          })
+        );
+      }
 
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
         let amount = 0;
@@ -426,13 +431,14 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
           pharmaProcessing: result.getValue("custrecord_cs__rqstprocesing"),
           quantity: result.getValue("custrecord_cs_qty"),
           amount: amount,
+          expDate: result.getValue("custrecord_cs_expiration_date"),
           serialLotNumber: result.getValue("custrecord_scanorginallotnumber"),
         });
         return true;
       });
       return poLines;
     } catch (e) {
-      log.error("getIRSPOLine", e.message);
+      log.error("getIRSLine", e.message);
     }
   }
 
@@ -505,8 +511,109 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
     }
   }
 
+  /**
+   * Create PO if the type of the Return Request is RRPO
+   * @param {number}options.mrrId - Master Return Id
+   * @param {number}options.entity - Entity
+   * @param {number}options.finalPaymentSchudule - Final Payment Schedule
+   */
+  function createBill(options) {
+    log.debug("createBill", options);
+    let { mrrId, finalPaymentSchudule, entity } = options;
+    try {
+      let vbId = checkIfTransAlreadyExist({
+        mrrId: mrrId,
+        searchType: "VendBill",
+        finalyPaymentSchedule: finalPaymentSchudule,
+      });
+      if (vbId) return;
+      const vbRec = record.create({
+        type: record.Type.PURCHASE_ORDER,
+        isDynamic: true,
+      });
+
+      vbRec.setValue({
+        fieldId: "entity",
+        value: entity,
+      });
+      vbRec.setValue({
+        fieldId: "tranid",
+        value: mrrId,
+      });
+
+      vbRec.setValue({
+        fieldId: "custbody_kd_master_return_id",
+        value: +mrrId,
+      });
+
+      let vbLines = getIRSLine({
+        mrrId: mrrId,
+        finalyPaymentSchedule: finalPaymentSchudule,
+      });
+      log.audit("vbLines", vbLines);
+      if (vbLines.length < 1) throw "No Lines can be set on the Vendor Bill";
+      let line = 0;
+      vbLines.forEach((item) => {
+        try {
+          vbRec.selectNewLine({
+            sublistId: "item",
+          });
+          vbRec.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "item",
+            value: +item.item,
+          });
+          vbRec.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "csegmanufacturer",
+            value: +item.manufacturer,
+          });
+          vbRec.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "quantity",
+            value: +item.quantity,
+          });
+          vbRec.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "amount",
+            value: item.amount ? item.amount : 0,
+          });
+          const subRec = vbRec.getCurrentSublistSubrecord({
+            sublistId: "item",
+            fieldId: "inventorydetail",
+          });
+          setInventoryDetails({
+            inventoryDetailSubrecord: subRec,
+            quantity: item.quantity,
+            serialLotNumber: item.serialLotNumber,
+          });
+
+          vbRec.commitLine("item");
+          line++;
+        } catch (e) {
+          log.error("Setting PO Lines", e.message);
+        }
+      });
+      let VBID = vbRec.save({
+        ignoreMandatoryFields: true,
+      });
+      if (VBID) {
+        let resMessage;
+
+        resMessage = `Successfully Created Vendor Bill: ${VBID}`;
+        return {
+          resMessage: resMessage,
+        };
+      }
+    } catch (e) {
+      log.error("createBill", e.message);
+      return { error: e.message };
+    }
+  }
+
   return {
     createInventoryAdjustment: createInventoryAdjustment,
     createPO: createPO,
+    checkIfTransAlreadyExist: checkIfTransAlreadyExist,
   };
 });

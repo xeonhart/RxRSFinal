@@ -140,44 +140,51 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
    * @param options.rrId  Return RequestId
    * @param options.entity Entity Id
    */
-  function approveRR(options) {
+  function createTransaction(options) {
     let { mrrId, rrId, entity } = options;
-    handleButtonClick();
-    let functionSLURL = url.resolveScript({
-      scriptId: "customscript_sl_cs_custom_function",
-      deploymentId: "customdeploy_sl_cs_custom_function",
-      returnExternalUrl: false,
-      params: {
-        rrId: rrId,
-        mrrId: mrrId,
-        entity: entity,
-        action: "createPO",
-      },
-    });
-    setTimeout(function () {
-      let response = https.post({
-        url: functionSLURL,
+    try {
+      handleButtonClick();
+      let functionSLURL = url.resolveScript({
+        scriptId: "customscript_sl_cs_custom_function",
+        deploymentId: "customdeploy_sl_cs_custom_function",
+        returnExternalUrl: false,
+        params: {
+          rrId: rrId,
+          mrrId: mrrId,
+          entity: entity,
+          action: "createPO",
+        },
       });
-      if (response) {
-        console.log(response);
-        jQuery("body").loadingModal("destroy");
-        if (response.body.includes("ERROR")) {
-          let m = message.create({
-            type: message.Type.ERROR,
-            title: "ERROR",
-            message: response.body,
-          });
-          m.show(10000);
-        } else {
-          let m = message.create({
-            type: message.Type.CONFIRMATION,
-            title: "SUCCESS",
-            message: response.body,
-          });
-          m.show(10000);
+      setTimeout(function () {
+        let response = https.post({
+          url: functionSLURL,
+        });
+        if (response) {
+          console.log(response);
+          jQuery("body").loadingModal("destroy");
+          if (response.body.includes("ERROR")) {
+            let m = message.create({
+              type: message.Type.ERROR,
+              title: "ERROR",
+              message: response.body,
+            });
+            m.show(10000);
+          } else {
+            let m = message.create({
+              type: message.Type.CONFIRMATION,
+              title: "SUCCESS",
+              message: response.body,
+            });
+            m.show(10000);
+            setTimeout(function () {
+              location.reload();
+            }, 2000);
+          }
         }
-      }
-    }, 100);
+      }, 100);
+    } catch (e) {
+      log.error("createTransaction", e.message);
+    }
   }
 
   /**
@@ -198,6 +205,11 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
     }
   }
 
+  /**
+   * Open suitelet URL
+   * @param options.url URL
+   * @param options.action
+   */
   function openSuitelet(options) {
     let { url, action } = options;
     console.log(url);
@@ -206,11 +218,16 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
       case "verifyItems":
         window.open(url, "_blank", "width=1500,height=1200,left=100,top=1000");
         break;
+      case "splitPayment":
+        window.open(url, "_blank", "width=1500,height=1200,left=100,top=1000");
+        break;
+      default:
+        window.open(url, "_blank");
     }
   }
 
   return {
-    approveRR: approveRR,
+    createTransaction: createTransaction,
     pageInit: pageInit,
     openSuitelet: openSuitelet,
   };

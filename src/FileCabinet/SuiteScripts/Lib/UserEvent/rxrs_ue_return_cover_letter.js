@@ -48,6 +48,7 @@ define([
         returnableFee: returnableFee,
         nonReturnableFeeAmount: nonReturnableFeeAmount,
         initialSplitpaymentPage: true,
+        customize: true,
       });
       rxrs_vs_util.createReturnableSublist({
         form: form,

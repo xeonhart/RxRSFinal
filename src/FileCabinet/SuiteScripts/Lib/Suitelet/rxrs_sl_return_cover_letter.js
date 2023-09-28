@@ -103,6 +103,7 @@ define([
       returnList,
       createdPaymentId,
       initialSplitpaymentPage,
+
       returnableFee,
       nonReturnableFeeAmount,
     } = options.params;
@@ -239,7 +240,8 @@ define([
       }
       if (customize == "true") {
         /**
-         * If the the user clicks the cuztomized button in the Split Payment page
+         * If the user clicks the customized button in the Split Payment page
+         * If the user clicks the payment type column in the return cover letter page the user has the ability to change the final assigned payment method
          */
         form
           .addField({
@@ -250,7 +252,7 @@ define([
           })
           .updateDisplayType({
             displayType: "NORMAL",
-          }).defaultValue = paymentSchedText;
+          }).defaultValue = paymentSchedId;
         form
           .addField({
             id: "custpage_due_date",
@@ -263,7 +265,7 @@ define([
 
         form.addButton({
           id: "custpage_create_payment",
-          label: "Create Payment",
+          label: "Assign Payment",
           functionName: `createPayment(${mrrId})`,
         });
       }

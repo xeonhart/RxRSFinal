@@ -9,6 +9,7 @@ define([
   "../rxrs_util",
   "N/ui/serverWidget",
   "N/file",
+  "../rxrs_transaction_lib",
 ], /**
  * @param{record} record
  * @param{search} search
@@ -16,14 +17,15 @@ define([
  * @param rxrs_util
  * @param serverWidget
  * @param file
- */ (record, search, url, rxrs_util, serverWidget, file) => {
+ * @param tranlib
+ */ (record, search, url, rxrs_util, serverWidget, file, tranlib) => {
   /**
    * Defines the function definition that is executed before record is loaded.
-   * @param {Object} scriptContext
-   * @param {Record} scriptContext.newRecord - New record
-   * @param {string} scriptContext.type - Trigger type; use values from the context.UserEventType enum
-   * @param {Form} scriptContext.form - Current form
-   * @param {ServletRequest} scriptContext.request - HTTP request information sent from the browser for a client action only.
+   * @param {Object} context
+   * @param {Record} context.newRecord - New record
+   * @param {string} context.type - Trigger type; use values from the context.UserEventType enum
+   * @param {Form} context.form - Current form
+   * @param {ServletRequest} context.request - HTTP request information sent from the browser for a client action only.
    * @since 2015.2
    */
   const beforeLoad = (context) => {
@@ -64,13 +66,14 @@ define([
                 rrType: rec.type,
               },
             });
+            let paramsRR = {
+              url: forVerificationSLUrl,
+              action: "verifyItems",
+            };
             context.form.addButton({
               id: "custpage_verify",
               label: "Verify Items",
-              functionName:
-                'window.open("' +
-                forVerificationSLUrl +
-                ' ","_blank","width=1900,height=1200")',
+              functionName: `openSuitelet(${JSON.stringify(paramsRR)})`,
             });
             break;
           case "custompurchase_returnrequestpo":
@@ -90,25 +93,59 @@ define([
                 rrType: rec.type,
               },
             });
-            let params = {
+            let paramsRRPO = {
               url: forVerificationSLUrlPO,
               action: "verifyItems",
             };
             context.form.addButton({
               id: "custpage_verify",
               label: "Verify Items",
-              functionName: `openSuitelet(${JSON.stringify(params)})`,
+              functionName: `openSuitelet(${JSON.stringify(paramsRRPO)})`,
             });
             let approveParams = {
               mrrId: rrpoMrrId,
               rrId: rrpoId,
               entity: customer,
             };
-            context.form.addButton({
-              id: "custpage_approve",
-              label: "Approve",
-              functionName: `approveRR(${JSON.stringify(approveParams)})`,
+
+            let poId = tranlib.checkIfTransAlreadyExist({
+              mrrId: rrpoMrrId,
+              searchType: "PurchOrd",
             });
+            log.debug("POID", poId);
+            let poRec;
+            if (poId) {
+              poRec = record.load({
+                type: record.Type.PURCHASE_ORDER,
+                id: poId,
+                isDynamic: true,
+              });
+              let returnRequestValues = poRec.getValue(
+                "custbody_kd_return_request2"
+              );
+              log.debug(
+                "poId",
+                returnRequestValues.indexOf(JSON.stringify(rrpoId))
+              );
+              if (returnRequestValues.indexOf(JSON.stringify(rrpoId)) === -1) {
+                context.form.addButton({
+                  id: "custpage_approve",
+                  label: "Approve",
+                  functionName: `createTransaction(${JSON.stringify(
+                    approveParams
+                  )})`,
+                });
+              }
+            } else {
+              context.form.addButton({
+                id: "custpage_approve",
+                label: "Approve",
+                functionName: `createTransaction(${JSON.stringify(
+                  approveParams
+                )})`,
+              });
+            }
+
             break;
 
           case "customrecord_return_cover_letter":
@@ -139,15 +176,18 @@ define([
                 title: "In-Dated Inventory",
               },
             });
-
+            let paramSplitPayment = {
+              url: rclSuiteletURL,
+              action: "splitPayment",
+            };
             context.form.addButton({
               id: "custpage_split_payment",
               label: "Split Payment",
-              functionName:
-                'window.open("' +
-                rclSuiteletURL +
-                ' ","_blank","width=1500,height=1200,left=100,top=1000")',
+              functionName: `openSuitelet(${JSON.stringify(
+                paramSplitPayment
+              )})`,
             });
+
             let printReturnSummaryURL = url.resolveScript({
               scriptId: "customscript_sl_print_return_summary",
               deploymentId: "customdeploy_sl_print_return_summary",
@@ -156,13 +196,21 @@ define([
                 rclId: rec.id,
               },
             });
-
+            let paramPrintReturnSummary = {
+              url: printReturnSummaryURL,
+            };
             context.form.addButton({
               id: "custpage_print_return_summary",
               label: "Print Return Summary",
-              functionName:
-                'window.open("' + printReturnSummaryURL + ' ","_blank",)',
+              functionName: `openSuitelet(${JSON.stringify(
+                paramPrintReturnSummary
+              )})`,
             });
+
+            /**
+             * Create Print Return Cover Letter Button
+             */
+
             let printReturnCoverLetterURL = url.resolveScript({
               scriptId: "customscript_sl_print_return_cover_lette",
               deploymentId: "customdeploy_sl_print_return_cover_lette",
@@ -171,12 +219,21 @@ define([
                 rclId: rec.id,
               },
             });
+            let paramprintReturnCoverLetter = {
+              url: printReturnCoverLetterURL,
+            };
             context.form.addButton({
               id: "custpage_print_cover_letter",
               label: "Print Return Cover Letter",
-              functionName:
-                'window.open("' + printReturnCoverLetterURL + ' ","_blank",)',
+              functionName: `openSuitelet(${JSON.stringify(
+                paramprintReturnCoverLetter
+              )})`,
             });
+            /**
+             * Create Bill Button
+             */
+            let paymentIds = [];
+
             break;
         }
       }
