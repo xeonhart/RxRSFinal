@@ -22,7 +22,7 @@ define([
     let params = context.request.parameters;
     log.audit("params", params);
     if (context.request.method === "POST") {
-      let { rrId, mrrId, entity, action, rclId } = params;
+      let { rrId, mrrId, entity, action, rclId, poId } = params;
       try {
         let returnObj;
         log.audit("POST", params);
@@ -42,24 +42,29 @@ define([
             break;
           case "createBill":
             let paymentIds = rclLib.getRCLFinalPayment({ rclId: rclId });
-            let poId = tranLib.checkIfTransAlreadyExist({
-              mrrId: mrrId,
-              searchType: "PurchOrd",
-            });
+
             let processVB = [];
             log.audit("createBill", { paymentIds, poId });
             paymentIds.forEach((paymentId) => {
-              let returnObj = tranLib.createBill({
+              let isVBExist = tranLib.checkIfTransAlreadyExist({
                 mrrId: mrrId,
+                searchType: "VendBill",
                 finalPaymentSchudule: paymentId,
-                poId: poId,
               });
-              log.audit("returnObj", returnObj);
-              if (returnObj.id) {
-                processVB.push(returnObj.id);
+              log.emergency("isVBExist", { isVBExist, paymentId });
+              if (!isVBExist) {
+                let returnObj = tranLib.createBill({
+                  mrrId: mrrId,
+                  finalPaymentSchudule: paymentId,
+                  poId: poId,
+                });
+                log.audit("returnObj", returnObj);
+                if (returnObj.id) {
+                  processVB.push(returnObj.id);
+                }
               }
             });
-            if (processVB.length == paymentIds.length) {
+            if (processVB.length != 0) {
               let resMessage = `Successfully created Vendor bill ${processVB.join(
                 ","
               )}`;

@@ -166,7 +166,7 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
    */
   function checkIfTransAlreadyExist(options) {
     log.audit("checkIfTransAlreadyExist", options);
-    let { searchType, mrrId, finalPaymentSchedule, status } = options;
+    let { searchType, mrrId, finalPaymentSchudule, status } = options;
 
     try {
       let tranId;
@@ -180,25 +180,25 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
           ["mainline", "is", "T"],
         ],
       });
-      if (status) {
+
+      status &&
         transactionSearchObj.filters.push(
           search.createFilter({
             name: "status",
             operator: "anyof",
-            values: "PurchOrd:H",
+            values: status,
           })
         );
-      }
-      if (finalPaymentSchedule) {
+      finalPaymentSchudule &&
         transactionSearchObj.filters.push(
           search.createFilter({
             name: "custbody_kodpaymentsched",
             operator: "anyof",
-            values: finalPaymentSchedule,
+            values: finalPaymentSchudule,
           })
         );
-      }
 
+      log.emergency("filters", transactionSearchObj.filters);
       const searchResultCount = transactionSearchObj.runPaged().count;
       if (searchResultCount < 1) return null;
 

@@ -236,18 +236,25 @@ define([
             /**
              * Create Bill Button
              */
-            let createBillParams = {
-              mrrId: mrrId,
-              rclId: rec.id,
-              action: "createBill",
-            };
+
             //Check if the purchase order is fully billed/Closed
             let isBilled = tranlib.checkIfTransAlreadyExist({
               mrrId: mrrId,
               searchType: "PurchOrd",
-              status: "PurchOrd:H",
+              status: "PurchOrd:G",
             });
-            if (isBilled === false) {
+            let isPOExist = tranlib.checkIfTransAlreadyExist({
+              mrrId: mrrId,
+              searchType: "PurchOrd",
+            });
+            log.debug("create Bill Button", { isPOExist, isBilled });
+            if (isPOExist && !isBilled) {
+              let createBillParams = {
+                mrrId: mrrId,
+                rclId: rec.id,
+                poId: isPOExist,
+                action: "createBill",
+              };
               context.form.addButton({
                 id: "custpage_create_bill",
                 label: "Create Bill",
