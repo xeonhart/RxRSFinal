@@ -161,15 +161,16 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
    *@param {number} options.mrrId - Internal Id of the Return Request
    *@param {string} options.searchType - Transaction Type
    *@param {number} options.finalPaymentSchedule - Final Payment Schedule
+   *@param {string} options.status - Transaction Status
    *@return  null if no transaction is created yet | return the internal Id if the transaction exists
    */
   function checkIfTransAlreadyExist(options) {
     log.audit("checkIfTransAlreadyExist", options);
-    let { searchType, mrrId, finalPaymentSchedule } = options;
+    let { searchType, mrrId, finalPaymentSchedule, status } = options;
 
     try {
       let tranId;
-      const inventoryadjustmentSearchObj = search.create({
+      const transactionSearchObj = search.create({
         type: "transaction",
         filters: [
           ["type", "anyof", searchType],
@@ -179,8 +180,17 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
           ["mainline", "is", "T"],
         ],
       });
+      if (status) {
+        transactionSearchObj.filters.push(
+          search.createFilter({
+            name: "status",
+            operator: "anyof",
+            values: "PurchOrd:H",
+          })
+        );
+      }
       if (finalPaymentSchedule) {
-        inventoryadjustmentSearchObj.filters.push(
+        transactionSearchObj.filters.push(
           search.createFilter({
             name: "custbody_kodpaymentsched",
             operator: "anyof",
@@ -188,10 +198,11 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
           })
         );
       }
-      const searchResultCount = inventoryadjustmentSearchObj.runPaged().count;
+
+      const searchResultCount = transactionSearchObj.runPaged().count;
       if (searchResultCount < 1) return null;
 
-      inventoryadjustmentSearchObj.run().each(function (result) {
+      transactionSearchObj.run().each(function (result) {
         tranId = result.id;
         return true;
       });
@@ -267,6 +278,11 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
           });
           poRec.setCurrentSublistValue({
             sublistId: "item",
+            fieldId: "custcol_rsrs_itemscan_link",
+            value: +item.id,
+          });
+          poRec.setCurrentSublistValue({
+            sublistId: "item",
             fieldId: "csegmanufacturer",
             value: +item.manufacturer,
           });
@@ -318,6 +334,7 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
           fromType: record.Type.PURCHASE_ORDER,
           toType: record.Type.ITEM_RECEIPT,
           fromId: POID,
+          isDynamic: true,
           rrId: rrId,
         });
 
@@ -425,6 +442,7 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
 
         amount = result.getValue("custrecord_irc_total_amount");
         poLines.push({
+          id: result.id,
           item: result.getValue("custrecord_cs_return_req_scan_item"),
           manufacturer: result.getValue("custrecord_scanmanufacturer"),
           mfgProcessing: result.getValue("custrecord_cs__mfgprocessing"),
@@ -490,16 +508,17 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
    * @param {string}options.toType
    * @param {number}options.fromId
    * @param {number}options.rrId
+   * @param {boolean}options.isDynamic
    */
   function transformRecord(options) {
     log.audit("transformRecord params", options);
-    let { fromType, toType, fromId, rrId } = options;
+    let { fromType, toType, fromId, rrId, isDynamic } = options;
     try {
       const objRecord = record.transform({
         fromType: fromType,
         fromId: fromId,
         toType: toType,
-        isDynamic: true,
+        isDynamic: isDynamic,
       });
       objRecord.setValue({
         fieldId: "custbody_kd_return_request2",
@@ -513,101 +532,69 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
 
   /**
    * Create PO if the type of the Return Request is RRPO
-   * @param {number}options.mrrId - Master Return Id
-   * @param {number}options.entity - Entity
+   * @param {number}options.poId - Purchase Order Id
    * @param {number}options.finalPaymentSchudule - Final Payment Schedule
    */
   function createBill(options) {
-    log.debug("createBill", options);
-    let { mrrId, finalPaymentSchudule, entity } = options;
+    log.audit("createBill", options);
+    let { finalPaymentSchudule, poId } = options;
     try {
-      let vbId = checkIfTransAlreadyExist({
-        mrrId: mrrId,
-        searchType: "VendBill",
-        finalyPaymentSchedule: finalPaymentSchudule,
-      });
-      if (vbId) return;
-      const vbRec = record.create({
-        type: record.Type.PURCHASE_ORDER,
+      let VBID = transformRecord({
+        fromType: record.Type.PURCHASE_ORDER,
+        toType: record.Type.VENDOR_BILL,
+        fromId: poId,
         isDynamic: true,
       });
 
-      vbRec.setValue({
-        fieldId: "entity",
-        value: entity,
-      });
-      vbRec.setValue({
-        fieldId: "tranid",
-        value: mrrId,
-      });
-
-      vbRec.setValue({
-        fieldId: "custbody_kd_master_return_id",
-        value: +mrrId,
-      });
-
-      let vbLines = getIRSLine({
-        mrrId: mrrId,
-        finalyPaymentSchedule: finalPaymentSchudule,
-      });
-      log.audit("vbLines", vbLines);
-      if (vbLines.length < 1) throw "No Lines can be set on the Vendor Bill";
-      let line = 0;
-      vbLines.forEach((item) => {
-        try {
-          vbRec.selectNewLine({
-            sublistId: "item",
-          });
-          vbRec.setCurrentSublistValue({
-            sublistId: "item",
-            fieldId: "item",
-            value: +item.item,
-          });
-          vbRec.setCurrentSublistValue({
-            sublistId: "item",
-            fieldId: "csegmanufacturer",
-            value: +item.manufacturer,
-          });
-          vbRec.setCurrentSublistValue({
-            sublistId: "item",
-            fieldId: "quantity",
-            value: +item.quantity,
-          });
-          vbRec.setCurrentSublistValue({
-            sublistId: "item",
-            fieldId: "amount",
-            value: item.amount ? item.amount : 0,
-          });
-          const subRec = vbRec.getCurrentSublistSubrecord({
-            sublistId: "item",
-            fieldId: "inventorydetail",
-          });
-          setInventoryDetails({
-            inventoryDetailSubrecord: subRec,
-            quantity: item.quantity,
-            serialLotNumber: item.serialLotNumber,
-          });
-
-          vbRec.commitLine("item");
-          line++;
-        } catch (e) {
-          log.error("Setting PO Lines", e.message);
-        }
-      });
-      let VBID = vbRec.save({
-        ignoreMandatoryFields: true,
-      });
       if (VBID) {
-        let resMessage;
-
-        resMessage = `Successfully Created Vendor Bill: ${VBID}`;
-        return {
-          resMessage: resMessage,
-        };
+        removeVBLine({
+          vbId: VBID,
+          finalPaymentSchudule: finalPaymentSchudule,
+        });
       }
+      return { id: VBID };
     } catch (e) {
       log.error("createBill", e.message);
       return { error: e.message };
+    }
+  }
+
+  /**
+   * Remove the line for an speicific payment schedule
+   * @param {object}options.vbId
+   * @param {number}options.finalPaymentSchudule
+   *
+   */
+  function removeVBLine(options) {
+    log.audit("removeVBLine", options);
+
+    let { vbId, finalPaymentSchudule } = options;
+    const vbRec = record.load({
+      type: record.Type.VENDOR_BILL,
+      id: vbId,
+    });
+
+    vbRec.setValue({
+      fieldId: "custbody_kodpaymentsched",
+      value: finalPaymentSchudule,
+    });
+    try {
+      for (let i = 0; i < vbRec.getLineCount("item"); i++) {
+        let paymentSched = vbRec.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_kd_pymt_sched",
+          line: i,
+        });
+        log.debug("VB Line info ", { i, paymentSched });
+        if (paymentSched != finalPaymentSchudule) {
+          vbRec.removeLine({ sublistId: "item", line: i });
+        }
+      }
+      return vbRec.save({
+        ignoreMandatoryFields: true,
+      });
+    } catch (e) {
+      log.error("removeVBLine", e.message);
     }
   }
 
@@ -615,5 +602,6 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
     createInventoryAdjustment: createInventoryAdjustment,
     createPO: createPO,
     checkIfTransAlreadyExist: checkIfTransAlreadyExist,
+    createBill: createBill,
   };
 });

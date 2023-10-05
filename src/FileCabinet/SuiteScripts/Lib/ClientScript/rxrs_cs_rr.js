@@ -135,53 +135,44 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
   function saveRecord(scriptContext) {}
 
   /**
-   * Approve RRPO and Create PO and Item Receipt
+   * Call a suitelet to perform custom action
    * @param options.mrrId Master Return Id
    * @param options.rrId  Return RequestId
+   * @param options.rclId  Return Cover Letter Id
    * @param options.entity Entity Id
+   * @param options.action Specific action to call in the Suitelet
    */
   function createTransaction(options) {
-    let { mrrId, rrId, entity } = options;
+    console.table(options);
+    let { mrrId, rrId, entity, rclId, action } = options;
     try {
+      let params;
       handleButtonClick();
+      switch (action) {
+        case "createPO":
+          params = {
+            rrId: rrId,
+            mrrId: mrrId,
+            entity: entity,
+            action: action,
+          };
+          break;
+        case "createBill":
+          params = {
+            rclId: rclId,
+            mrrId: mrrId,
+            action: action,
+          };
+          break;
+      }
       let functionSLURL = url.resolveScript({
         scriptId: "customscript_sl_cs_custom_function",
         deploymentId: "customdeploy_sl_cs_custom_function",
         returnExternalUrl: false,
-        params: {
-          rrId: rrId,
-          mrrId: mrrId,
-          entity: entity,
-          action: "createPO",
-        },
+        params: params,
       });
-      setTimeout(function () {
-        let response = https.post({
-          url: functionSLURL,
-        });
-        if (response) {
-          console.log(response);
-          jQuery("body").loadingModal("destroy");
-          if (response.body.includes("ERROR")) {
-            let m = message.create({
-              type: message.Type.ERROR,
-              title: "ERROR",
-              message: response.body,
-            });
-            m.show(10000);
-          } else {
-            let m = message.create({
-              type: message.Type.CONFIRMATION,
-              title: "SUCCESS",
-              message: response.body,
-            });
-            m.show(10000);
-            setTimeout(function () {
-              location.reload();
-            }, 2000);
-          }
-        }
-      }, 100);
+
+      postURL({ URL: functionSLURL });
     } catch (e) {
       log.error("createTransaction", e.message);
     }
@@ -223,6 +214,46 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
         break;
       default:
         window.open(url, "_blank");
+    }
+  }
+
+  /**
+   * Post URL request
+   * @param {string} options.URL Suitelet URL
+   *
+   */
+  function postURL(options) {
+    let { URL } = options;
+    try {
+      setTimeout(function () {
+        let response = https.post({
+          url: URL,
+        });
+        if (response) {
+          console.log(response);
+          jQuery("body").loadingModal("destroy");
+          if (response.body.includes("ERROR")) {
+            let m = message.create({
+              type: message.Type.ERROR,
+              title: "ERROR",
+              message: response.body,
+            });
+            m.show(10000);
+          } else {
+            let m = message.create({
+              type: message.Type.CONFIRMATION,
+              title: "SUCCESS",
+              message: response.body,
+            });
+            m.show(10000);
+            setTimeout(function () {
+              location.reload();
+            }, 2000);
+          }
+        }
+      }, 100);
+    } catch (e) {
+      console.error("postURL", e.message);
     }
   }
 

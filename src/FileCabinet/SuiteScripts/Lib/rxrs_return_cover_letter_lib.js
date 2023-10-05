@@ -217,10 +217,58 @@ define(["N/record", "N/search"], /**
     }
   }
 
+  /**
+   * Get the payment name using
+   * @param {string} paymentLink
+   */
+  function getPaymentId(paymentLink) {
+    try {
+      let paymentId;
+      paymentId = paymentLink.split("&");
+      paymentId = paymentId[3];
+      paymentId = paymentId.split("=");
+      paymentId = paymentId[1].replaceAll("+", " ");
+      log.debug("paymentName", paymentId);
+      return paymentId;
+    } catch (e) {
+      log.error("getPaymentId", e.message);
+    }
+  }
+
+  /**
+   * Get the Final payment schedule
+   * @param {number} options.rclId
+   */
+  function getRCLFinalPayment(options) {
+    let payments = [];
+    log.audit("getRCLFinalPayment", options);
+    let { rclId } = options;
+    try {
+      let rec = record.load({
+        type: "customrecord_return_cover_letter",
+        id: rclId,
+      });
+
+      for (let i = 0; i < rec.getLineCount("custpage_items_sublist") - 1; i++) {
+        let paymentTypeLink = rec.getSublistValue({
+          sublistId: "custpage_items_sublist",
+          fieldId: "custpage_payment_type",
+          line: i,
+        });
+
+        payments.push(getPaymentId(paymentTypeLink));
+      }
+      return payments;
+    } catch (e) {
+      log.error("getRCLFinalPayment", e.message);
+    }
+  }
+
   return {
     getCustomerInfo,
     getItemReturnScanTotal,
     getCustomerTotalCreditAmount,
+    getRCLFinalPayment,
     createPaymentSched,
     hideSublist,
     SUBLIST_TO_HIDE_IN_RCL,

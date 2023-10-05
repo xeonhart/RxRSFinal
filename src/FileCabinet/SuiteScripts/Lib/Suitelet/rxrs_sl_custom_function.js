@@ -2,9 +2,15 @@
  * @NApiVersion 2.1
  * @NScriptType Suitelet
  */
-define(["N/ui/serverWidget", "../rxrs_transaction_lib"], /**
+define([
+  "N/ui/serverWidget",
+  "../rxrs_transaction_lib",
+  "../rxrs_return_cover_letter_lib",
+], /**
  * @param{serverWidget} serverWidget
- */ (serverWidget, tranLib) => {
+ * @param tranLib
+ * @param rclLib
+ */ (serverWidget, tranLib, rclLib) => {
   /**
    * Defines the Suitelet script trigger point.
    * @param {Object} scriptContext
@@ -14,28 +20,61 @@ define(["N/ui/serverWidget", "../rxrs_transaction_lib"], /**
    */
   const onRequest = (context) => {
     let params = context.request.parameters;
-    log.error("params", params);
+    log.audit("params", params);
     if (context.request.method === "POST") {
-      let { rrId, mrrId, entity, action } = params;
+      let { rrId, mrrId, entity, action, rclId } = params;
       try {
         let returnObj;
         log.audit("POST", params);
-        if (action == "createPO") {
-          returnObj = tranLib.createPO({
-            rrId: rrId,
-            mrrId: mrrId,
-            entity: entity,
-          });
-          let { error, resMessage } = returnObj;
-          if (resMessage) {
-            context.response.writeLine(resMessage);
-          } else {
-            context.response.writeLine("ERROR:" + error);
-          }
+        switch (action) {
+          case "createPO":
+            returnObj = tranLib.createPO({
+              rrId: rrId,
+              mrrId: mrrId,
+              entity: entity,
+            });
+            let { error, resMessage } = returnObj;
+            if (resMessage) {
+              context.response.writeLine(resMessage);
+            } else {
+              context.response.writeLine("ERROR:" + error);
+            }
+            break;
+          case "createBill":
+            let paymentIds = rclLib.getRCLFinalPayment({ rclId: rclId });
+            let poId = tranLib.checkIfTransAlreadyExist({
+              mrrId: mrrId,
+              searchType: "PurchOrd",
+            });
+            let processVB = [];
+            log.audit("createBill", { paymentIds, poId });
+            paymentIds.forEach((paymentId) => {
+              let returnObj = tranLib.createBill({
+                mrrId: mrrId,
+                finalPaymentSchudule: paymentId,
+                poId: poId,
+              });
+              log.audit("returnObj", returnObj);
+              if (returnObj.id) {
+                processVB.push(returnObj.id);
+              }
+            });
+            if (processVB.length == paymentIds.length) {
+              let resMessage = `Successfully created Vendor bill ${processVB.join(
+                ","
+              )}`;
+              context.response.writeLine(resMessage);
+            } else {
+              context.response.writeLine(
+                "ERROR:" + "Failed to create all vendor bill"
+              );
+            }
+
+            break;
         }
       } catch (e) {
         context.response.writeLine("ERROR:" + e.message);
-        log.error("creating invoice", e.message);
+        log.error("creating transaction", e.message);
       }
     }
   };

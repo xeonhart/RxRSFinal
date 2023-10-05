@@ -10,6 +10,7 @@ define([
   "N/ui/serverWidget",
   "N/file",
   "../rxrs_transaction_lib",
+  "../rxrs_return_cover_letter_lib",
 ], /**
  * @param{record} record
  * @param{search} search
@@ -18,7 +19,7 @@ define([
  * @param serverWidget
  * @param file
  * @param tranlib
- */ (record, search, url, rxrs_util, serverWidget, file, tranlib) => {
+ */ (record, search, url, rxrs_util, serverWidget, file, tranlib, rclLib) => {
   /**
    * Defines the function definition that is executed before record is loaded.
    * @param {Object} context
@@ -31,7 +32,7 @@ define([
   const beforeLoad = (context) => {
     const rec = context.newRecord;
     const id = rec.id;
-
+    let poId;
     try {
       context.form.clientScriptFileId = rxrs_util.getFileId("rxrs_cs_rr.js");
       let htmlFileId = rxrs_util.getFileId("SL_loading_html.html"); // HTML file for loading animation
@@ -106,9 +107,10 @@ define([
               mrrId: rrpoMrrId,
               rrId: rrpoId,
               entity: customer,
+              action: "createPO",
             };
 
-            let poId = tranlib.checkIfTransAlreadyExist({
+            poId = tranlib.checkIfTransAlreadyExist({
               mrrId: rrpoMrrId,
               searchType: "PurchOrd",
             });
@@ -152,6 +154,7 @@ define([
             if (context.type === "create") return;
             let mrrId = rec.getValue("custrecord_rcl_master_return");
             let tranId = rec.getText("custrecord_rcl_master_return");
+            let entity = rec.getValue("custrecord_rcl_customer");
             let nonReturnableFeeAmount = 0;
             let returnableFeePercent = 0;
             nonReturnableFeeAmount = rec.getValue(
@@ -229,10 +232,30 @@ define([
                 paramprintReturnCoverLetter
               )})`,
             });
+
             /**
              * Create Bill Button
              */
-            let paymentIds = [];
+            let createBillParams = {
+              mrrId: mrrId,
+              rclId: rec.id,
+              action: "createBill",
+            };
+            //Check if the purchase order is fully billed/Closed
+            let isBilled = tranlib.checkIfTransAlreadyExist({
+              mrrId: mrrId,
+              searchType: "PurchOrd",
+              status: "PurchOrd:H",
+            });
+            if (isBilled === false) {
+              context.form.addButton({
+                id: "custpage_create_bill",
+                label: "Create Bill",
+                functionName: `createTransaction(${JSON.stringify(
+                  createBillParams
+                )})`,
+              });
+            }
 
             break;
         }
