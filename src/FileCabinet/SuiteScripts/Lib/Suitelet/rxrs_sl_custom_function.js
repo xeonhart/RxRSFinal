@@ -49,13 +49,13 @@ define([
               let isVBExist = tranLib.checkIfTransAlreadyExist({
                 mrrId: mrrId,
                 searchType: "VendBill",
-                finalPaymentSchudule: paymentId,
+                finalPaymentSchedule: paymentId,
               });
               log.emergency("isVBExist", { isVBExist, paymentId });
               if (!isVBExist) {
                 let returnObj = tranLib.createBill({
                   mrrId: mrrId,
-                  finalPaymentSchudule: paymentId,
+                  finalPaymentSchedule: paymentId,
                   poId: poId,
                 });
                 log.audit("returnObj", returnObj);

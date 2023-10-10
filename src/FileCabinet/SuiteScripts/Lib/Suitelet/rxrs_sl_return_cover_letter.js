@@ -7,6 +7,7 @@ define([
   "../rxrs_return_cover_letter_lib",
   "../rxrs_verify_staging_lib",
   "../rxrs_payment_sched_lib",
+  "../rxrs_transaction_lib",
   "N/cache",
   "N/file",
   "N/record",
@@ -25,6 +26,7 @@ define([
   rxrs_rcl_util,
   rxrs_vs_util,
   rxrs_ps_util,
+  rxrs_tran_util,
   cache,
   file,
   record,
@@ -85,9 +87,10 @@ define([
    */
   const createHeaderFields = (options) => {
     let form = options.form;
-    log.debug("createHeaderFields", options.params);
+    log.debug("createHeaderFields params", options.params);
     let {
       finalPaymentSched,
+      tranType,
       mrrId,
       inDated,
       isVerifyStaging,
@@ -103,8 +106,8 @@ define([
       returnList,
       createdPaymentId,
       initialSplitpaymentPage,
-
       returnableFee,
+      action,
       nonReturnableFeeAmount,
     } = options.params;
     try {
@@ -132,12 +135,38 @@ define([
         } catch (e) {
           log.error("Removing Final Payment", e.message);
         }
+
         redirect.toRecord({
           id: rclId,
           type: "customrecord_return_cover_letter",
           isEditMode: false,
         });
       }
+      if (action) {
+        switch (action) {
+          case "createBill":
+            rxrs_tran_util.createBill({
+              mrrId: mrrId,
+              finalPaymentSchedule: finalPaymentSched,
+              poId: tranId,
+            });
+
+            break;
+          case "deleteTran":
+            rxrs_tran_util.deleteTransaction({
+              id: tranId,
+              type: tranType,
+            });
+
+            break;
+        }
+        redirect.toRecord({
+          id: rclId,
+          type: "customrecord_return_cover_letter",
+          isEditMode: false,
+        });
+      }
+
       /**
        * If user clicks a specific payment type
        */

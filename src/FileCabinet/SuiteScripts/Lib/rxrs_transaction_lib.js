@@ -165,8 +165,8 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
    *@return  null if no transaction is created yet | return the internal Id if the transaction exists
    */
   function checkIfTransAlreadyExist(options) {
-    log.audit("checkIfTransAlreadyExist", options);
-    let { searchType, mrrId, finalPaymentSchudule, status } = options;
+    //log.audit("checkIfTransAlreadyExist", options);
+    let { searchType, mrrId, finalPaymentSchedule, status } = options;
 
     try {
       let tranId;
@@ -175,12 +175,18 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
         filters: [
           ["type", "anyof", searchType],
           "AND",
-          ["custbody_kd_master_return_id", "anyof", mrrId],
-          "AND",
           ["mainline", "is", "T"],
         ],
       });
 
+      mrrId &&
+        transactionSearchObj.filters.push(
+          search.createFilter({
+            name: "custbody_kd_master_return_id",
+            operator: "anyof",
+            values: mrrId,
+          })
+        );
       status &&
         transactionSearchObj.filters.push(
           search.createFilter({
@@ -189,16 +195,16 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
             values: status,
           })
         );
-      finalPaymentSchudule &&
+      finalPaymentSchedule &&
         transactionSearchObj.filters.push(
           search.createFilter({
             name: "custbody_kodpaymentsched",
             operator: "anyof",
-            values: finalPaymentSchudule,
+            values: finalPaymentSchedule,
           })
         );
 
-      log.emergency("filters", transactionSearchObj.filters);
+      //  log.emergency("filters", transactionSearchObj.filters);
       const searchResultCount = transactionSearchObj.runPaged().count;
       if (searchResultCount < 1) return null;
 
@@ -509,10 +515,12 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
    * @param {number}options.fromId
    * @param {number}options.rrId
    * @param {boolean}options.isDynamic
+   * @param {number}options.finalPaymentSchedule
    */
   function transformRecord(options) {
     log.audit("transformRecord params", options);
-    let { fromType, toType, fromId, rrId, isDynamic } = options;
+    let { fromType, finalPaymentSchedule, toType, fromId, rrId, isDynamic } =
+      options;
     try {
       const objRecord = record.transform({
         fromType: fromType,
@@ -520,10 +528,13 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
         toType: toType,
         isDynamic: isDynamic,
       });
-      objRecord.setValue({
-        fieldId: "custbody_kd_return_request2",
-        value: rrId,
-      });
+
+      rrId &&
+        objRecord.setValue({
+          fieldId: "custbody_kd_return_request2",
+          value: rrId,
+        });
+
       return objRecord.save({ ignoreMandatoryFields: true });
     } catch (e) {
       log.error("transfromRecord", e.message);
@@ -533,26 +544,32 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
   /**
    * Create PO if the type of the Return Request is RRPO
    * @param {number}options.poId - Purchase Order Id
-   * @param {number}options.finalPaymentSchudule - Final Payment Schedule
+   * @param {number}options.finalPaymentSchedule - Final Payment Schedule
    */
   function createBill(options) {
     log.audit("createBill", options);
-    let { finalPaymentSchudule, poId } = options;
+    let { finalPaymentSchedule, poId } = options;
     try {
-      let VBID = transformRecord({
+      let vbId2, vbId;
+      vbId = transformRecord({
         fromType: record.Type.PURCHASE_ORDER,
         toType: record.Type.VENDOR_BILL,
         fromId: poId,
-        isDynamic: true,
+        isDynamic: false,
+      });
+      let vbRec = record.load({
+        type: record.Type.VENDOR_BILL,
+        id: vbId,
+        isDynamic: false,
+      });
+      vbRec.setValue({
+        fieldId: "custbody_kodpaymentsched",
+        value: finalPaymentSchedule,
       });
 
-      if (VBID) {
-        removeVBLine({
-          vbId: VBID,
-          finalPaymentSchudule: finalPaymentSchudule,
-        });
-      }
-      return { id: VBID };
+      return vbRec.save({
+        ignoreMandatoryFields: true,
+      });
     } catch (e) {
       log.error("createBill", e.message);
       return { error: e.message };
@@ -562,39 +579,53 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
   /**
    * Remove the line for an speicific payment schedule
    * @param {object}options.vbId
-   * @param {number}options.finalPaymentSchudule
+   * @param {number}options.finalPaymentSchedule
+   * @param {object}options.vbRec
    *
    */
   function removeVBLine(options) {
     log.audit("removeVBLine", options);
 
-    let { vbId, finalPaymentSchudule } = options;
-    const vbRec = record.load({
-      type: record.Type.VENDOR_BILL,
-      id: vbId,
-    });
+    let { finalPaymentSchedule, vbRec, vbId } = options;
 
-    vbRec.setValue({
-      fieldId: "custbody_kodpaymentsched",
-      value: finalPaymentSchudule,
-    });
+    let lineCount = vbRec.getLineCount("item");
+    log.audit("lineCount", lineCount);
     try {
-      for (let i = 0; i < vbRec.getLineCount("item"); i++) {
+      for (let i = 0; i < lineCount; i++) {
         let paymentSched = vbRec.getSublistValue({
           sublistId: "item",
           fieldId: "custcol_kd_pymt_sched",
           line: i,
         });
-        log.debug("VB Line info ", { i, paymentSched });
-        if (paymentSched != finalPaymentSchudule) {
-          vbRec.removeLine({ sublistId: "item", line: i });
+        log.debug("VB Line info ", { i, paymentSched, finalPaymentSchedule });
+        if (paymentSched != finalPaymentSchedule) {
+          log.debug("removing Line " + i, paymentSched);
+          vbRec.removeLine({
+            sublistId: "item",
+            line: i,
+          });
         }
       }
-      return vbRec.save({
-        ignoreMandatoryFields: true,
+    } catch (e) {
+      removeVBLine(options);
+      log.error("removeVBLine", e.message);
+    }
+  }
+
+  /**
+   * Delete Transaction
+   * @param options.type Transaction Type
+   * @param options.id Transaction ID
+   */
+  function deleteTransaction(options) {
+    let { type, id } = options;
+    try {
+      return record.delete({
+        type: type,
+        id: id,
       });
     } catch (e) {
-      log.error("removeVBLine", e.message);
+      log.error("deleteTransaction", e.message);
     }
   }
 
@@ -603,5 +634,7 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
     createPO: createPO,
     checkIfTransAlreadyExist: checkIfTransAlreadyExist,
     createBill: createBill,
+    deleteTransaction: deleteTransaction,
+    removeVBLine: removeVBLine,
   };
 });

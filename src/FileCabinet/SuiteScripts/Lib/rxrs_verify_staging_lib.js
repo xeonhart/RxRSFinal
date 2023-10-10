@@ -13,6 +13,7 @@ define([
   "./rxrs_util",
   "./rxrs_verify_staging_lib",
   "./rxrs_print_inventory_lib",
+  "./rxrs_transaction_lib",
 ], /**
  * @param serverWidget
  * @param{redirect} redirect
@@ -34,7 +35,8 @@ define([
   record,
   rxrs_util,
   rxrs_vs_lib,
-  rxrs_PI_lib
+  rxrs_PI_lib,
+  rxrs_tran_lib
 ) => {
   const VERIFYSTAGINGRETURNABLECOLUMNS = [
     search.createColumn({
@@ -544,7 +546,19 @@ define([
       {
         id: "custpage_delete",
         type: "TEXT",
-        label: "Action",
+        label: "Payment Sched Action",
+        updateDisplayType: "INLINE",
+      },
+      {
+        id: "custpage_bill",
+        type: "TEXT",
+        label: "BILL",
+        updateDisplayType: "INLINE",
+      },
+      {
+        id: "custpage_bill_action",
+        type: "TEXT",
+        label: "BILL ACTION",
         updateDisplayType: "INLINE",
       },
     ],
@@ -674,7 +688,7 @@ define([
         if (manufMaximumAmount == 0 || currentAmount == 0) {
           numberOfBags = 1;
         }
-        log.error("numberOfBags", numberOfBags);
+        log.audit("numberOfBags", numberOfBags);
 
         let bags = [];
         for (let i = 1; i <= numberOfBags; i++) {
@@ -1193,7 +1207,7 @@ define([
         }
       }
       log.audit("Get Item Return Scan Filter", filters);
-      log.audit("Get Item Return Scan Columns", columns);
+      // log.audit("Get Item Return Scan Columns", columns);
 
       const customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
@@ -1204,9 +1218,6 @@ define([
       let column = customrecord_cs_item_ret_scanSearchObj.columns;
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
         if (isVerifyStaging == true || !isEmpty(paymentSchedId)) {
-          let inputRate = result.getValue("custrecord_isc_inputrate");
-          let isOverrideRate = result.getValue("custrecord_isc_overriderate");
-          let rate = result.getValue("custrecord_scanrate") || 0;
           let qty = result.getValue("custrecord_cs_qty") || 0;
           let bagTagLabel = result.getValue("custrecord_scanbagtaglabel");
           let itemId = result.getValue({
@@ -1263,6 +1274,58 @@ define([
             name: paymentFields,
             summary: "GROUP",
           });
+          let isPOExist = rxrs_tran_lib.checkIfTransAlreadyExist({
+            mrrId: mrrId,
+            searchType: "PurchOrd",
+          });
+          log.debug("Get Returnable Item Scan isPOExist", isPOExist);
+          let billURL = "";
+          let billActionWord;
+          let billActionURL;
+          let isBillExist;
+          if (isPOExist) {
+            isBillExist = rxrs_tran_lib.checkIfTransAlreadyExist({
+              mrrId: mrrId,
+              searchType: "VendBill",
+              finalPaymentSchedule: paymentSchedId,
+            });
+            log.audit("isBillExist", isBillExist);
+
+            if (isBillExist) {
+              billURL = generateRedirectLink({
+                type: record.Type.VENDOR_BILL,
+                id: isBillExist,
+              });
+
+              billActionURL = url.resolveScript({
+                scriptId: "customscript_sl_return_cover_letter",
+                deploymentId: "customdeploy_sl_return_cover_letter",
+                returnExternalUrl: false,
+                params: {
+                  tranId: isBillExist,
+                  tranType: record.Type.VENDOR_BILL,
+                  rclId: rclId,
+                  action: "deleteTran",
+                },
+              });
+              billActionWord = "Delete Bill";
+            } else {
+              billActionURL = url.resolveScript({
+                scriptId: "customscript_sl_return_cover_letter",
+                deploymentId: "customdeploy_sl_return_cover_letter",
+                returnExternalUrl: false,
+                params: {
+                  tranId: isPOExist,
+                  action: "createBill",
+                  finalPaymentSched: paymentSchedId,
+                  mrrId: mrrId,
+                  rclId: rclId,
+                },
+              });
+              billActionWord = "Create Bill";
+            }
+          }
+
           let paymentSchedText = result.getText({
             name: paymentFields,
             summary: "GROUP",
@@ -1282,7 +1345,7 @@ define([
 
           paymentAmount += +amount;
           if (finalPaymentSched == "true" || finalPaymentSched == true) {
-            let deleteWord = paymentSchedId != 12 ? "Delete" : " ";
+            let deleteWord = paymentSchedId != 12 ? "Unassign Payment" : " ";
             let deleteURL =
               paymentSchedId != 12
                 ? url.resolveScript({
@@ -1314,7 +1377,7 @@ define([
             try {
               amount = amount.toFixed(2);
             } catch (e) {
-              log.error("removing decimal", e.message);
+              log.emergency("removing decimal", e.message);
             }
             /**
              * Push the default in the first result
@@ -1328,6 +1391,10 @@ define([
                 amount: "$" + amount,
                 paymetnSchedule: `<a href="${stSuiteletUrl}" target="${target}" >${paymentSchedText} </a>`,
                 delete: `<a href="${deleteURL}" target="_self" >${deleteWord}</a>`,
+                billURL: billURL
+                  ? `<a href="${billURL}" target="_self">${isBillExist}</a>`
+                  : "NO BILL",
+                billAction: `<a href="${billActionURL}" target="_self">${billActionWord}</a>`,
               });
             } else {
               itemScanList.push({
@@ -1338,10 +1405,14 @@ define([
                 amount: "$" + amount,
                 paymetnSchedule: `<a href="${stSuiteletUrl}" target="${target}" >${paymentSchedText} </a>`,
                 delete: `<a href="${deleteURL}" target="_self" >${deleteWord}</a>`,
+                billURL: billURL
+                  ? `<a href="${billURL}" target="_self">${isBillExist}</a>`
+                  : "NO BILL",
+                billAction: `<a href="${billActionURL}" target="_self">${billActionWord}</a>`,
               });
             }
 
-            log.error("itemScanList", itemScanList);
+            //log.error("itemScanList", itemScanList);
           } else {
             let splitPaymentURL = url.resolveScript({
               scriptId: "customscript_sl_return_cover_letter",
@@ -1376,7 +1447,7 @@ define([
             try {
               amount = amount.toFixed(2);
             } catch (e) {
-              log.error("removing decimal", e.message);
+              log.emergency("removing decimal", e.message);
             }
 
             itemScanList.push({
@@ -1390,7 +1461,7 @@ define([
         }
       });
       paymentAmount = paymentAmount - orginalNonReturnableFeeAmount;
-      log.error("paymentAmount", paymentAmount);
+      log.emergency("paymentAmount", paymentAmount);
       if (isVerifyStaging == false) {
         record.submitFields({
           type: "customrecord_return_cover_letter",
@@ -1863,7 +1934,7 @@ define([
    */
   const createReturnableSublist = (options) => {
     try {
-      log.debug("createReturnableSublist", options);
+      // log.debug("createReturnableSublist", options);
 
       let fieldName = [];
       let {
@@ -1952,7 +2023,7 @@ define([
    */
   const populateSublist = (options) => {
     try {
-      log.audit("populateSublist", options);
+      // log.audit("populateSublist", options);
       let sublist = options.sublist;
       let sublistFields = options.fieldInfo;
 
