@@ -4,13 +4,15 @@
  */
 define([
   "N/ui/serverWidget",
+  "N/record",
   "../rxrs_transaction_lib",
   "../rxrs_return_cover_letter_lib",
 ], /**
  * @param{serverWidget} serverWidget
+ * @param record
  * @param tranLib
  * @param rclLib
- */ (serverWidget, tranLib, rclLib) => {
+ */ (serverWidget, record, tranLib, rclLib) => {
   /**
    * Defines the Suitelet script trigger point.
    * @param {Object} scriptContext
@@ -22,7 +24,8 @@ define([
     let params = context.request.parameters;
     log.audit("params", params);
     if (context.request.method === "POST") {
-      let { rrId, mrrId, entity, action, rclId, poId } = params;
+      let { rrId, mrrId, entity, action, rclId, billId, poId, newPaymentId } =
+        params;
       try {
         let returnObj;
         log.audit("POST", params);
@@ -40,34 +43,51 @@ define([
               context.response.writeLine("ERROR:" + error);
             }
             break;
-          case "createBill":
-            let paymentIds = rclLib.getRCLFinalPayment({ rclId: rclId });
 
-            let processVB = [];
-            log.audit("createBill", { paymentIds, poId });
-            paymentIds.forEach((paymentId) => {
-              let isVBExist = tranLib.checkIfTransAlreadyExist({
-                mrrId: mrrId,
-                searchType: "VendBill",
-                finalPaymentSchedule: paymentId,
+          case "createBill":
+            let paymentIds = [];
+            //  let paymentIds = rclLib.getRCLFinalPayment({ rclId: rclId });
+            let rec = record.load({
+              type: "customrecord_return_cover_letter",
+              id: rclId,
+            });
+
+            for (
+              let i = 0;
+              i < rec.getLineCount("custpage_items_sublist") - 1;
+              i++
+            ) {
+              let bill = rec.getSublistValue({
+                sublistId: "custpage_items_sublist",
+                fieldId: "custpage_bill",
+                line: i,
               });
-              log.emergency("isVBExist", { isVBExist, paymentId });
-              if (!isVBExist) {
-                let returnObj = tranLib.createBill({
-                  mrrId: mrrId,
-                  finalPaymentSchedule: paymentId,
-                  poId: poId,
-                });
-                log.audit("returnObj", returnObj);
-                if (returnObj.id) {
-                  processVB.push(returnObj.id);
-                }
+              let paymentId = rec.getSublistValue({
+                sublistId: "custpage_items_sublist",
+                fieldId: "custpage_payment_id",
+                line: i,
+              });
+              log.debug("values", { bill, paymentId });
+              if (bill === "NO BILL") {
+                paymentIds.push(paymentId);
+              }
+            }
+            let processVB = [];
+            log.emergency("createBill", { paymentIds, poId });
+            paymentIds.forEach((paymentId) => {
+              let returnObj = tranLib.createBill({
+                mrrId: mrrId,
+                finalPaymentSchedule: +paymentId,
+                poId: poId,
+              });
+              log.emergency("returnObj", returnObj);
+              if (returnObj) {
+                processVB.push(returnObj);
               }
             });
             if (processVB.length != 0) {
-              let resMessage = `Successfully created Vendor bill ${processVB.join(
-                ","
-              )}`;
+              log.emergency("processVB", processVB);
+              let resMessage = `Successfully created Vendor bill`;
               context.response.writeLine(resMessage);
             } else {
               context.response.writeLine(
@@ -76,6 +96,27 @@ define([
             }
 
             break;
+          case "deleteBill":
+            if (billId) {
+              tranLib.deleteTransaction({
+                type: record.Type.VENDOR_BILL,
+                id: billId,
+              });
+            }
+            if (newPaymentId) {
+              let newVBiD = tranLib.checkIfTransAlreadyExist({
+                mrrId: mrrId,
+                finalPaymentSchedule: newPaymentId,
+                searchType: "VendBill",
+              });
+              if (newVBiD) {
+                tranLib.deleteTransaction({
+                  type: record.Type.VENDOR_BILL,
+                  id: newVBiD,
+                });
+              }
+              break;
+            }
         }
       } catch (e) {
         context.response.writeLine("ERROR:" + e.message);

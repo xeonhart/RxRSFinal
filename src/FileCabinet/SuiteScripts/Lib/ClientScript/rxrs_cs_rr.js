@@ -145,7 +145,8 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
    */
   function createTransaction(options) {
     console.table(options);
-    let { mrrId, rrId, entity, rclId, action, poId } = options;
+    const curRec = currentRecord.get();
+    let { mrrId, rrId, entity, rclId, action, billId, poId } = options;
     try {
       let params;
       handleButtonClick();
@@ -158,15 +159,23 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
             action: action,
           };
           break;
+        case "updateBill":
+          params = {
+            billId: billId,
+          };
+          break;
         case "createBill":
           params = {
-            rclId: rclId,
+            rrId: rrId,
             mrrId: mrrId,
+            entity: entity,
             action: action,
             poId: poId,
+            rclId: rclId,
           };
           break;
       }
+
       let functionSLURL = url.resolveScript({
         scriptId: "customscript_sl_cs_custom_function",
         deploymentId: "customdeploy_sl_cs_custom_function",

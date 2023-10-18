@@ -248,6 +248,7 @@ define([
               searchType: "PurchOrd",
             });
             log.debug("create Bill Button", { isPOExist, isBilled });
+
             if (isPOExist && !isBilled) {
               let createBillParams = {
                 mrrId: mrrId,
@@ -257,7 +258,7 @@ define([
               };
               context.form.addButton({
                 id: "custpage_create_bill",
-                label: "Create Bill",
+                label: "Bill All Remaining",
                 functionName: `createTransaction(${JSON.stringify(
                   createBillParams
                 )})`,

@@ -108,6 +108,7 @@ define([
       initialSplitpaymentPage,
       returnableFee,
       action,
+      billId,
       nonReturnableFeeAmount,
     } = options.params;
     try {
@@ -147,7 +148,7 @@ define([
           case "createBill":
             rxrs_tran_util.createBill({
               mrrId: mrrId,
-              finalPaymentSchedule: finalPaymentSched,
+              finalPaymentSchedule: +finalPaymentSched,
               poId: tranId,
             });
 
@@ -291,11 +292,26 @@ define([
           .updateDisplayType({
             displayType: "NORMAL",
           });
-
+        if (billId) {
+          form
+            .addField({
+              id: "custpage_bill_id",
+              label: "BILL",
+              type: serverWidget.FieldType.SELECT,
+              source: "transaction",
+            })
+            .updateDisplayType({
+              displayType: "INLINE",
+            }).defaultValue = billId;
+        }
+        let param = {
+          mrrId: mrrId,
+          billId: billId,
+        };
         form.addButton({
           id: "custpage_create_payment",
           label: "Assign Payment",
-          functionName: `createPayment(${mrrId})`,
+          functionName: `createPayment(${JSON.stringify(param)})`,
         });
       }
       if (splitPayment == "true") {

@@ -26,11 +26,13 @@ define(["../rxrs_transaction_lib"], (rxrs_tran_lib) => {
     try {
       const rec = scriptContext.newRecord;
       const finalPaymentSchedule = rec.getValue("custbody_kodpaymentsched");
+      if (!finalPaymentSchedule) return;
       log.debug("finalPaymentSchedule", finalPaymentSchedule);
       if (!finalPaymentSchedule) return;
       rxrs_tran_lib.removeVBLine({
         vbRec: rec,
         finalPaymentSchedule: finalPaymentSchedule,
+        updateLine: false,
       });
     } catch (e) {
       log.error("beforeSubmit", e.message);

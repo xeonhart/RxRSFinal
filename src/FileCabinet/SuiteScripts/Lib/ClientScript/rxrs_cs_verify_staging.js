@@ -272,6 +272,46 @@ define([
     });
   }
 
+  /**
+   * Post URL request
+   * @param {string} options.URL Suitelet URL
+   *
+   */
+  function postURL(options) {
+    let { URL } = options;
+    try {
+      setTimeout(function () {
+        let response = https.post({
+          url: URL,
+        });
+        if (response) {
+          console.log(response);
+          jQuery("body").loadingModal("destroy");
+          if (response.body.includes("ERROR")) {
+            let m = message.create({
+              type: message.Type.ERROR,
+              title: "ERROR",
+              message: response.body,
+            });
+            m.show(10000);
+          } else {
+            let m = message.create({
+              type: message.Type.CONFIRMATION,
+              title: "SUCCESS",
+              message: response.body,
+            });
+            m.show(10000);
+            setTimeout(function () {
+              location.reload();
+            }, 2000);
+          }
+        }
+      }, 100);
+    } catch (e) {
+      console.error("postURL", e.message);
+    }
+  }
+
   function handleButtonClick() {
     try {
       jQuery("body").loadingModal({
@@ -289,14 +329,16 @@ define([
 
   /**
    * Create Payment Record and Assign it to item return scan
+   * @param {number} options.mrrId Master Return Id
+   * @param {number} options.billId Bill Id
    */
-  function createPayment(mrrId) {
+  function createPayment(options) {
+    let { mrrId, billId } = options;
     try {
       let internalIds = [];
       let rec = currentRecord.get();
 
-      let paymentName = rec.getValue("custpage_payment_name");
-      let dueDate = rec.getValue("custpage_due_date");
+      let newPaymentId = rec.getValue("custpage_payment_name");
       let paymentSublistCount = rec.getLineCount({
         sublistId: RETURNABLESUBLIST,
       });
@@ -334,12 +376,31 @@ define([
           inDated: true,
           isVerifyStaging: false,
           returnList: returnList,
-          createdPaymentId: paymentName,
+          createdPaymentId: newPaymentId,
           title: "In-Dated Inventory",
           finalPaymentSched: false,
           initialSplitpaymentPage: false,
         },
       });
+
+      if (billId) {
+        let params = {
+          billId: billId,
+          newPaymentId: newPaymentId,
+          action: "deleteBill",
+          mrrId: mrrId,
+        };
+
+        let functionSLURL = url.resolveScript({
+          scriptId: "customscript_sl_cs_custom_function",
+          deploymentId: "customdeploy_sl_cs_custom_function",
+          returnExternalUrl: false,
+          params: params,
+        });
+
+        postURL({ URL: functionSLURL });
+      }
+
       window.open(`${rclSuiteletURL}`, "_self");
     } catch (e) {
       console.error("createPayment" + e.message);

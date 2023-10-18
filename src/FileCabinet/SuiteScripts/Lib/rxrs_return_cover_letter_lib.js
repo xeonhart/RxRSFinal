@@ -228,7 +228,7 @@ define(["N/record", "N/search"], /**
       paymentId = paymentId[3];
       paymentId = paymentId.split("=");
       paymentId = paymentId[1].replaceAll("+", " ");
-      log.debug("paymentName", paymentId);
+      // log.debug("paymentName", paymentId);
       return paymentId;
     } catch (e) {
       log.error("getPaymentId", e.message);

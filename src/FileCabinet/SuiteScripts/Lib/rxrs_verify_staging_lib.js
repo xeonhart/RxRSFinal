@@ -561,6 +561,12 @@ define([
         label: "BILL ACTION",
         updateDisplayType: "INLINE",
       },
+      {
+        id: "custpage_payment_id",
+        type: "TEXT",
+        label: "Payment Id",
+        updateDisplayType: "INLINE",
+      },
     ],
     INDATED_INVENTORY: [
       {
@@ -1340,6 +1346,8 @@ define([
               mrrId: mrrId,
               tranId: mrrName,
               finalPaymentSched: finalPaymentSched,
+              customize: true,
+              billId: isBillExist,
             },
           });
 
@@ -1395,6 +1403,7 @@ define([
                   ? `<a href="${billURL}" target="_self">${isBillExist}</a>`
                   : "NO BILL",
                 billAction: `<a href="${billActionURL}" target="_self">${billActionWord}</a>`,
+                paymentSchedId: paymentSchedId,
               });
             } else {
               itemScanList.push({
@@ -1409,6 +1418,7 @@ define([
                   ? `<a href="${billURL}" target="_self">${isBillExist}</a>`
                   : "NO BILL",
                 billAction: `<a href="${billActionURL}" target="_self">${billActionWord}</a>`,
+                paymentSchedId: paymentSchedId,
               });
             }
 
