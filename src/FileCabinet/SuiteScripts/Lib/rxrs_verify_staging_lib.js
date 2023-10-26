@@ -1196,7 +1196,7 @@ define([
         }
         filters.push(
           search.createFilter({
-            name: "custrecord_cs__mfgprocessing",
+            name: "custrecord_cs__rqstprocesing",
             operator: "anyof",
             values: 2,
           })
@@ -2141,7 +2141,7 @@ define([
           "AND",
           ["internalid", "anyof", irsId],
           "AND",
-          ["custrecord_cs__mfgprocessing", "anyof", "2", "3"],
+          ["custrecord_cs__rqstprocesing", "anyof", "2", "3"],
         ],
         columns: [
           search.createColumn({
@@ -2173,19 +2173,19 @@ define([
   /**
    * Get the total item return scan amount per MRR and Manuf Processing
    * @param {number} options.mrrId
-   * @param {string} options.mfgProcessing
+   * @param {string} options.pharmaProcessing
    * @return {number} return non-returnable total amount
    *
    */
   function getMrrIRSTotalAmount(options) {
     let total = 0;
-    let { mrrId, mfgProcessing } = options;
+    let { mrrId, pharmaProcessing } = options;
     const customrecord_cs_item_ret_scanSearchObj = search.create({
       type: "customrecord_cs_item_ret_scan",
       filters: [
         ["custrecord_irs_master_return_request", "anyof", mrrId],
         "AND",
-        ["custrecord_cs__mfgprocessing", "anyof", mfgProcessing],
+        ["custrecord_cs__rqstprocesing", "anyof", pharmaProcessing],
       ],
       columns: [
         search.createColumn({

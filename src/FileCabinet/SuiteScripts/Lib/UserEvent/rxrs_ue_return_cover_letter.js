@@ -88,11 +88,11 @@ define([
       );
       let nonReturnableAmount = +rxrs_vs_util.getMrrIRSTotalAmount({
         mrrId: mrrId,
-        mfgProcessing: "1",
+        pharmaProcessing: "1",
       });
       let returnableAmount = +rxrs_vs_util.getMrrIRSTotalAmount({
         mrrId: mrrId,
-        mfgProcessing: "2",
+        pharmaProcessing: "2",
       });
       nonReturnableFeePercent = parseFloat(nonReturnableFeePercent) / 100;
       log.audit("amount", {

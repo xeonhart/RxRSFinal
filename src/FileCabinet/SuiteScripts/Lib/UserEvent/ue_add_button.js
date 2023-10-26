@@ -155,6 +155,7 @@ define([
             let mrrId = rec.getValue("custrecord_rcl_master_return");
             let tranId = rec.getText("custrecord_rcl_master_return");
             let entity = rec.getValue("custrecord_rcl_customer");
+
             let nonReturnableFeeAmount = 0;
             let returnableFeePercent = 0;
             nonReturnableFeeAmount = rec.getValue(
@@ -254,6 +255,7 @@ define([
                 mrrId: mrrId,
                 rclId: rec.id,
                 poId: isPOExist,
+                returnableFee: returnableFee,
                 action: "createBill",
               };
               context.form.addButton({

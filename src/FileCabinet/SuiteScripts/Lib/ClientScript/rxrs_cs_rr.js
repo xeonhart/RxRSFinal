@@ -141,12 +141,14 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
    * @param options.rclId  Return Cover Letter Id
    * @param options.entity Entity Id
    * @param options.poId Transaction Id
+   * @param options.returnableFee returnable Fee
    * @param options.action Specific action to call in the Suitelet
    */
   function createTransaction(options) {
     console.table(options);
     const curRec = currentRecord.get();
-    let { mrrId, rrId, entity, rclId, action, billId, poId } = options;
+    let { mrrId, rrId, entity, rclId, action, billId, poId, returnableFee } =
+      options;
     try {
       let params;
       handleButtonClick();
@@ -172,6 +174,7 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
             action: action,
             poId: poId,
             rclId: rclId,
+            returnableFee: returnableFee,
           };
           break;
       }

@@ -1,11 +1,23 @@
 /**
  * @NApiVersion 2.1
  */
-define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
+define([
+  "N/record",
+  "N/search",
+  "N/url",
+  "N/https",
+  "./rxrs_verify_staging_lib",
+  "./rxrs_util",
+  "./rxrs_return_cover_letter_lib",
+], /**
  * @param{record} record
  * @param{search} search
+ * @param url
+ * @param https
  * @param rxrsUtil_vl
- */ (record, search, rxrsUtil_vl, rxrs_util) => {
+ * @param rxrs_util
+ * @param rxrs_rcl_lib
+ */ (record, search, url, https, rxrsUtil_vl, rxrs_util, rxrs_rcl_lib) => {
   const SUBSIDIARY = 2; //Rx Return Services
   const ACCOUNT = 212; //50000 Cost of Goods Sold
   const LOCATION = 1; //Clearwater
@@ -369,6 +381,7 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
         ignoreMandatoryFields: true,
       });
       if (POID) {
+        rxrs_rcl_lib.updateReturnCoverRecord(mrrId);
         let resMessage;
         const IRId = transformRecord({
           fromType: record.Type.PURCHASE_ORDER,
@@ -485,7 +498,7 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
       let poLines = [];
       const customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
-        filters: [],
+        filters: ["custrecord_cs__rqstprocesing", "anyof", [1, 2]],
         columns: [
           search.createColumn({
             name: "custrecord_final_payment_schedule",
@@ -685,6 +698,7 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
         isDynamic: false,
       });
       let mrrId = vbRec.getValue("custbody_kd_master_return_id");
+
       vbRec.setValue({
         fieldId: "tranid",
         value: mrrId + "_" + options.finalPaymentSchedule,
@@ -693,17 +707,96 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
         fieldId: "custbody_kodpaymentsched",
         value: options.finalPaymentSchedule,
       });
-      vbId = removeVBLine({
+      let vbRec2 = removeVBLine({
         vbRec: vbRec,
         updateLine: false,
         finalPaymentSchedule: finalPaymentSchedule,
       });
-      if (vbId) {
+
+      if (vbRec2) {
+        let rclId = rxrs_rcl_lib.getRCLRecord(mrrId);
+        vbId = addBillProcessingFee({
+          rclId: rclId,
+          vbRec: vbRec2,
+        });
         return vbId;
       }
     } catch (e) {
       log.error("createBill", e.message);
       //  return { error: e.message };
+    }
+  }
+
+  /**
+   * Add service fee item in the bill
+   * @param {object} options.vbRec vendor bill Rec
+   * @param {string} options.rclId return cover letter Id
+   * @param {number} options.nonReturnableFeeAmount return non-returnable fee amount
+   */
+  function addBillProcessingFee(options) {
+    const RETURNABLESERVICEFEEITEM = 882;
+    log.audit("addBillProcessingFee", options);
+    let { rclId, vbRec, nonReturnableFeeAmount } = options;
+    try {
+      const rclRec = record.load({
+        type: "customrecord_return_cover_letter",
+        id: rclId,
+      });
+      let vbId = vbRec.save({
+        ignoreMandatoryFields: true,
+      });
+      let vbRec2 = record.load({
+        type: record.Type.VENDOR_BILL,
+        id: vbId,
+        isDynamic: true,
+      });
+      const returnableFeeRate =
+        rclRec.getValue("custrecord_rcl_returnable_fee") / 100;
+      const vbAmount = vbRec2.getValue("usertotal");
+      log.debug("addBillProcessingFee values", { returnableFeeRate });
+      if (!returnableFeeRate) {
+        return vbRec2.id;
+      } else {
+        const serviceFeeAmount = +vbAmount * +returnableFeeRate;
+        log.debug("addBillProcessingFee values", {
+          returnableFeeRate,
+          vbAmount,
+          serviceFeeAmount,
+        });
+        try {
+          vbRec2.selectNewLine({
+            sublistId: "item",
+          });
+
+          vbRec2.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "item",
+
+            value: RETURNABLESERVICEFEEITEM,
+          });
+          vbRec2.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "quantity",
+            value: 1,
+          });
+          vbRec2.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "rate",
+            value: serviceFeeAmount * -1,
+          });
+          vbRec2.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "amount",
+            value: serviceFeeAmount * -1,
+          });
+          vbRec2.commitLine("item");
+        } catch (e) {
+          log.error("addBillProcessingFee setting line", e.message);
+        }
+        return vbRec2.save({ ignoreMandatoryFields: true });
+      }
+    } catch (e) {
+      log.error("addBillProcessingFee", e.message);
     }
   }
 
@@ -743,13 +836,14 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
       });
       removeVBLine(options);
     }
-    let id = vbRec.save({
-      ignoreMandatoryFields: true,
-    });
-    log.emergency("Id", id);
-    if (id) {
-      return id;
-    }
+    return vbRec;
+    // let id = vbRec.save({
+    //   ignoreMandatoryFields: true,
+    // });
+    // log.emergency("Id", id);
+    // if (id) {
+    //   return id;
+    // }
   }
 
   /**
@@ -775,6 +869,7 @@ define(["N/record", "N/search", "./rxrs_verify_staging_lib", "./rxrs_util"], /**
     checkIfTransAlreadyExist: checkIfTransAlreadyExist,
     createBill: createBill,
     deleteTransaction: deleteTransaction,
+    addBillProcessingFee: addBillProcessingFee,
     removeVBLine: removeVBLine,
   };
 });

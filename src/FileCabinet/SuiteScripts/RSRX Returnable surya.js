@@ -112,9 +112,9 @@ define(['N/runtime', 'N/ui/dialog', 'N/record', 'N/search', 'N/log'], function(
 				var cust_lookup = search.lookupFields({
 					type: 'customer',
 					id: cust_id,
-					columns: ['custentity_kod_custtype', 'billstate']
+					columns: ['custentity_planselectiontype', 'billstate']//custentity_kod_custtype
 				}); 
-				customerType = cust_lookup.custentity_kod_custtype;
+				customerType = cust_lookup.custentity_planselectiontype;
 				if(customerType[0].value == 3 || customerType[0].value == 5){
 					log.debug('IF THE CUSTOMER TYPE = PHARMA PREPAID OR PHARMA DESTRUCTION, SET PHARMA PROCESSING FIELD =NON-RETURNABLE;')
 					setFieldsData(1,'',currentRecord);
@@ -127,7 +127,7 @@ define(['N/runtime', 'N/ui/dialog', 'N/record', 'N/search', 'N/log'], function(
 				//2.3 IF THE RETURNABLE CHECKBOX IN THE ITEM RECORD = TRUE AND CUSTOMER TYPE = PHARMA QUICK CASH,
 				//4	Pharma - Quick Cash
 				log.debug('itemreturnable '+itemreturnable,'customerType '+customerType[0].value);
-				if(itemreturnable && customerType[0].value==4){
+				if(itemreturnable){// && customerType[0].value==4
 					log.debug('quick cash');
 					//2.4.1 CHECK IF THE ITEM IS DAMAGED, IF DAMAGED ITEM = TRUE (RETURN REQUEST LINE), THEN CHECK THE DAMAGED TYPE,
 					var itemid = currentRecord.getValue({fieldId:'custrecord_cs_return_req_scan_item'});//field

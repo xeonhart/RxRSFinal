@@ -24,8 +24,18 @@ define([
     let params = context.request.parameters;
     log.audit("params", params);
     if (context.request.method === "POST") {
-      let { rrId, mrrId, entity, action, rclId, billId, poId, newPaymentId } =
-        params;
+      let {
+        rrId,
+        mrrId,
+        entity,
+        action,
+        rclId,
+        billId,
+        poId,
+        newPaymentId,
+        returnableFee,
+        vbId,
+      } = params;
       try {
         let returnObj;
         log.audit("POST", params);
@@ -43,7 +53,14 @@ define([
               context.response.writeLine("ERROR:" + error);
             }
             break;
-
+          case "addBillProcessingFee":
+            log.debug("addBillProcessingFee executing");
+            tranLib.addBillProcessingFee({
+              vbId: vbId,
+              rclId: rclId,
+            });
+            rclLib.updateReturnCoverRecord(mrrId);
+            break;
           case "createBill":
             let paymentIds = [];
             //  let paymentIds = rclLib.getRCLFinalPayment({ rclId: rclId });
@@ -79,7 +96,15 @@ define([
                 mrrId: mrrId,
                 finalPaymentSchedule: +paymentId,
                 poId: poId,
+                returnableFee: returnableFee,
               });
+              let rclId = rclLib.getRCLRecord(mrrId);
+              tranLib.addBillProcessingFee({
+                vbId: returnObj,
+                rclId: rclId,
+              });
+              rclLib.updateReturnCoverRecord(mrrId);
+
               log.emergency("returnObj", returnObj);
               if (returnObj) {
                 processVB.push(returnObj);

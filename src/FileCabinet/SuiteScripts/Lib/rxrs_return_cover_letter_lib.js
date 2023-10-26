@@ -8,7 +8,7 @@ define(["N/record", "N/search"], /**
   const SUBLIST_TO_HIDE_IN_RCL = [
     "custpage_internalid",
     "custpage_verified",
-    "custpage_pharmaprocessing",
+    "custpage_mfgprocessing",
     "custpage_bag_tag_label",
   ];
 
@@ -71,11 +71,11 @@ define(["N/record", "N/search"], /**
         filters: [
           ["custrecord_cs_ret_req_scan_rrid", "anyof", rrId],
           "AND",
-          ["custrecord_cs__mfgprocessing", "anyof", "1", "2"],
+          ["custrecord_cs__rqstprocesing", "anyof", "1", "2"],
         ],
         columns: [
           search.createColumn({
-            name: "custrecord_wac_amount",
+            name: "custrecord_irc_total_amount",
             summary: "SUM",
             label: "Amount",
           }),
@@ -89,7 +89,7 @@ define(["N/record", "N/search"], /**
 
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
         let amount = result.getValue({
-          name: "custrecord_wac_amount",
+          name: "custrecord_irc_total_amount",
           summary: "SUM",
         });
 
@@ -236,6 +236,55 @@ define(["N/record", "N/search"], /**
   }
 
   /**
+   * Update the return cover letter record
+   * @param masterReturnId
+   */
+  function updateReturnCoverRecord(masterReturnId) {
+    try {
+      search
+        .create({
+          type: "customrecord_return_cover_letter",
+          filters: [["custrecord_rcl_master_return", "anyof", masterReturnId]],
+        })
+        .run()
+        .getRange(0, 1000)
+        .map((r) => {
+          const rclRec = record.load({
+            type: "customrecord_return_cover_letter",
+            id: r.id,
+            isDynamic: true,
+          });
+          rclRec.save({ ignoreMandatoryFields: true });
+        });
+    } catch (e) {
+      log.error("updateReturnCoverRecord", e.message);
+    }
+  }
+
+  /**
+   * Get the return cover letter record
+   * @param masterReturnId
+   */
+  function getRCLRecord(masterReturnId) {
+    try {
+      let rclId;
+      search
+        .create({
+          type: "customrecord_return_cover_letter",
+          filters: [["custrecord_rcl_master_return", "anyof", masterReturnId]],
+        })
+        .run()
+        .getRange(0, 1000)
+        .map((r) => {
+          rclId = r.id;
+        });
+      return rclId;
+    } catch (e) {
+      log.error("getRCLRecord", e.message);
+    }
+  }
+
+  /**
    * Get the Final payment schedule
    * @param {number} options.rclId
    */
@@ -271,6 +320,8 @@ define(["N/record", "N/search"], /**
     getRCLFinalPayment,
     createPaymentSched,
     hideSublist,
+    updateReturnCoverRecord,
+    getRCLRecord,
     SUBLIST_TO_HIDE_IN_RCL,
   };
 });
