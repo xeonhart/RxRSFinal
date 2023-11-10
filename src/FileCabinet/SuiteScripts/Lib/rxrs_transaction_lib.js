@@ -323,18 +323,18 @@ define([
               fieldId: "csegmanufacturer",
               value: manufacturer,
             });
-          mfgProcessing &&
-            poRec.setCurrentSublistValue({
-              sublistId: "item",
-              fieldId: "custcol_kod_mfgprocessing",
-              value: mfgProcessing,
-            });
-          pharmaProcessing &&
-            poRec.setCurrentSublistValue({
-              sublistId: "item",
-              fieldId: "custcol_kod_rqstprocesing",
-              value: pharmaProcessing,
-            });
+          // mfgProcessing &&
+          //   poRec.setCurrentSublistValue({
+          //     sublistId: "item",
+          //     fieldId: "custcol_kod_mfgprocessing",
+          //     value: mfgProcessing,
+          //   });
+          // pharmaProcessing &&
+          //   poRec.setCurrentSublistValue({
+          //     sublistId: "item",
+          //     fieldId: "custcol_kod_rqstprocesing",
+          //     value: pharmaProcessing,
+          //   });
           quantity &&
             poRec.setCurrentSublistValue({
               sublistId: "item",
@@ -643,6 +643,26 @@ define([
   }
 
   /**
+   * Get trancation status
+   * @param {string}options.type
+   * @param {string}options.id
+   * @param {string}options.columns
+   */
+  function getCertainField(options) {
+    let { type, id, columns } = options;
+    try {
+      const tranSearch = search.lookupFields({
+        type: type,
+        id: id,
+        columns: [columns],
+      });
+      return tranSearch[columns][0].value;
+    } catch (e) {
+      log.error("getTransactionStatus", e.message);
+    }
+  }
+
+  /**
    * Transform Record
    * @param {string}options.fromType
    * @param {string}options.toType
@@ -871,5 +891,6 @@ define([
     deleteTransaction: deleteTransaction,
     addBillProcessingFee: addBillProcessingFee,
     removeVBLine: removeVBLine,
+    getCertainField: getCertainField,
   };
 });

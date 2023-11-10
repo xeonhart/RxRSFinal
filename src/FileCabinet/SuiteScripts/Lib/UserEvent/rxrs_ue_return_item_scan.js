@@ -17,6 +17,8 @@ define([
     PARTIAL: 2,
     FULL: 1,
   };
+  const PHARMAPROCESSING = "custrecord_cs__rqstprocesing";
+  const MFGPROCESSING = "custrecord_cs__mfgprocessing";
 
   const beforeSubmit = (context) => {
     const rec = context.newRecord;
@@ -112,8 +114,11 @@ define([
         });
       }
       let isIndate = irsRec.getValue("custrecord_scanindated");
-      let mfgProcessing = irsRec.getValue("custrecord_cs__mfgprocessing");
-      if (isIndate == false && mfgProcessing == 2) {
+      let pharmaProcessing = irsRec.getValue("custrecord_cs__rqstprocesing");
+      if (
+        (isIndate == false && pharmaProcessing == 2) ||
+        pharmaProcessing == 1
+      ) {
         irsRec.setValue({
           fieldId: "custrecord_final_payment_schedule",
           value: DEFAULT,
