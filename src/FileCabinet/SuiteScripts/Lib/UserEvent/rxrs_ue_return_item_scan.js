@@ -7,19 +7,28 @@ define([
   "N/search",
   "../rxrs_verify_staging_lib",
   "../rxrs_payment_sched_lib",
+  "../rxrs_transaction_lib",
+  "../rxrs_return_cover_letter_lib",
 ], /**
  * @param{record} record
  * @param{search} search
  * @param rxrs_util
  * @param rxrsPayment_lib
- */ (record, search, rxrs_util, rxrsPayment_lib) => {
+ */ (
+  record,
+  search,
+  rxrs_util,
+  rxrsPayment_lib,
+  rxrs_tranlib,
+  rxrs_rcl_lib
+) => {
   const PACKAGESIZE = {
     PARTIAL: 2,
     FULL: 1,
   };
   const PHARMAPROCESSING = "custrecord_cs__rqstprocesing";
   const MFGPROCESSING = "custrecord_cs__mfgprocessing";
-
+  const ACCRUEDPURCHASEITEM = 916;
   const beforeSubmit = (context) => {
     const rec = context.newRecord;
     const fulPartialPackage = rec.getValue(
@@ -73,15 +82,271 @@ define([
       log.error("beforeSubmit", e.message);
     }
   };
+
+  function percentToDecimal(percentStr) {
+    return parseFloat(percentStr) / 100;
+  }
+
   const afterSubmit = (context) => {
     try {
       const DEFAULT = 12;
       const rec = context.newRecord;
+      const oldRec = context.oldRecord;
+      const RETURNABLE = 2;
+      const NONRETURNABLE = 1;
+      const ADJUSTMENTITEM = 917;
+      /**
+       * Update processing of the PO and Bill if there's changes in
+       */
+      const masterReturnId = rec.getValue(
+        "custrecord_irs_master_return_request"
+      );
+
+      const billId = rec.getValue("custrecord_rxrs_bill_internal_id");
+      const poId = rec.getValue("custrecord_rxrs_po_internal_id");
       let irsRec = record.load({
         type: "customrecord_cs_item_ret_scan",
         id: rec.id,
         isDefault: true,
       });
+      let params = {};
+      let adjustmentPercent;
+      if (billId) {
+        // log.debug("Update Processing");
+        // params.id = billId;
+        // params.type = record.Type.VENDOR_BILL;
+        // rxrs_tranlib.updateProcessing(params);
+        let rsSearch = search.lookupFields({
+          type: "vendorbill",
+          id: billId,
+          columns: [
+            "custbody_rxrs_returnable_fee",
+            "custbody_rxrs_non_returnable_rate",
+          ],
+        });
+
+        adjustmentPercent =
+          percentToDecimal(rsSearch.custbody_rxrs_returnable_fee) -
+          percentToDecimal(rsSearch.custbody_rxrs_non_returnable_rate);
+        log.debug("adjustmentPercent", adjustmentPercent);
+      }
+      if (poId) {
+        params.id = poId;
+        params.type = record.Type.PURCHASE_ORDER;
+        rxrs_tranlib.updateProcessing(params);
+      }
+      const oldPharmaProcessing = oldRec.getValue(
+        "custrecord_cs__rqstprocesing"
+      );
+      const newPharmaProcessing = rec.getValue("custrecord_cs__rqstprocesing");
+      // const oldMFGProcessing = oldRec.getValue("custrecord_cs__mfgprocessing");
+      // const newMFGProcessing = rec.getValue("custrecord_cs__mfgprocessing");
+
+      log.emergency("Pharma Processing", {
+        oldPharmaProcessing,
+        newPharmaProcessing,
+      });
+      let notEqualPharma =
+        oldPharmaProcessing == RETURNABLE &&
+        newPharmaProcessing == NONRETURNABLE;
+      /**
+       * if the pharma or mfg processing is not equal delete the
+       */
+      if (notEqualPharma) {
+        let defaultBillId = rxrs_tranlib.getBillId({
+          paymentId: DEFAULT,
+          masterReturnId: masterReturnId,
+        });
+        const billStatus = rxrs_tranlib.getCertainField({
+          id: defaultBillId,
+          type: "vendorbill",
+          columns: "status",
+        });
+
+        if (billStatus == "paidInFull") {
+          log.debug("billId", defaultBillId != billId);
+          if (defaultBillId != billId) {
+            try {
+              let accruedAmount = 0;
+              let adjustmentAmount =
+                adjustmentPercent.toFixed(2) *
+                rec.getValue("custrecord_irc_total_amount");
+              log.debug("adjustmentAmount", adjustmentAmount);
+              let vbRec = record.load({
+                type: record.Type.VENDOR_BILL,
+                id: billId,
+              });
+              for (let i = 0; i < vbRec.getLineCount("item"); i++) {
+                const mfgProcessing = vbRec.getSublistValue({
+                  sublistId: "item",
+                  fieldId: "custcol_rxrs_mfg_processing",
+                  line: i,
+                });
+                const pharmaProcessing = vbRec.getSublistValue({
+                  sublistId: "item",
+                  fieldId: "custcol_rxrs_pharma_processing",
+                  line: i,
+                });
+                // let quantity = vbRec.getSublistValue({
+                //   sublistId: "item",
+                //   fieldId: "quantity",
+                //   line: i,
+                // });
+                // let rate = vbRec.getSublistValue({
+                //   sublistId: "item",
+                //   fieldId: "rate",
+                //   line: i,
+                // });
+                log.debug("processing", {
+                  line: i,
+                  pharma: pharmaProcessing,
+                  mfg: mfgProcessing,
+                });
+                if (
+                  pharmaProcessing == NONRETURNABLE &&
+                  mfgProcessing == RETURNABLE
+                ) {
+                  log.debug("processing", {
+                    line: i,
+                    pharma: pharmaProcessing,
+                    mfg: mfgProcessing,
+                  });
+                  let amount = vbRec.getSublistValue({
+                    sublistId: "item",
+                    fieldId: "amount",
+                    line: i,
+                  });
+
+                  accruedAmount += amount;
+                }
+              }
+              log.debug("accruedAmount", accruedAmount);
+              let lastIndex = vbRec.getLineCount({ sublistId: "item" });
+              vbRec = rxrs_tranlib.setAdjustmentFee({
+                vbRec: vbRec,
+                irsId: rec.id,
+                adjustmentAmount: adjustmentAmount,
+                lastIndex: lastIndex,
+              });
+              // vbRec.insertLine({ sublistId: "item", line: lastIndex });
+              // vbRec.setSublistValue({
+              //   sublistId: "item",
+              //   fieldId: "item",
+              //   value: ADJUSTMENTITEM,
+              //   line: lastIndex,
+              // });
+              //
+              // vbRec.setSublistValue({
+              //   sublistId: "item",
+              //   fieldId: "rate",
+              //   value: -Math.abs(adjustmentAmount),
+              //   line: lastIndex,
+              // });
+              // vbRec.setSublistValue({
+              //   sublistId: "item",
+              //   fieldId: "custcol_rsrs_itemscan_link",
+              //   value: rec.id,
+              //   line: lastIndex,
+              // });
+
+              if (accruedAmount > 0) {
+                vbRec = rxrs_tranlib.addAccruedPurchaseItem({
+                  ACCRUEDPURCHASEITEM: ACCRUEDPURCHASEITEM,
+                  vbRec: vbRec,
+                  lastIndex: lastIndex,
+                  accruedAmount: accruedAmount,
+                });
+                // let accruedItemIndex = vbRec.findSublistLineWithValue({
+                //   sublistId: "item",
+                //   fieldId: "item",
+                //   value: ACCRUEDPURCHASEITEM,
+                // });
+                // if (accruedItemIndex != -1) {
+                //   vbRec.removeLine({
+                //     sublistId: "item",
+                //     line: accruedItemIndex,
+                //   });
+                //   // const lastIndex = vbRec.getLineCount({ sublistId: "item" });
+                //   vbRec.insertLine({ sublistId: "item", line: lastIndex });
+                //   vbRec.setSublistValue({
+                //     sublistId: "item",
+                //     fieldId: "item",
+                //     value: ACCRUEDPURCHASEITEM,
+                //     line: lastIndex,
+                //   });
+                //   vbRec.setSublistValue({
+                //     sublistId: "item",
+                //     fieldId: "amount",
+                //     value: -Math.abs(accruedAmount),
+                //     line: lastIndex,
+                //   });
+                //   vbRec.setSublistValue({
+                //     sublistId: "item",
+                //     fieldId: "rate",
+                //     value: -Math.abs(accruedAmount),
+                //     line: lastIndex,
+                //   });
+                // } else {
+                //   //  const lastIndex = rec.getLineCount({ sublistId: "item" });
+                //   vbRec.insertLine({ sublistId: "item", line: lastIndex });
+                //   vbRec.setSublistValue({
+                //     sublistId: "item",
+                //     fieldId: "item",
+                //     value: ACCRUEDPURCHASEITEM,
+                //     line: lastIndex,
+                //   });
+                //   vbRec.setSublistValue({
+                //     sublistId: "item",
+                //     fieldId: "amount",
+                //     value: -Math.abs(accruedAmount),
+                //     line: lastIndex,
+                //   });
+                //   vbRec.setSublistValue({
+                //     sublistId: "item",
+                //     fieldId: "rate",
+                //     value: -Math.abs(accruedAmount),
+                //     line: lastIndex,
+                //   });
+                // }
+              }
+              vbRec.save({ ignoreMandatoryFields: true });
+            } catch (e) {
+              log.error("ADDING ADJUMENT AND ACCRUED PURCHASE", e.message);
+            }
+          }
+        } else {
+          let stSuiteletUrl = url.resolveScript({
+            scriptId: "customscript_sl_cs_custom_function",
+            deploymentId: "customdeploy_sl_cs_custom_function",
+            params: {
+              action: "reloadBill",
+              billId: "defaultBillId",
+            },
+          });
+          let response = https.post({
+            url: stSuiteletUrl,
+          });
+          log.debug("reloadBill response", response);
+          if (defaultBillId != billId) {
+          }
+        }
+
+        // log.emergency("defaultBillId", { defaultBillId, poId });
+        // if (defaultBillId && poId) {
+        //   let deletedBill = record.delete({
+        //     type: record.Type.VENDOR_BILL,
+        //     id: defaultBillId,
+        //   });
+        //   if (deletedBill) {
+        //     let newDefaultBillId = rxrs_tranlib.createBill({
+        //       poId: rec.getValue("custrecord_rxrs_po_internal_id"),
+        //       finalPaymentSchedule: DEFAULT,
+        //     });
+        //     log.emergency("newDefaultBillId", newDefaultBillId);
+        //   }
+        // }
+      }
+
       let inDays = rxrs_util.getIndays(rec.id);
       let isDefault = Math.sign(inDays) == -1;
       let paymentSchedId =
@@ -115,6 +380,7 @@ define([
       }
       let isIndate = irsRec.getValue("custrecord_scanindated");
       let pharmaProcessing = irsRec.getValue("custrecord_cs__rqstprocesing");
+
       if (
         (isIndate == false && pharmaProcessing == 2) ||
         pharmaProcessing == 1
@@ -126,6 +392,12 @@ define([
         irsRec.setValue({
           fieldId: "custrecord_scan_paymentschedule",
           value: DEFAULT,
+        });
+      }
+      if (notEqualPharma) {
+        irsRec.setValue({
+          fieldId: "customrecord_cs_item_ret_scan",
+          value: true,
         });
       }
       irsRec.save({

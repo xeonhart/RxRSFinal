@@ -40,6 +40,15 @@ define([
         let returnObj;
         log.audit("POST", params);
         switch (action) {
+          case "reloadBill":
+            const vbRec = record.load({
+              type: record.Type.VENDOR_BILL,
+              id: billId,
+              isDynamic: true,
+            });
+            let id = vbRec.save({ ignoreMandatoryFields: true });
+            context.response.writeLine("VB ID Updated", id);
+            break;
           case "createPO":
             returnObj = tranLib.createPO({
               rrId: rrId,
@@ -99,10 +108,10 @@ define([
                 returnableFee: returnableFee,
               });
               let rclId = rclLib.getRCLRecord(mrrId);
-              tranLib.addBillProcessingFee({
-                vbId: returnObj,
-                rclId: rclId,
-              });
+              // tranLib.addBillProcessingFee({
+              //   vbId: returnObj,
+              //   rclId: rclId,
+              // });
               rclLib.updateReturnCoverRecord(mrrId);
 
               log.emergency("returnObj", returnObj);
@@ -140,6 +149,7 @@ define([
                   id: newVBiD,
                 });
               }
+
               break;
             }
         }

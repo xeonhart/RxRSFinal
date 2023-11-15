@@ -733,13 +733,13 @@ define([
         finalPaymentSchedule: finalPaymentSchedule,
       });
 
-      if (vbRec2) {
-        let rclId = rxrs_rcl_lib.getRCLRecord(mrrId);
+      if (vbRec2 && finalPaymentSchedule === 12) {
         vbId = addBillProcessingFee({
-          rclId: rclId,
-          vbRec: vbRec2,
+          vbRecId: vbRec2.save({ ignoreMandatoryFields: true }),
         });
         return vbId;
+      } else {
+        return vbRec2.save({ ignoreMandatoryFields: true });
       }
     } catch (e) {
       log.error("createBill", e.message);
@@ -747,76 +747,750 @@ define([
     }
   }
 
+  function createServiceItemLines(newVBRec) {
+    log.emergency("createServiceItemLines", newVBRec);
+    const ACCRUEDPURCHASEITEM = 916;
+    const RETURNABLE = 2;
+    const NONRETURNABLE = 1;
+    const RETURNABLESERVICEFEEITEM = 882;
+
+    let returnableAmount = 0;
+    const returnableFeeRate =
+      newVBRec.getValue("custbody_rxrs_returnable_fee") / 100;
+    let accruedAmount = 0;
+    try {
+      for (let i = 0; i < newVBRec.getLineCount("item"); i++) {
+        const mfgProcessing = newVBRec.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_rxrs_mfg_processing",
+          line: i,
+        });
+        const pharmaProcessing = newVBRec.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_rxrs_pharma_processing",
+          line: i,
+        });
+        let quantity = newVBRec.getSublistValue({
+          sublistId: "item",
+          fieldId: "quantity",
+          line: i,
+        });
+        let rate = newVBRec.getSublistValue({
+          sublistId: "item",
+          fieldId: "rate",
+          line: i,
+        });
+        log.debug("processing", {
+          line: i,
+          pharma: pharmaProcessing,
+          mfg: mfgProcessing,
+        });
+        if (pharmaProcessing == NONRETURNABLE && mfgProcessing == RETURNABLE) {
+          let amount = newVBRec.getSublistValue({
+            sublistId: "item",
+            fieldId: "amount",
+            line: i,
+          });
+          amount = amount === 0 ? rate * quantity : amount;
+          newVBRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "amount",
+            value: amount,
+            line: i,
+          });
+          accruedAmount += newVBRec.getSublistValue({
+            sublistId: "item",
+            fieldId: "amount",
+            line: i,
+          });
+        }
+        if (
+          pharmaProcessing == NONRETURNABLE &&
+          mfgProcessing == NONRETURNABLE
+        ) {
+          newVBRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "rate",
+            value: 0,
+            line: i,
+          });
+        }
+
+        if (pharmaProcessing == RETURNABLE) {
+          let amount = newVBRec.getSublistValue({
+            sublistId: "item",
+            fieldId: "amount",
+            line: i,
+          });
+          amount = amount === 0 ? rate * quantity : amount;
+          log.emergency("returnable line: ", { i, amount });
+          newVBRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "amount",
+            value: amount,
+            line: i,
+          });
+          returnableAmount += newVBRec.getSublistValue({
+            sublistId: "item",
+            fieldId: "amount",
+            line: i,
+          });
+        }
+      }
+      if (returnableFeeRate) {
+        const serviceFeeAmount = +returnableAmount * +returnableFeeRate;
+        log.debug("addBillProcessingFee values", {
+          returnableFeeRate,
+          serviceFeeAmount,
+          returnableAmount,
+        });
+        let returnableServiceFeeIndex = newVBRec.findSublistLineWithValue({
+          sublistId: "item",
+          fieldId: "item",
+          value: RETURNABLESERVICEFEEITEM,
+        });
+        if (returnableServiceFeeIndex != -1) {
+          newVBRec.removeLine({
+            sublistId: "item",
+            line: returnableServiceFeeIndex,
+          });
+          const lastIndex = newVBRec.getLineCount({ sublistId: "item" });
+          newVBRec.insertLine({ sublistId: "item", line: lastIndex });
+          newVBRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "item",
+            value: RETURNABLESERVICEFEEITEM,
+            line: lastIndex,
+          });
+          newVBRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "amount",
+            value: -Math.abs(serviceFeeAmount),
+            line: lastIndex,
+          });
+          newVBRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "rate",
+            value: -Math.abs(serviceFeeAmount),
+            line: lastIndex,
+          });
+        } else {
+          const lastIndex = newVBRec.getLineCount({ sublistId: "item" });
+          newVBRec.insertLine({ sublistId: "item", line: lastIndex });
+          newVBRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "item",
+            value: RETURNABLESERVICEFEEITEM,
+            line: lastIndex,
+          });
+
+          newVBRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "rate",
+            value: -Math.abs(serviceFeeAmount),
+            line: lastIndex,
+          });
+          newVBRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "amount",
+            value: -Math.abs(serviceFeeAmount),
+            line: lastIndex,
+          });
+        }
+      }
+      if (accruedAmount > 0) {
+        let accruedItemIndex = newVBRec.findSublistLineWithValue({
+          sublistId: "item",
+          fieldId: "item",
+          value: ACCRUEDPURCHASEITEM,
+        });
+        if (accruedItemIndex != -1) {
+          newVBRec.removeLine({
+            sublistId: "item",
+            line: accruedItemIndex,
+          });
+          const lastIndex = newVBRec.getLineCount({ sublistId: "item" });
+          newVBRec.insertLine({ sublistId: "item", line: lastIndex });
+          newVBRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "item",
+            value: ACCRUEDPURCHASEITEM,
+            line: lastIndex,
+          });
+          newVBRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "amount",
+            value: -Math.abs(accruedAmount),
+            line: lastIndex,
+          });
+          newVBRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "rate",
+            value: -Math.abs(accruedAmount),
+            line: lastIndex,
+          });
+        } else {
+          const lastIndex = newVBRec.getLineCount({ sublistId: "item" });
+          newVBRec.insertLine({ sublistId: "item", line: lastIndex });
+          newVBRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "item",
+            value: ACCRUEDPURCHASEITEM,
+            line: lastIndex,
+          });
+          newVBRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "amount",
+            value: -Math.abs(accruedAmount),
+            line: lastIndex,
+          });
+          newVBRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "rate",
+            value: -Math.abs(accruedAmount),
+            line: lastIndex,
+          });
+        }
+      }
+      return newVBRec.save({ ignoreMandatoryFields: true });
+    } catch (e) {
+      log.error("createServiceItem", e.message);
+    }
+  }
+
+  /**
+   * Update the mfgprocessing/pharmaprocessing
+   * @param {string}options.type - The type of transaction
+   * @param {number}options.id - transaction Id
+   * @param {string}options.pharmaProcessing - Pharma processing
+   * @param {string}options.mfgProcessing - MFG processing
+   * @param {string} options.IRSId - Item Return Scan Id
+   */
+  function updateProcessing(options) {
+    log.audit("updateProcessing params", options);
+    let { type, id, IRSId, pharmaProcessing, mfgProcessing } = options;
+    try {
+      const tranRec = record.load({
+        type: type,
+        id: id,
+      });
+      if (type === record.Type.VENDOR_BILL) {
+        let newVBRec = removeVBLine({
+          finalPaymentSchedule: tranRec.getValue("custbody_kodpaymentsched"),
+          vbRec: tranRec,
+        });
+        const ACCRUEDPURCHASEITEM = 916;
+        const RETURNABLE = 2;
+        const NONRETURNABLE = 1;
+        const RETURNABLESERVICEFEEITEM = 882;
+
+        let returnableAmount = 0;
+        const returnableFeeRate =
+          newVBRec.getValue("custbody_rxrs_returnable_fee") / 100;
+        let accruedAmount = 0;
+        try {
+          for (let i = 0; i < newVBRec.getLineCount("item"); i++) {
+            const mfgProcessing = newVBRec.getSublistValue({
+              sublistId: "item",
+              fieldId: "custcol_rxrs_mfg_processing",
+              line: i,
+            });
+            const pharmaProcessing = newVBRec.getSublistValue({
+              sublistId: "item",
+              fieldId: "custcol_rxrs_pharma_processing",
+              line: i,
+            });
+            let quantity = newVBRec.getSublistValue({
+              sublistId: "item",
+              fieldId: "quantity",
+              line: i,
+            });
+            let rate = newVBRec.getSublistValue({
+              sublistId: "item",
+              fieldId: "rate",
+              line: i,
+            });
+            log.debug("processing", {
+              line: i,
+              pharma: pharmaProcessing,
+              mfg: mfgProcessing,
+            });
+            if (
+              pharmaProcessing == NONRETURNABLE &&
+              mfgProcessing == RETURNABLE
+            ) {
+              let amount = newVBRec.getSublistValue({
+                sublistId: "item",
+                fieldId: "amount",
+                line: i,
+              });
+              amount = amount === 0 ? rate * quantity : amount;
+              newVBRec.setSublistValue({
+                sublistId: "item",
+                fieldId: "amount",
+                value: amount,
+                line: i,
+              });
+              accruedAmount += newVBRec.getSublistValue({
+                sublistId: "item",
+                fieldId: "amount",
+                line: i,
+              });
+            }
+            if (
+              pharmaProcessing == NONRETURNABLE &&
+              mfgProcessing == NONRETURNABLE
+            ) {
+              newVBRec.setSublistValue({
+                sublistId: "item",
+                fieldId: "rate",
+                value: 0,
+                line: i,
+              });
+            }
+
+            if (pharmaProcessing == RETURNABLE) {
+              let amount = newVBRec.getSublistValue({
+                sublistId: "item",
+                fieldId: "amount",
+                line: i,
+              });
+              amount = amount === 0 ? rate * quantity : amount;
+              log.emergency("returnable line: ", { i, amount });
+              newVBRec.setSublistValue({
+                sublistId: "item",
+                fieldId: "amount",
+                value: amount,
+                line: i,
+              });
+              returnableAmount += newVBRec.getSublistValue({
+                sublistId: "item",
+                fieldId: "amount",
+                line: i,
+              });
+            }
+          }
+          if (returnableFeeRate) {
+            const serviceFeeAmount = +returnableAmount * +returnableFeeRate;
+            log.debug("addBillProcessingFee values", {
+              returnableFeeRate,
+              serviceFeeAmount,
+              returnableAmount,
+            });
+            let returnableServiceFeeIndex = newVBRec.findSublistLineWithValue({
+              sublistId: "item",
+              fieldId: "item",
+              value: RETURNABLESERVICEFEEITEM,
+            });
+            if (returnableServiceFeeIndex != -1) {
+              newVBRec.removeLine({
+                sublistId: "item",
+                line: returnableServiceFeeIndex,
+              });
+              const lastIndex = newVBRec.getLineCount({ sublistId: "item" });
+              newVBRec.insertLine({ sublistId: "item", line: lastIndex });
+              newVBRec.setSublistValue({
+                sublistId: "item",
+                fieldId: "item",
+                value: RETURNABLESERVICEFEEITEM,
+                line: lastIndex,
+              });
+              newVBRec.setSublistValue({
+                sublistId: "item",
+                fieldId: "amount",
+                value: -Math.abs(serviceFeeAmount),
+                line: lastIndex,
+              });
+              newVBRec.setSublistValue({
+                sublistId: "item",
+                fieldId: "rate",
+                value: -Math.abs(serviceFeeAmount),
+                line: lastIndex,
+              });
+            } else {
+              const lastIndex = newVBRec.getLineCount({ sublistId: "item" });
+              newVBRec.insertLine({ sublistId: "item", line: lastIndex });
+              newVBRec.setSublistValue({
+                sublistId: "item",
+                fieldId: "item",
+                value: RETURNABLESERVICEFEEITEM,
+                line: lastIndex,
+              });
+
+              newVBRec.setSublistValue({
+                sublistId: "item",
+                fieldId: "rate",
+                value: -Math.abs(serviceFeeAmount),
+                line: lastIndex,
+              });
+              newVBRec.setSublistValue({
+                sublistId: "item",
+                fieldId: "amount",
+                value: -Math.abs(serviceFeeAmount),
+                line: lastIndex,
+              });
+            }
+          }
+          if (accruedAmount > 0) {
+            let accruedItemIndex = newVBRec.findSublistLineWithValue({
+              sublistId: "item",
+              fieldId: "item",
+              value: ACCRUEDPURCHASEITEM,
+            });
+            if (accruedItemIndex != -1) {
+              newVBRec.removeLine({
+                sublistId: "item",
+                line: accruedItemIndex,
+              });
+              const lastIndex = newVBRec.getLineCount({ sublistId: "item" });
+              newVBRec.insertLine({ sublistId: "item", line: lastIndex });
+              newVBRec.setSublistValue({
+                sublistId: "item",
+                fieldId: "item",
+                value: ACCRUEDPURCHASEITEM,
+                line: lastIndex,
+              });
+              newVBRec.setSublistValue({
+                sublistId: "item",
+                fieldId: "amount",
+                value: -Math.abs(accruedAmount),
+                line: lastIndex,
+              });
+              newVBRec.setSublistValue({
+                sublistId: "item",
+                fieldId: "rate",
+                value: -Math.abs(accruedAmount),
+                line: lastIndex,
+              });
+            } else {
+              const lastIndex = newVBRec.getLineCount({ sublistId: "item" });
+              newVBRec.insertLine({ sublistId: "item", line: lastIndex });
+              newVBRec.setSublistValue({
+                sublistId: "item",
+                fieldId: "item",
+                value: ACCRUEDPURCHASEITEM,
+                line: lastIndex,
+              });
+              newVBRec.setSublistValue({
+                sublistId: "item",
+                fieldId: "amount",
+                value: -Math.abs(accruedAmount),
+                line: lastIndex,
+              });
+              newVBRec.setSublistValue({
+                sublistId: "item",
+                fieldId: "rate",
+                value: -Math.abs(accruedAmount),
+                line: lastIndex,
+              });
+            }
+          }
+        } catch (e) {
+          log.error("update service item", e.message);
+        }
+        return newVBRec.save({ ignoreMandatoryFields: true });
+      } else {
+        return tranRec.save({
+          ignoreMandatoryFields: true,
+        });
+      }
+    } catch (e) {
+      log.error("updateProcessing", e.message);
+    }
+  }
+
   /**
    * Add service fee item in the bill
-   * @param {object} options.vbRec vendor bill Rec
+   * @param {object} options.vbRecId vendor bill Rec
    * @param {string} options.rclId return cover letter Id
    * @param {number} options.nonReturnableFeeAmount return non-returnable fee amount
    */
   function addBillProcessingFee(options) {
-    const RETURNABLESERVICEFEEITEM = 882;
     log.audit("addBillProcessingFee", options);
-    let { rclId, vbRec, nonReturnableFeeAmount } = options;
+    let { rclId, vbRecId } = options;
     try {
-      const rclRec = record.load({
-        type: "customrecord_return_cover_letter",
-        id: rclId,
-      });
-      let vbId = vbRec.save({
-        ignoreMandatoryFields: true,
-      });
-      let vbRec2 = record.load({
+      const newVBRec = record.load({
         type: record.Type.VENDOR_BILL,
-        id: vbId,
-        isDynamic: true,
+        id: vbRecId,
       });
+      log.emergency("addBillProcessingFee", newVBRec);
+      const ACCRUEDPURCHASEITEM = 916;
+      const RETURNABLE = 2;
+      const NONRETURNABLE = 1;
+      const RETURNABLESERVICEFEEITEM = 882;
+
+      let returnableAmount = 0;
       const returnableFeeRate =
-        rclRec.getValue("custrecord_rcl_returnable_fee") / 100;
-      const vbAmount = vbRec2.getValue("usertotal");
-      log.debug("addBillProcessingFee values", { returnableFeeRate });
-      if (!returnableFeeRate) {
-        return vbRec2.id;
-      } else {
-        const serviceFeeAmount = +vbAmount * +returnableFeeRate;
-        log.debug("addBillProcessingFee values", {
-          returnableFeeRate,
-          vbAmount,
-          serviceFeeAmount,
-        });
-        try {
-          vbRec2.selectNewLine({
+        newVBRec.getValue("custbody_rxrs_returnable_fee") / 100;
+      let accruedAmount = 0;
+      try {
+        for (let i = 0; i < newVBRec.getLineCount("item"); i++) {
+          const mfgProcessing = newVBRec.getSublistValue({
             sublistId: "item",
+            fieldId: "custcol_rxrs_mfg_processing",
+            line: i,
           });
-
-          vbRec2.setCurrentSublistValue({
+          const pharmaProcessing = newVBRec.getSublistValue({
             sublistId: "item",
-            fieldId: "item",
-
-            value: RETURNABLESERVICEFEEITEM,
+            fieldId: "custcol_rxrs_pharma_processing",
+            line: i,
           });
-          vbRec2.setCurrentSublistValue({
+          let quantity = newVBRec.getSublistValue({
             sublistId: "item",
             fieldId: "quantity",
-            value: 1,
+            line: i,
           });
-          vbRec2.setCurrentSublistValue({
+          let rate = newVBRec.getSublistValue({
             sublistId: "item",
             fieldId: "rate",
-            value: serviceFeeAmount * -1,
+            line: i,
           });
-          vbRec2.setCurrentSublistValue({
-            sublistId: "item",
-            fieldId: "amount",
-            value: serviceFeeAmount * -1,
+          log.debug("processing", {
+            line: i,
+            pharma: pharmaProcessing,
+            mfg: mfgProcessing,
           });
-          vbRec2.commitLine("item");
-        } catch (e) {
-          log.error("addBillProcessingFee setting line", e.message);
+          if (
+            pharmaProcessing == NONRETURNABLE &&
+            mfgProcessing == RETURNABLE
+          ) {
+            let amount = newVBRec.getSublistValue({
+              sublistId: "item",
+              fieldId: "amount",
+              line: i,
+            });
+            amount = amount === 0 ? rate * quantity : amount;
+            newVBRec.setSublistValue({
+              sublistId: "item",
+              fieldId: "amount",
+              value: amount,
+              line: i,
+            });
+            accruedAmount += newVBRec.getSublistValue({
+              sublistId: "item",
+              fieldId: "amount",
+              line: i,
+            });
+          }
+          if (
+            pharmaProcessing == NONRETURNABLE &&
+            mfgProcessing == NONRETURNABLE
+          ) {
+            newVBRec.setSublistValue({
+              sublistId: "item",
+              fieldId: "rate",
+              value: 0,
+              line: i,
+            });
+          }
+
+          if (pharmaProcessing == RETURNABLE) {
+            let amount = newVBRec.getSublistValue({
+              sublistId: "item",
+              fieldId: "amount",
+              line: i,
+            });
+            amount = amount === 0 ? rate * quantity : amount;
+            log.emergency("returnable line: ", { i, amount });
+            newVBRec.setSublistValue({
+              sublistId: "item",
+              fieldId: "amount",
+              value: amount,
+              line: i,
+            });
+            returnableAmount += newVBRec.getSublistValue({
+              sublistId: "item",
+              fieldId: "amount",
+              line: i,
+            });
+          }
         }
-        return vbRec2.save({ ignoreMandatoryFields: true });
+        if (returnableFeeRate) {
+          const serviceFeeAmount = +returnableAmount * +returnableFeeRate;
+          log.debug("addBillProcessingFee values", {
+            returnableFeeRate,
+            serviceFeeAmount,
+            returnableAmount,
+          });
+          let returnableServiceFeeIndex = newVBRec.findSublistLineWithValue({
+            sublistId: "item",
+            fieldId: "item",
+            value: RETURNABLESERVICEFEEITEM,
+          });
+          if (returnableServiceFeeIndex != -1) {
+            newVBRec.removeLine({
+              sublistId: "item",
+              line: returnableServiceFeeIndex,
+            });
+            const lastIndex = newVBRec.getLineCount({ sublistId: "item" });
+            newVBRec.insertLine({ sublistId: "item", line: lastIndex });
+            newVBRec.setSublistValue({
+              sublistId: "item",
+              fieldId: "item",
+              value: RETURNABLESERVICEFEEITEM,
+              line: lastIndex,
+            });
+            newVBRec.setSublistValue({
+              sublistId: "item",
+              fieldId: "amount",
+              value: -Math.abs(serviceFeeAmount),
+              line: lastIndex,
+            });
+            newVBRec.setSublistValue({
+              sublistId: "item",
+              fieldId: "rate",
+              value: -Math.abs(serviceFeeAmount),
+              line: lastIndex,
+            });
+          } else {
+            const lastIndex = newVBRec.getLineCount({ sublistId: "item" });
+            newVBRec.insertLine({ sublistId: "item", line: lastIndex });
+            newVBRec.setSublistValue({
+              sublistId: "item",
+              fieldId: "item",
+              value: RETURNABLESERVICEFEEITEM,
+              line: lastIndex,
+            });
+
+            newVBRec.setSublistValue({
+              sublistId: "item",
+              fieldId: "rate",
+              value: -Math.abs(serviceFeeAmount),
+              line: lastIndex,
+            });
+            newVBRec.setSublistValue({
+              sublistId: "item",
+              fieldId: "amount",
+              value: -Math.abs(serviceFeeAmount),
+              line: lastIndex,
+            });
+          }
+        }
+        if (accruedAmount > 0) {
+          let accruedItemIndex = newVBRec.findSublistLineWithValue({
+            sublistId: "item",
+            fieldId: "item",
+            value: ACCRUEDPURCHASEITEM,
+          });
+          if (accruedItemIndex != -1) {
+            newVBRec.removeLine({
+              sublistId: "item",
+              line: accruedItemIndex,
+            });
+            const lastIndex = newVBRec.getLineCount({ sublistId: "item" });
+            newVBRec.insertLine({ sublistId: "item", line: lastIndex });
+            newVBRec.setSublistValue({
+              sublistId: "item",
+              fieldId: "item",
+              value: ACCRUEDPURCHASEITEM,
+              line: lastIndex,
+            });
+            newVBRec.setSublistValue({
+              sublistId: "item",
+              fieldId: "amount",
+              value: -Math.abs(accruedAmount),
+              line: lastIndex,
+            });
+            newVBRec.setSublistValue({
+              sublistId: "item",
+              fieldId: "rate",
+              value: -Math.abs(accruedAmount),
+              line: lastIndex,
+            });
+          } else {
+            const lastIndex = newVBRec.getLineCount({ sublistId: "item" });
+            newVBRec.insertLine({ sublistId: "item", line: lastIndex });
+            newVBRec.setSublistValue({
+              sublistId: "item",
+              fieldId: "item",
+              value: ACCRUEDPURCHASEITEM,
+              line: lastIndex,
+            });
+            newVBRec.setSublistValue({
+              sublistId: "item",
+              fieldId: "amount",
+              value: -Math.abs(accruedAmount),
+              line: lastIndex,
+            });
+            newVBRec.setSublistValue({
+              sublistId: "item",
+              fieldId: "rate",
+              value: -Math.abs(accruedAmount),
+              line: lastIndex,
+            });
+          }
+        }
+        return newVBRec.save({ ignoreMandatoryFields: true });
+      } catch (e) {
+        log.error("createServiceItem", e.message);
       }
     } catch (e) {
       log.error("addBillProcessingFee", e.message);
+    }
+  }
+
+  /**
+   * Get bill id based on payment sche and master return id
+   * @param {string} options.paymentId
+   * @param {string} options.masterReturnId
+   * @return {string|null} return bill internal id
+   */
+  function getBillId(options) {
+    log.debug("getBillId", options);
+    let { paymentId, masterReturnId } = options;
+    try {
+      let billId;
+      const transactionSearchObj = search.create({
+        type: "transaction",
+        filters: [
+          ["custbody_kodpaymentsched", "anyof", paymentId],
+          "AND",
+          ["custbody_kd_master_return_id", "anyof", masterReturnId],
+          "AND",
+          ["mainline", "is", "T"],
+          "AND",
+          ["type", "anyof", "VendBill"],
+        ],
+      });
+      const searchResultCount = transactionSearchObj.runPaged().count;
+      if (searchResultCount === 0) return null;
+      transactionSearchObj.run().each(function (result) {
+        billId = result.id;
+      });
+      return billId;
+    } catch (e) {
+      log.error("getBillId", e.message);
+    }
+  }
+
+  /**
+   * Get all bill based on master return id
+   * @param {string} masterReturnId
+   * @return {array|null} return bill internal ids
+   */
+  function getAllBills(masterReturnId) {
+    log.audit("getAllBills", masterReturnId);
+    try {
+      let billIds = [];
+      const transactionSearchObj = search.create({
+        type: "transaction",
+        filters: [
+          ["custbody_kd_master_return_id", "anyof", masterReturnId],
+          "AND",
+          ["mainline", "is", "T"],
+          "AND",
+          ["type", "anyof", "VendBill"],
+        ],
+      });
+      const searchResultCount = transactionSearchObj.runPaged().count;
+      if (searchResultCount === 0) return null;
+      transactionSearchObj.run().each(function (result) {
+        billIds.push(result.id);
+        return true;
+      });
+      return billIds;
+    } catch (e) {
+      log.error("getBillId", e.message);
     }
   }
 
@@ -857,13 +1531,6 @@ define([
       removeVBLine(options);
     }
     return vbRec;
-    // let id = vbRec.save({
-    //   ignoreMandatoryFields: true,
-    // });
-    // log.emergency("Id", id);
-    // if (id) {
-    //   return id;
-    // }
   }
 
   /**
@@ -883,6 +1550,113 @@ define([
     }
   }
 
+  /**
+   * Set adjustment fee item to the vbRec in Standard mode
+   * @param {object} options.vbRec
+   * @param {number} options.adjustmentAmount
+   * @param {number} options.irsId
+   * @param {number} options.lastIndex
+   */
+  function setAdjustmentFee(options) {
+    log.audit("setAdjustmentFee", options);
+    let { vbRec, adjustmentAmount, irsId, lastIndex } = options;
+    const ADJUSTMENTITEM = 917;
+    try {
+      vbRec.insertLine({ sublistId: "item", line: lastIndex });
+      vbRec.setSublistValue({
+        sublistId: "item",
+        fieldId: "item",
+        value: ADJUSTMENTITEM,
+        line: lastIndex,
+      });
+
+      vbRec.setSublistValue({
+        sublistId: "item",
+        fieldId: "rate",
+        value: -Math.abs(adjustmentAmount),
+        line: lastIndex,
+      });
+      vbRec.setSublistValue({
+        sublistId: "item",
+        fieldId: "custcol_rsrs_itemscan_link",
+        value: irsId,
+        line: lastIndex,
+      });
+      return vbRec;
+    } catch (e) {
+      log.error("setAdjustmentFee", e.message);
+    }
+  }
+
+  /**
+   * Add accrued purchase item
+   * @param {object}options.vbRec
+   * @param {string}options.ACCRUEDPURCHASEITEM
+   * @param {string}options.lastIndex
+   * @param {number}options.accruedAmount
+   */
+  function addAccruedPurchaseItem(options) {
+    log.audit("addAccruedPurchaseItem", options);
+    let { vbRec, ACCRUEDPURCHASEITEM, lastIndex, accruedAmount } = options;
+    try {
+      let accruedItemIndex = vbRec.findSublistLineWithValue({
+        sublistId: "item",
+        fieldId: "item",
+        value: ACCRUEDPURCHASEITEM,
+      });
+      if (accruedItemIndex != -1) {
+        vbRec.removeLine({
+          sublistId: "item",
+          line: accruedItemIndex,
+        });
+        // const lastIndex = vbRec.getLineCount({ sublistId: "item" });
+        vbRec.insertLine({ sublistId: "item", line: lastIndex });
+        vbRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "item",
+          value: ACCRUEDPURCHASEITEM,
+          line: lastIndex,
+        });
+        vbRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "amount",
+          value: -Math.abs(accruedAmount),
+          line: lastIndex,
+        });
+        vbRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "rate",
+          value: -Math.abs(accruedAmount),
+          line: lastIndex,
+        });
+      } else {
+        //  const lastIndex = rec.getLineCount({ sublistId: "item" });
+        vbRec.insertLine({ sublistId: "item", line: lastIndex });
+        vbRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "item",
+          value: ACCRUEDPURCHASEITEM,
+          line: lastIndex,
+        });
+        vbRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "amount",
+          value: -Math.abs(accruedAmount),
+          line: lastIndex,
+        });
+        vbRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "rate",
+          value: -Math.abs(accruedAmount),
+          line: lastIndex,
+        });
+      }
+      return vbRec;
+    } catch (e) {
+      log.error("addAccruedPurchaseItem", e.message);
+    }
+  }
+
   return {
     createInventoryAdjustment: createInventoryAdjustment,
     createPO: createPO,
@@ -892,5 +1666,10 @@ define([
     addBillProcessingFee: addBillProcessingFee,
     removeVBLine: removeVBLine,
     getCertainField: getCertainField,
+    updateProcessing: updateProcessing,
+    getBillId: getBillId,
+    getAllBills: getAllBills,
+    setAdjustmentFee: setAdjustmentFee,
+    addAccruedPurchaseItem: addAccruedPurchaseItem,
   };
 });

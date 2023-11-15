@@ -303,6 +303,22 @@ define([
             .updateDisplayType({
               displayType: "INLINE",
             }).defaultValue = billId;
+          const billStatus = rxrs_tran_util.getCertainField({
+            id: billId,
+            type: "vendorbill",
+            columns: "status",
+          });
+          if (billStatus) {
+            form
+              .addField({
+                id: "custpage_bill_status",
+                label: "BILL STATUS",
+                type: serverWidget.FieldType.TEXT,
+              })
+              .updateDisplayType({
+                displayType: "INLINE",
+              }).defaultValue = billStatus;
+          }
         }
         let param = {
           mrrId: mrrId,
@@ -319,18 +335,38 @@ define([
          * If the user clicks the Split Payment action column
          */
         try {
-          let itemsReturnScan = rxrs_vs_util.getReturnableItemScan({
+          rxrs_vs_util.getReturnableItemScan({
             mrrId: mrrId,
             paymentSchedId: paymentId,
             isVerifyStaging: true,
             finalPaymentSched: finalPaymentSched,
             initialSplitpaymentPage: initialSplitpaymentPage,
           });
-          updateFinalPayment({
-            itemsReturnScan: itemsReturnScan,
-            paymentId: +paymentId,
-            isUpdated: true,
-          });
+          // let isUpdated = updateFinalPayment({
+          //   itemsReturnScan: itemsReturnScan,
+          //   paymentId: +paymentId,
+          //   isUpdated: true,
+          // });
+          // if (isUpdated) {
+          //   let billIds = rxrs_tran_util.getAllBills(mrrId);
+          //   log.emergency("billIds", billIds);
+          //   if (billIds.length > 0) {
+          //     billIds.forEach((billId) => {
+          //       let vbRec = record.load({
+          //         type: record.Type.VENDOR_BILL,
+          //         id: billId,
+          //         isDynamic: true,
+          //       });
+          //       let recObj = rxrs_tran_util.removeVBLine({
+          //         vbRec: vbRec,
+          //         finalPaymentSchedule: vbRec.getValue(
+          //           "custbody_kodpaymentsched"
+          //         ),
+          //       });
+          //       recObj.save({ ignoreMandatoryFields: true });
+          //     });
+          //   }
+          // }
         } catch (e) {
           log.error("spliting payment", e.message);
         }
@@ -350,6 +386,7 @@ define([
   function updateFinalPayment(options) {
     try {
       let { itemsReturnScan, paymentId, isUpdated } = options;
+      let itemLength = itemsReturnScan.length;
       itemsReturnScan.forEach((item) => {
         record.submitFields.promise({
           type: "customrecord_cs_item_ret_scan",
@@ -361,7 +398,11 @@ define([
           enablesourcing: true,
           ignoreMandatoryFields: true,
         });
+        itemLength = itemLength - 1;
       });
+      if (itemLength === 0) {
+        return true;
+      }
     } catch (e) {
       log.error("updateFinalPayment", e.message);
     }

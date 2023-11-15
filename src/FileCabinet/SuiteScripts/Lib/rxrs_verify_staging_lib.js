@@ -2174,12 +2174,14 @@ define([
    * Get the total item return scan amount per MRR and Manuf Processing
    * @param {number} options.mrrId
    * @param {string} options.pharmaProcessing
+   * @param {string} options.mfgProcessing
    * @return {number} return non-returnable total amount
    *
    */
   function getMrrIRSTotalAmount(options) {
     let total = 0;
-    let { mrrId, pharmaProcessing } = options;
+    log.audit("getMrrIRSTotalAmount", options);
+    let { mrrId, pharmaProcessing, mfgProcessing } = options;
     const customrecord_cs_item_ret_scanSearchObj = search.create({
       type: "customrecord_cs_item_ret_scan",
       filters: [
@@ -2195,6 +2197,15 @@ define([
         }),
       ],
     });
+    if (mfgProcessing) {
+      customrecord_cs_item_ret_scanSearchObj.filters.push(
+        search.createFilter({
+          name: "custrecord_cs__mfgprocessing",
+          operator: "anyof",
+          values: mfgProcessing,
+        })
+      );
+    }
 
     customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
       // .run().each has a limit of 4,000 results

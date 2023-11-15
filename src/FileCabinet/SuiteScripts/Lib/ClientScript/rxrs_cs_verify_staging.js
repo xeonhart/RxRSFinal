@@ -10,7 +10,6 @@ define([
   "N/ui/message",
   "N/record",
   "N/https",
-  "../rxrs_return_cover_letter_lib",
 ], /**
  * @param{runtime} runtime
  * @param{url} url
@@ -19,15 +18,8 @@ define([
  * @param record
  * @param https
  * @param rxrs_rcl_lib
- */ function (
-  runtime,
-  url,
-  currentRecord,
-  message,
-  record,
-  https,
-  rxrs_rcl_lib
-) {
+ * @param tranlib
+ */ function (runtime, url, currentRecord, message, record, https) {
   let suitelet = null;
   const RETURNABLESUBLIST = "custpage_items_sublist";
   let urlParams;
@@ -327,14 +319,41 @@ define([
     }
   }
 
+  function getCertainField(options) {
+    console.table(options);
+    let { type, id, columns } = options;
+    try {
+      const tranSearch = search.lookupFields({
+        type: type,
+        id: id,
+        columns: [columns],
+      });
+      let vbStatus = tranSearch[columns][0].value;
+      return JSON.stringify(vbStatus);
+    } catch (e) {
+      log.error("getTransactionStatus", e.message);
+    }
+  }
+
   /**
    * Create Payment Record and Assign it to item return scan
    * @param {number} options.mrrId Master Return Id
    * @param {number} options.billId Bill Id
    */
   function createPayment(options) {
+    console.table(options);
+    const curRec = currentRecord.get();
+    const billStatus = curRec.getValue("custpage_bill_status");
+
     let { mrrId, billId } = options;
     try {
+      console.log("billstatus " + billStatus);
+      if (billStatus == "paidInFull") {
+        alert(
+          "Cannot change payment schedule, related bill record is already paid in full"
+        );
+        return;
+      }
       let internalIds = [];
       let rec = currentRecord.get();
 
