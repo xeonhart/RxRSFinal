@@ -335,18 +335,18 @@ define([
          * If the user clicks the Split Payment action column
          */
         try {
-          rxrs_vs_util.getReturnableItemScan({
+          let itemsReturnScan = rxrs_vs_util.getReturnableItemScan({
             mrrId: mrrId,
             paymentSchedId: paymentId,
             isVerifyStaging: true,
             finalPaymentSched: finalPaymentSched,
             initialSplitpaymentPage: initialSplitpaymentPage,
           });
-          // let isUpdated = updateFinalPayment({
-          //   itemsReturnScan: itemsReturnScan,
-          //   paymentId: +paymentId,
-          //   isUpdated: true,
-          // });
+          updateFinalPayment({
+            itemsReturnScan: itemsReturnScan,
+            paymentId: +paymentId,
+            isUpdated: true,
+          });
           // if (isUpdated) {
           //   let billIds = rxrs_tran_util.getAllBills(mrrId);
           //   log.emergency("billIds", billIds);

@@ -5,6 +5,8 @@
 define([
   "N/record",
   "N/search",
+  "N/url",
+  "N/https",
   "../rxrs_verify_staging_lib",
   "../rxrs_payment_sched_lib",
   "../rxrs_transaction_lib",
@@ -12,11 +14,17 @@ define([
 ], /**
  * @param{record} record
  * @param{search} search
+ * @param url
+ * @param https
  * @param rxrs_util
  * @param rxrsPayment_lib
+ * @param rxrs_tranlib
+ * @param rxrs_rcl_lib
  */ (
   record,
   search,
+  url,
+  https,
   rxrs_util,
   rxrsPayment_lib,
   rxrs_tranlib,
@@ -149,9 +157,7 @@ define([
       let notEqualPharma =
         oldPharmaProcessing == RETURNABLE &&
         newPharmaProcessing == NONRETURNABLE;
-      /**
-       * if the pharma or mfg processing is not equal delete the
-       */
+
       if (notEqualPharma) {
         let defaultBillId = rxrs_tranlib.getBillId({
           paymentId: DEFAULT,
@@ -162,16 +168,14 @@ define([
           type: "vendorbill",
           columns: "status",
         });
-
+        let accruedAmount = 0;
+        let adjustmentAmount =
+          adjustmentPercent * rec.getValue("custrecord_irc_total_amount");
+        log.debug("adjustmentAmount", adjustmentAmount);
         if (billStatus == "paidInFull") {
           log.debug("billId", defaultBillId != billId);
           if (defaultBillId != billId) {
             try {
-              let accruedAmount = 0;
-              let adjustmentAmount =
-                adjustmentPercent.toFixed(2) *
-                rec.getValue("custrecord_irc_total_amount");
-              log.debug("adjustmentAmount", adjustmentAmount);
               let vbRec = record.load({
                 type: record.Type.VENDOR_BILL,
                 id: billId,
@@ -187,16 +191,7 @@ define([
                   fieldId: "custcol_rxrs_pharma_processing",
                   line: i,
                 });
-                // let quantity = vbRec.getSublistValue({
-                //   sublistId: "item",
-                //   fieldId: "quantity",
-                //   line: i,
-                // });
-                // let rate = vbRec.getSublistValue({
-                //   sublistId: "item",
-                //   fieldId: "rate",
-                //   line: i,
-                // });
+
                 log.debug("processing", {
                   line: i,
                   pharma: pharmaProcessing,
@@ -228,96 +223,29 @@ define([
                 adjustmentAmount: adjustmentAmount,
                 lastIndex: lastIndex,
               });
-              // vbRec.insertLine({ sublistId: "item", line: lastIndex });
-              // vbRec.setSublistValue({
-              //   sublistId: "item",
-              //   fieldId: "item",
-              //   value: ADJUSTMENTITEM,
-              //   line: lastIndex,
-              // });
-              //
-              // vbRec.setSublistValue({
-              //   sublistId: "item",
-              //   fieldId: "rate",
-              //   value: -Math.abs(adjustmentAmount),
-              //   line: lastIndex,
-              // });
-              // vbRec.setSublistValue({
-              //   sublistId: "item",
-              //   fieldId: "custcol_rsrs_itemscan_link",
-              //   value: rec.id,
-              //   line: lastIndex,
-              // });
 
               if (accruedAmount > 0) {
+                let lastIndex = vbRec.getLineCount({ sublistId: "item" });
                 vbRec = rxrs_tranlib.addAccruedPurchaseItem({
                   ACCRUEDPURCHASEITEM: ACCRUEDPURCHASEITEM,
                   vbRec: vbRec,
                   lastIndex: lastIndex,
                   accruedAmount: accruedAmount,
                 });
-                // let accruedItemIndex = vbRec.findSublistLineWithValue({
-                //   sublistId: "item",
-                //   fieldId: "item",
-                //   value: ACCRUEDPURCHASEITEM,
-                // });
-                // if (accruedItemIndex != -1) {
-                //   vbRec.removeLine({
-                //     sublistId: "item",
-                //     line: accruedItemIndex,
-                //   });
-                //   // const lastIndex = vbRec.getLineCount({ sublistId: "item" });
-                //   vbRec.insertLine({ sublistId: "item", line: lastIndex });
-                //   vbRec.setSublistValue({
-                //     sublistId: "item",
-                //     fieldId: "item",
-                //     value: ACCRUEDPURCHASEITEM,
-                //     line: lastIndex,
-                //   });
-                //   vbRec.setSublistValue({
-                //     sublistId: "item",
-                //     fieldId: "amount",
-                //     value: -Math.abs(accruedAmount),
-                //     line: lastIndex,
-                //   });
-                //   vbRec.setSublistValue({
-                //     sublistId: "item",
-                //     fieldId: "rate",
-                //     value: -Math.abs(accruedAmount),
-                //     line: lastIndex,
-                //   });
-                // } else {
-                //   //  const lastIndex = rec.getLineCount({ sublistId: "item" });
-                //   vbRec.insertLine({ sublistId: "item", line: lastIndex });
-                //   vbRec.setSublistValue({
-                //     sublistId: "item",
-                //     fieldId: "item",
-                //     value: ACCRUEDPURCHASEITEM,
-                //     line: lastIndex,
-                //   });
-                //   vbRec.setSublistValue({
-                //     sublistId: "item",
-                //     fieldId: "amount",
-                //     value: -Math.abs(accruedAmount),
-                //     line: lastIndex,
-                //   });
-                //   vbRec.setSublistValue({
-                //     sublistId: "item",
-                //     fieldId: "rate",
-                //     value: -Math.abs(accruedAmount),
-                //     line: lastIndex,
-                //   });
-                // }
               }
-              vbRec.save({ ignoreMandatoryFields: true });
+              rxrs_tranlib.addAcrruedAmountBasedonTransaction(vbRec);
+
+              // vbRec.save({ ignoreMandatoryFields: true });
             } catch (e) {
               log.error("ADDING ADJUMENT AND ACCRUED PURCHASE", e.message);
             }
           }
         } else {
+          log.emergency("Default Bill not paid in Full");
           let stSuiteletUrl = url.resolveScript({
             scriptId: "customscript_sl_cs_custom_function",
             deploymentId: "customdeploy_sl_cs_custom_function",
+            returnExternalUrl: true,
             params: {
               action: "reloadBill",
               billId: "defaultBillId",
@@ -326,8 +254,49 @@ define([
           let response = https.post({
             url: stSuiteletUrl,
           });
-          log.debug("reloadBill response", response);
+          log.emergency("reloadBill response", response);
           if (defaultBillId != billId) {
+            log.debug("NOT DEFAULT BILL");
+            let vbRec = record.load({
+              type: record.Type.VENDOR_BILL,
+              id: billId,
+            });
+
+            let vbRecDefault = record.load({
+              type: record.Type.VENDOR_BILL,
+              id: defaultBillId,
+            });
+            let lastIndex = vbRecDefault.getLineCount({ sublistId: "item" });
+            vbRecDefault = rxrs_tranlib.setAdjustmentFee({
+              vbRec: vbRecDefault,
+              irsId: rec.id,
+              adjustmentAmount: adjustmentAmount,
+              lastIndex: lastIndex,
+            });
+            // vbRec = rxrs_tranlib.createAllServiceFees(
+            //   record.load({
+            //     type: record.Type.VENDOR_BILL,
+            //     id: defaultBillId,
+            //   })
+            // );
+            vbRecDefault.save({ ignoreMandatoryFields: true });
+            rxrs_tranlib.addAcrruedAmountBasedonTransaction(vbRec);
+          } else {
+            log.audit("adjusting default bill");
+            let vbRec = record.load({
+              type: record.Type.VENDOR_BILL,
+              id: defaultBillId,
+            });
+            let lastIndex = vbRec.getLineCount({ sublistId: "item" });
+            vbRec = rxrs_tranlib.setAdjustmentFee({
+              vbRec: vbRec,
+              irsId: rec.id,
+              adjustmentAmount: adjustmentAmount,
+              lastIndex: lastIndex,
+            });
+            let vbId = vbRec.save({ ignoreMandatoryFields: true });
+
+            rxrs_tranlib.createAllServiceFees(vbId);
           }
         }
 

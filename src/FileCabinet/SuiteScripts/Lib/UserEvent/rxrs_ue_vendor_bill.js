@@ -85,40 +85,34 @@ define(["../rxrs_transaction_lib", "../rxrs_verify_staging_lib"], (
           fieldId: "rate",
           line: i,
         });
-        log.debug("processing", {
-          line: i,
-          pharma: pharmaProcessing,
-          mfg: mfgProcessing,
-        });
+
         if (pharmaProcessing == NONRETURNABLE && mfgProcessing == RETURNABLE) {
           let amount = rec.getSublistValue({
             sublistId: "item",
             fieldId: "amount",
             line: i,
           });
-          amount = amount === 0 ? rate * quantity : amount;
-          rec.setSublistValue({
+          let item = rec.getSublistValue({
             sublistId: "item",
-            fieldId: "amount",
-            value: amount,
+            fieldId: "item",
             line: i,
           });
-          accruedAmount += rec.getSublistValue({
-            sublistId: "item",
-            fieldId: "amount",
-            line: i,
-          });
-        }
-        if (
-          pharmaProcessing == NONRETURNABLE &&
-          mfgProcessing == NONRETURNABLE
-        ) {
-          rec.setSublistValue({
-            sublistId: "item",
-            fieldId: "rate",
-            value: 0,
-            line: i,
-          });
+          if (item != 917) {
+            amount = amount === 0 ? rate * quantity : amount;
+            rec.setSublistValue({
+              sublistId: "item",
+              fieldId: "amount",
+              value: amount,
+              line: i,
+            });
+            accruedAmount += rec.getSublistValue({
+              sublistId: "item",
+              fieldId: "amount",
+              line: i,
+            });
+          }
+
+          log.debug("amount: ", { i, amount, accruedAmount });
         }
 
         if (pharmaProcessing == RETURNABLE) {

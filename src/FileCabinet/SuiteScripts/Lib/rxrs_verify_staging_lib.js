@@ -526,9 +526,9 @@ define([
     ],
     returnCoverLetterFields: [
       {
-        id: "custpage_date_created",
+        id: "custpage_due_created",
         type: "TEXT",
-        label: "Date Created",
+        label: "DUE DATE",
         updateDisplayType: "DISABLED",
       },
       {
@@ -1289,6 +1289,7 @@ define([
           let billActionWord;
           let billActionURL;
           let isBillExist;
+          let dueDate;
           if (isPOExist) {
             isBillExist = rxrs_tran_lib.checkIfTransAlreadyExist({
               mrrId: mrrId,
@@ -1297,12 +1298,17 @@ define([
             });
             log.audit("isBillExist", isBillExist);
 
+            let amount;
             if (isBillExist) {
               billURL = generateRedirectLink({
                 type: record.Type.VENDOR_BILL,
                 id: isBillExist,
               });
-
+              let billRec = record.load({
+                type: record.Type.VENDOR_BILL,
+                id: isBillExist,
+              });
+              dueDate = billRec.getText("duedate");
               billActionURL = url.resolveScript({
                 scriptId: "customscript_sl_return_cover_letter",
                 deploymentId: "customdeploy_sl_return_cover_letter",
@@ -1387,15 +1393,13 @@ define([
             } catch (e) {
               log.emergency("removing decimal", e.message);
             }
+
             /**
              * Push the default in the first result
              */
             if (paymentSchedText == "Default") {
               itemScanList.unshift({
-                dateCreated: result.getValue({
-                  name: "created",
-                  summary: "MAX",
-                }),
+                dateCreated: dueDate ? dueDate : " ",
                 amount: "$" + amount,
                 paymetnSchedule: `<a href="${stSuiteletUrl}" target="${target}" >${paymentSchedText} </a>`,
                 delete: `<a href="${deleteURL}" target="_self" >${deleteWord}</a>`,
@@ -1407,10 +1411,7 @@ define([
               });
             } else {
               itemScanList.push({
-                dateCreated: result.getValue({
-                  name: "created",
-                  summary: "MAX",
-                }),
+                dateCreated: dueDate ? dueDate : " ",
                 amount: "$" + amount,
                 paymetnSchedule: `<a href="${stSuiteletUrl}" target="${target}" >${paymentSchedText} </a>`,
                 delete: `<a href="${deleteURL}" target="_self" >${deleteWord}</a>`,
