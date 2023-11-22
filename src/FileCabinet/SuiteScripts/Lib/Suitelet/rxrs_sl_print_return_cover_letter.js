@@ -99,7 +99,7 @@ define([
       ) {
         let dateCreated = rec.getSublistValue({
           sublistId: "custpage_items_sublist",
-          fieldId: "custpage_date_created",
+          fieldId: "custpage_due_created",
           line: i,
         });
         dateCreated = dateCreated.split(" ");

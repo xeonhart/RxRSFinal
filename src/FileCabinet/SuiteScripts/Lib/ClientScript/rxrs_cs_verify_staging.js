@@ -110,6 +110,24 @@ define([
         window.ischanged = false;
         window.open(stSuiteletUrl, "_self");
       }
+      /**
+       * SO suitelet 222 form reference
+       */
+      if (scriptContext.sublistId === "custpage_items_sublist") {
+        if (scriptContext.fieldId === "custpage_select") {
+          let isSelected = suitelet.getCurrentSublistValue({
+            sublistId: "custpage_items_sublist",
+            fieldId: "custpage_select",
+          });
+          if (isSelected == false || isSelected == "false") {
+            suitelet.setCurrentSublistValue({
+              sublistId: "custpage_items_sublist",
+              fieldId: "custpage_form222_ref",
+              value: " ",
+            });
+          }
+        }
+      }
     } catch (e) {
       console.error("fieldChanged", e.message);
     }
@@ -265,6 +283,33 @@ define([
   }
 
   /**
+   * Mark and Unmark the Sublist
+   * @param {string} value
+   */
+  function markAll(value) {
+    const SUBLIST = "custpage_items_sublist";
+    let curRec = currentRecord.get();
+    for (let i = 0; i < curRec.getLineCount(SUBLIST); i++) {
+      curRec.selectLine({
+        sublistId: SUBLIST,
+        line: i,
+      });
+      curRec.setCurrentSublistValue({
+        sublistId: SUBLIST,
+        fieldId: "custpage_select",
+        value: JSON.parse(value),
+      });
+      if (value == "false" || value == false)
+        curRec.setCurrentSublistValue({
+          sublistId: SUBLIST,
+          fieldId: "custpage_form222_ref",
+          value: " ",
+        });
+      curRec.commitLine(SUBLIST);
+    }
+  }
+
+  /**
    * Post URL request
    * @param {string} options.URL Suitelet URL
    *
@@ -301,6 +346,21 @@ define([
       }, 100);
     } catch (e) {
       console.error("postURL", e.message);
+    }
+  }
+
+  function updateSO222Form() {
+    try {
+      jQuery("body").loadingModal({
+        position: "auto",
+        text: "Updating Sales Order. Please wait...",
+        color: "#fff",
+        opacity: "0.7",
+        backgroundColor: "rgb(220,220,220)",
+        animation: "wave",
+      });
+    } catch (e) {
+      console.error("handleButtonClick", e.message);
     }
   }
 
@@ -426,6 +486,122 @@ define([
     }
   }
 
+  function updateSO222FormReference(soId) {
+    try {
+      let soDetails = {};
+      soDetails.soId = soId;
+      soDetails.soItemToUpdate = [];
+      const SUBLIST = "custpage_items_sublist";
+      try {
+        for (
+          let i = 0;
+          i < suitelet.getLineCount("custpage_items_sublist");
+          i++
+        ) {
+          let isSelected = suitelet.getSublistValue({
+            sublistId: SUBLIST,
+            fieldId: "custpage_select",
+            line: i,
+          });
+          if (isSelected !== true) continue;
+
+          let lineUniqueKey = suitelet.getSublistValue({
+            sublistId: SUBLIST,
+            fieldId: "custpage_linekey",
+            line: i,
+          });
+          let form222Number = suitelet.getSublistValue({
+            sublistId: SUBLIST,
+            fieldId: "custpage_form222_ref",
+            line: i,
+          });
+          if (form222Number) {
+            soDetails.soItemToUpdate.push({
+              lineUniqueKey: lineUniqueKey,
+              form222Number: form222Number,
+            });
+          }
+        }
+
+        let m = message.create({
+          type: message.Type.WARNING,
+          title: "WARNING",
+          message: "NO ITEM TO PROCESS",
+        });
+        if (soDetails.soItemToUpdate.length <= 0) {
+          m.show({
+            duration: 2000,
+          });
+          return;
+        }
+
+        let params = {
+          soDetails: JSON.stringify(soDetails),
+          action: "updateSOItem222FormReference",
+          isReload: true,
+        };
+
+        updateSO222Form();
+        let stSuiteletUrl = url.resolveScript({
+          scriptId: "customscript_sl_cs_custom_function",
+          deploymentId: "customdeploy_sl_cs_custom_function",
+          params: params,
+        });
+        postURL({ URL: stSuiteletUrl });
+        setTimeout(function () {
+          let rclSuiteletURL = url.resolveScript({
+            scriptId: "customscript_rxrs_sl_add_222_form_ref",
+            deploymentId: "customdeploy_rxrs_sl_add_222_form_ref",
+            returnExternalUrl: false,
+            params: {
+              isReload: true,
+            },
+          });
+          window.ischanged = false;
+          window.open(`${rclSuiteletURL}`, "_self");
+        }, 2000);
+      } catch (e) {
+        console.error("updateSO222FormReference", e.message);
+      }
+    } catch (e) {
+      console.error("updateSO222FormReference", e.message);
+    }
+  }
+
+  function update222FormReference() {
+    try {
+      const SUBLIST = "custpage_items_sublist";
+      const curRec = currentRecord.get();
+      let lineCount = curRec.getLineCount(SUBLIST);
+      console.log("Linecount" + lineCount);
+      const form222Number = curRec.getValue("custpage_form222_field");
+      if (!form222Number) {
+        alert("Please enter 222 form number");
+      }
+
+      for (let i = 0; i < lineCount; i++) {
+        curRec.selectLine({
+          sublistId: SUBLIST,
+          line: i,
+        });
+        if (
+          curRec.getCurrentSublistValue({
+            sublistId: SUBLIST,
+            fieldId: "custpage_select",
+          }) !== true
+        )
+          continue;
+        curRec.setCurrentSublistValue({
+          sublistId: SUBLIST,
+          fieldId: "custpage_form222_ref",
+          value: form222Number,
+        });
+      }
+    } catch (e) {
+      console.error("update222FormReference", e.message);
+    }
+  }
+
   function destroyModal() {
     jQuery("#_loading_dialog").dialog("destroy");
   }
@@ -437,5 +613,8 @@ define([
     backToReturnable: backToReturnable,
     showMessage: showMessage,
     createPayment: createPayment,
+    markAll: markAll,
+    update222FormReference: update222FormReference,
+    updateSO222FormReference: updateSO222FormReference,
   };
 });

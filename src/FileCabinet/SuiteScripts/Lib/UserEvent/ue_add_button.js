@@ -149,7 +149,30 @@ define([
             }
 
             break;
+          case "salesorder":
+            if (context.type === "create") return;
+            let soRec = context.newRecord;
+            let addItem222FormURL = url.resolveScript({
+              scriptId: "customscript_rxrs_sl_add_222_form_ref",
+              deploymentId: "customdeploy_rxrs_sl_add_222_form_ref",
+              returnExternalUrl: false,
+              params: {
+                type: soRec.type,
+                soId: soRec.id,
+                tranId: soRec.getValue("tranid"),
+              },
+            });
+            let soParams = {
+              action: "add222FormReference",
+              url: addItem222FormURL,
+            };
+            context.form.addButton({
+              id: "custpage_add_222_reference",
+              label: "Add Item 222 reference",
+              functionName: `openSuitelet(${JSON.stringify(soParams)})`,
+            });
 
+            break;
           case "customrecord_return_cover_letter":
             if (context.type === "create") return;
             let mrrId = rec.getValue("custrecord_rcl_master_return");

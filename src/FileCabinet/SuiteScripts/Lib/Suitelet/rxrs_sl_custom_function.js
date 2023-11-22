@@ -28,6 +28,7 @@ define([
         rrId,
         mrrId,
         entity,
+        soDetails,
         action,
         rclId,
         billId,
@@ -60,6 +61,16 @@ define([
               context.response.writeLine(resMessage);
             } else {
               context.response.writeLine("ERROR:" + error);
+            }
+            break;
+          case "updateSOItem222FormReference":
+            log.debug("case", "updateSOItem222FormReference");
+            returnObj = tranLib.updateSO222Form(soDetails);
+            let { updateSOError, updateSOResMessage } = returnObj;
+            if (updateSOResMessage) {
+              context.response.writeLine(updateSOResMessage);
+            } else {
+              context.response.writeLine("ERROR:" + updateSOError);
             }
             break;
           case "addBillProcessingFee":

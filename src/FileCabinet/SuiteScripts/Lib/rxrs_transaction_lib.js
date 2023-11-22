@@ -236,6 +236,49 @@ define([
   }
 
   /**
+   * Update the Sales Order item 222 Form
+   * @param {object} soDetails
+   */
+  function updateSO222Form(soDetails) {
+    log.audit("updateSO222Form", soDetails);
+    let { soId, soItemToUpdate } = JSON.parse(soDetails);
+    try {
+      log.debug("details", { soId, soItemToUpdate });
+      if (!soId) return;
+      const soRec = record.load({
+        type: record.Type.SALES_ORDER,
+        id: soId,
+      });
+
+      soItemToUpdate.forEach((soItem) => {
+        let { lineUniqueKey, form222Number } = soItem;
+        let lineIndex = soRec.findSublistLineWithValue({
+          sublistId: "item",
+          fieldId: "lineuniquekey",
+          value: lineUniqueKey,
+        });
+        if (lineIndex !== -1) {
+          soRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "custcol_so_22formref",
+            value: form222Number,
+            line: lineIndex,
+          });
+        }
+      });
+      let message =
+        "Sucessfully updated SO ID: " +
+        soRec.save({
+          ignoreMandatoryFields: true,
+        });
+      return { updateSOResMessage: message };
+    } catch (e) {
+      log.error("updateSO222Form", e.message);
+      return { updateSOError: e.message };
+    }
+  }
+
+  /**
    * Create PO if the type of the Return Request is RRPO
    * @param {number}options.mrrId
    * @param {number}options.rrId
@@ -1430,6 +1473,41 @@ define([
   }
 
   /**
+   * Get transaction line item
+   * @param {string}options.type transaction type
+   * @param {string}options.id transaction id
+   * @return {array} return item list of the Sales Order
+   */
+  function getItemTransactionLine(options) {
+    log.audit("getItemTransactionLine", options);
+    let { type, id } = options;
+    let itemList = [];
+    try {
+      const tranRec = record.load({
+        type: type,
+        id: id,
+      });
+      for (let i = 0; i < tranRec.getLineCount("item"); i++) {
+        itemList.push({
+          item: tranRec.getSublistValue({
+            sublistId: "item",
+            fieldId: "item",
+            line: i,
+          }),
+          lineuniquekey: tranRec.getSublistValue({
+            sublistId: "item",
+            fieldId: "lineuniquekey",
+            line: i,
+          }),
+        });
+      }
+      return itemList;
+    } catch (e) {
+      log.error("getItemTransactionLine", e.message);
+    }
+  }
+
+  /**
    * Get bill id based on payment sche and master return id
    * @param {string} options.paymentId
    * @param {string} options.masterReturnId
@@ -2123,5 +2201,7 @@ define([
     addAccruedPurchaseItem: addAccruedPurchaseItem,
     createAllServiceFees: createAllServiceFees,
     addAcrruedAmountBasedonTransaction: addAcrruedAmountBasedonTransaction,
+    getItemTransactionLine: getItemTransactionLine,
+    updateSO222Form: updateSO222Form,
   };
 });
