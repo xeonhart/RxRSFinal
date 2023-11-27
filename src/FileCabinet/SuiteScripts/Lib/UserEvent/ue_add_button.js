@@ -151,7 +151,13 @@ define([
             break;
           case "salesorder":
             if (context.type === "create") return;
+
             let soRec = context.newRecord;
+            if (
+              soRec.getValue("custbody_kd_rr_category") != 3 ||
+              soRec.getValue("custbody_orderstatus") != 3
+            )
+              return;
             let addItem222FormURL = url.resolveScript({
               scriptId: "customscript_rxrs_sl_add_222_form_ref",
               deploymentId: "customdeploy_rxrs_sl_add_222_form_ref",

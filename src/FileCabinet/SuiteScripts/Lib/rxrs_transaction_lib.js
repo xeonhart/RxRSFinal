@@ -266,6 +266,11 @@ define([
           });
         }
       });
+      soRec.setValue({
+        fieldId: "custbody_222formcheck",
+        value: true,
+      });
+
       let message =
         "Sucessfully updated SO ID: " +
         soRec.save({
