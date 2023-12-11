@@ -13,7 +13,7 @@ define(["N/search", "N/email", "N/url", "N/runtime", "N/record"], function (
     log.debug({
       title: "Start Script",
     });
-
+    var rec = scriptContext.newRecord;
     var objScript = runtime.getCurrentScript();
     var strType = objScript.getParameter("custscript_kd_wa_send_email");
     var strSubject = "";
@@ -89,22 +89,25 @@ define(["N/search", "N/email", "N/url", "N/runtime", "N/record"], function (
         manufId = scriptContext.newRecord.getValue("csegmanufacturer");
         log.debug("Manuf Id", manufId);
 
-        var manufRec = record.load({
-          type: "customrecord_csegmanufacturer",
-          id: manufId,
-          isDynamic: true,
-        });
         var recipient = scriptContext.newRecord.getValue(
           "custbody_rma_authorization_email"
         );
+
+        var soId = record.submitFields({
+          type: record.Type.SALES_ORDER,
+          id: rec.id,
+          values: {
+            custbody_rma_email_sent: true,
+          },
+        });
+        log.debug("Updated email Sent", soId);
+
         strSubject =
           " Requesting for RMA # for Transaction " +
-          scriptContext.newRecord.getValue("tranid") +
+          rec.getValue("tranid") +
           "";
         strBody =
-          " Requesting for RMA # for Transaction" +
-          scriptContext.newRecord.getValue("tranid") +
-          "";
+          " Requesting for RMA # for Transaction" + rec.getValue("tranid") + "";
         log.debug("Recipient", recipient);
         break;
       default:
@@ -119,6 +122,10 @@ define(["N/search", "N/email", "N/url", "N/runtime", "N/record"], function (
           recipients: recipient,
           subject: strSubject,
           body: strBody,
+          relatedRecords: {
+            entityId: rec.getValue("entity"),
+            transactionId: rec.id,
+          },
         });
       } else {
         email.send({
@@ -126,6 +133,10 @@ define(["N/search", "N/email", "N/url", "N/runtime", "N/record"], function (
           recipients: recipient,
           subject: strSubject,
           body: strBody,
+          relatedRecords: {
+            entityId: rec.getValue("entity"),
+            transactionId: rec.id,
+          },
         });
       }
     }

@@ -670,6 +670,37 @@ define([
     }
   }
 
+  /**
+   * Added weeks to current Date
+   * @param options.date - Date to be added
+   * @param options.days - Number of days to Add
+   * @return {number}
+   */
+  function addDaysToDate(options) {
+    try {
+      let { date, days } = options;
+      date.setDate(date.getDate() + days);
+      let d = Date.parse(date);
+      d = getFormattedDate(new Date(d));
+      return d;
+    } catch (e) {
+      log.error("addDaysToDate", e.message);
+    }
+  }
+
+  /**
+   * Return formatted date M/D/YYYY
+   * @param date
+   * @return {string} formatted date
+   */
+  function getFormattedDate(date) {
+    let year = date.getFullYear();
+    let month = (1 + date.getMonth()).toString();
+    let day = date.getDate().toString();
+
+    return month + "/" + day + "/" + year;
+  }
+
   function formatDate(date) {
     date = date.split("/");
     let day = +date[0] < 10 ? 0 + date[0] : date[0];
@@ -684,6 +715,7 @@ define([
     rrStatus,
     priceLevel,
     createReturnRequest,
+    addDaysToDate,
     createReturnPackages,
     createTask,
     sendEmail,
