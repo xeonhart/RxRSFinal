@@ -456,6 +456,61 @@ define([
   }
 
   /**
+   * Set the partial amount of the transaction if
+   * @param {object} rec
+   * @return  Object with modified amount
+   */
+  function setPartialAmount(rec) {
+    try {
+      log.audit("Setting Partial Amount");
+      for (let i = 0; i < rec.getLineCount("item"); i++) {
+        const isPartial = rec.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_kod_fullpartial",
+          line: i,
+        });
+        log.audit("Setting Partial Amount", isPartial);
+        if (isPartial == 1) continue; // If full qty count skip
+        const partialCount = rec.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_kd_partialcount",
+          line: i,
+        });
+        const packageSize = rec.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_package_size",
+          line: i,
+        });
+        const rate = rec.getSublistValue({
+          sublistId: "item",
+          fieldId: "rate",
+          line: i,
+        });
+        const qty = rec.getSublistValue({
+          sublistId: "item",
+          fieldId: "quantity",
+          line: i,
+        });
+
+        let newAmount = qty * (partialCount / packageSize) * rate;
+        log.audit("setPartialAmount", {
+          partialAmount: newAmount.toFixed(2),
+          line: i,
+        });
+        rec.setSublistValue({
+          sublistId: "item",
+          fieldId: "amount",
+          line: i,
+          value: newAmount.toFixed(2),
+        });
+      }
+      return rec;
+    } catch (e) {
+      log.error("setPartialAmount", e.message);
+    }
+  }
+
+  /**
    * Add Vendor Bill Line
    * @param {number}options.existingBillId Vendor Bill ID
    * @param {*[]}options.lineInfo Item Return Scan Details
@@ -687,6 +742,151 @@ define([
       });
     } catch (e) {
       log.error("Setting Inventory Details", e.message);
+    }
+  }
+
+  /**
+   * Get the transaction line item details for credit memo suitelet
+   * @param {string}options.type transaction type
+   * @param {string}options.id transaction id
+   * @return {object[]}
+   */
+  function getSalesTransactionLine(options) {
+    let { id, type } = options;
+    let itemInfo = [];
+    try {
+      const currentRecord = record.load({
+        type: type,
+        id: id,
+      });
+      const lineCount = currentRecord.getLineCount({
+        sublistId: "item",
+      });
+      for (let i = 0; i < lineCount; i++) {
+        let LOTNUMBER = "";
+        let EXPDATE = "";
+        log.debug({ title: "line", details: lineCount });
+        const item = currentRecord.getSublistValue({
+          sublistId: "item",
+          fieldId: "item",
+          line: i,
+        });
+        const itemName = currentRecord.getSublistText({
+          sublistId: "item",
+          fieldId: "item",
+          line: i,
+        });
+
+        const quantity = currentRecord.getSublistValue({
+          sublistId: "item",
+          fieldId: "quantity",
+          line: i,
+        });
+        const fullPartial = currentRecord.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_kod_fullpartial",
+          line: i,
+        });
+        const fullPartialText = currentRecord.getSublistText({
+          sublistId: "item",
+          fieldId: "custcol_kod_fullpartial",
+          line: i,
+        });
+        const description = currentRecord.getSublistValue({
+          sublistId: "item",
+          fieldId: "description",
+          line: i,
+        });
+        const lineUniqueKey = currentRecord.getSublistValue({
+          sublistId: "item",
+          fieldId: "lineuniquekey",
+          line: i,
+        });
+        const packageSize = currentRecord.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_package_size",
+          line: i,
+        });
+        let rate = currentRecord.getSublistValue({
+          sublistId: "item",
+          fieldId: "rate",
+          line: i,
+        });
+        let amount = currentRecord.getSublistValue({
+          sublistId: "item",
+          fieldId: "amount",
+          line: i,
+        });
+        let partialQuantity = 0;
+        let isPartial = fullPartial == 2 ? true : false;
+        if (isPartial == true) {
+          partialQuantity = currentRecord.getSublistValue({
+            sublistId: "item",
+            fieldId: "custcol_kd_partialcount",
+            line: i,
+          });
+        }
+        let creditMemoReference = currentRecord.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_credit_memo_reference",
+          line: i,
+        });
+
+        const fieldLookUp = search.lookupFields({
+          type: search.Type.ITEM,
+          id: item, //pass the id of the item here
+          columns: "islotitem",
+        });
+
+        const islotitem = fieldLookUp.islotitem;
+        log.debug({ title: "islotitem", details: islotitem });
+        if (islotitem == true) {
+          let inventoryDetailSubrecord = currentRecord.getSublistSubrecord({
+            sublistId: "item",
+            fieldId: "inventorydetail",
+            line: i,
+          });
+          log.debug({ title: "subrec", details: inventoryDetailSubrecord });
+          const invcount = inventoryDetailSubrecord.getLineCount({
+            sublistId: "inventoryassignment",
+          });
+          log.debug({ title: "inventory details count", details: invcount });
+
+          if (invcount) {
+            for (let j = 0; j < invcount; j++) {
+              LOTNUMBER = inventoryDetailSubrecord.getSublistText({
+                sublistId: "inventoryassignment",
+                fieldId: "issueinventorynumber",
+                line: j,
+              });
+              EXPDATE = inventoryDetailSubrecord.getSublistText({
+                sublistId: "inventoryassignment",
+                fieldId: "expirationdate",
+                line: j,
+              });
+            }
+          }
+        }
+        itemInfo.push({
+          lineUniqueKey: lineUniqueKey,
+          item: itemName,
+          description: description,
+          lotNumber: LOTNUMBER,
+          expDate: EXPDATE,
+          fullPartial: fullPartialText,
+          packageSize: packageSize,
+          quantity: quantity,
+          partialQuantity: partialQuantity,
+          rate: rate,
+          amount: amount,
+          creditMemoReference: creditMemoReference,
+        });
+
+        log.debug("getSalesTransactionLine itemInfo", itemInfo);
+      }
+      return itemInfo;
+    } catch (e) {
+      log.error("getSalesTransactionLine", e.message);
     }
   }
 
@@ -2208,5 +2408,7 @@ define([
     addAcrruedAmountBasedonTransaction: addAcrruedAmountBasedonTransaction,
     getItemTransactionLine: getItemTransactionLine,
     updateSO222Form: updateSO222Form,
+    setPartialAmount: setPartialAmount,
+    getSalesTransactionLine: getSalesTransactionLine,
   };
 });

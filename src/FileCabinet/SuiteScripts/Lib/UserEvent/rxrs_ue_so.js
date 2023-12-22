@@ -7,12 +7,13 @@
  * Date:
  * Update: So Approval workflow field automation
  */
-define(["N/ui/serverWidget", "N/record", "N/search", "../rxrs_util"], (
-  serverWidget,
-  record,
-  search,
-  util
-) => {
+define([
+  "N/ui/serverWidget",
+  "N/record",
+  "N/search",
+  "../rxrs_util",
+  "../rxrs_transaction_lib",
+], (serverWidget, record, search, util, rxrs_tran_lib) => {
   /**
    * Defines the function definition that is executed before record is loaded.
    * @param {Object} scriptContext
@@ -189,6 +190,7 @@ define(["N/ui/serverWidget", "N/record", "N/search", "../rxrs_util"], (
           fieldId: "custbody_fulfillmenttype",
           value: returnProcedureInfo.custrecord_fulfillmenttype,
         });
+      rxrs_tran_lib.setPartialAmount(currentRecord);
     } catch (e) {
       log.error("beforeSubmit", e.message);
     }

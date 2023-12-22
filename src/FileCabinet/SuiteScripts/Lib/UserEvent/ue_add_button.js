@@ -149,6 +149,31 @@ define([
             }
 
             break;
+          case "invoice":
+            if (context.type === "create") return;
+            let invRec = context.newRecord;
+            let addCreditMemoUrl = url.resolveScript({
+              scriptId: "customscript_sl_add_credit_memo",
+              deploymentId: "customdeploy_sl_add_credit_memo",
+              returnExternalUrl: false,
+              params: {
+                type: invRec.type,
+                invId: invRec.id,
+                tranId: invRec.getValue("tranid"),
+                total: invRec.getValue("total"),
+              },
+            });
+            let invParams = {
+              action: "add222FormReference",
+              url: addCreditMemoUrl,
+            };
+            context.form.addButton({
+              id: "custpage_add_credit_memo",
+              label: "Add Credit Memo",
+              functionName: `openSuitelet(${JSON.stringify(invParams)})`,
+            });
+
+            break;
           case "salesorder":
             if (context.type === "create") return;
 
