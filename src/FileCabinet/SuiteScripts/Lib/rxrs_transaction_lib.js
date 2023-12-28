@@ -792,6 +792,17 @@ define([
           fieldId: "custcol_kod_fullpartial",
           line: i,
         });
+        let amountPaid = currentRecord.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_cm_amount_paid",
+          line: i,
+        });
+        let unitPrice = currentRecord.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_cm_unit_price",
+          line: i,
+        });
+
         const description = currentRecord.getSublistValue({
           sublistId: "item",
           fieldId: "description",
@@ -879,6 +890,8 @@ define([
           partialQuantity: partialQuantity,
           rate: rate,
           amount: amount,
+          unitPrice: unitPrice,
+          amountPaid: amountPaid,
           creditMemoReference: creditMemoReference,
         });
 

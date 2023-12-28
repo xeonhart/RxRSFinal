@@ -52,6 +52,19 @@ define([
 
     for (let i = 0; i < suitelet.getLineCount("custpage_items_sublist"); i++) {
       columnToDisable.forEach((fieldId) => {
+        let amountPaid = suitelet.getSublistValue({
+          sublistId: "custpage_items_sublist",
+          fieldId: "custpage_amount_paid",
+          line: i,
+        });
+        if (isEmpty(amountPaid) == false) {
+          const itemField = suitelet.getSublistField({
+            sublistId: "custpage_items_sublist",
+            fieldId: "custpage_select",
+            line: i,
+          });
+          itemField.isDisabled = true;
+        }
         const itemField = suitelet.getSublistField({
           sublistId: "custpage_items_sublist",
           fieldId: fieldId,
@@ -118,6 +131,18 @@ define([
           } else {
             columnToDisableEnabled.push("custpage_full");
             console.table(columnToDisableEnabled);
+          }
+          if (isSelected == false) {
+            suitelet.setCurrentSublistValue({
+              sublistId: "custpage_items_sublist",
+              fieldId: "custpage_unit_price",
+              value: 0,
+            });
+            suitelet.setCurrentSublistValue({
+              sublistId: "custpage_items_sublist",
+              fieldId: "custpage_amount_paid",
+              value: 0,
+            });
           }
           columnToDisableEnabled.forEach((fieldId) => {
             const itemField = suitelet.getSublistField({
@@ -193,20 +218,20 @@ define([
               i < suitelet.getLineCount("custpage_items_sublist");
               i++
             ) {
-              let isSelected = suitelet.getSublistValue({
+              // let isSelected = suitelet.getSublistValue({
+              //   sublistId: "custpage_items_sublist",
+              //   fieldId: "custpage_select",
+              //   line: i,
+              // });
+              // if (isSelected == true || isSelected == "true") {
+              let amount = 0;
+              amount = suitelet.getSublistValue({
                 sublistId: "custpage_items_sublist",
-                fieldId: "custpage_select",
+                fieldId: "custpage_amount_paid",
                 line: i,
               });
-              if (isSelected == true || isSelected == "true") {
-                let amount = 0;
-                amount = suitelet.getSublistValue({
-                  sublistId: "custpage_items_sublist",
-                  fieldId: "custpage_amount_paid",
-                  line: i,
-                });
-                totalAmount += Number(amount);
-              }
+              totalAmount += Number(amount);
+              // }
             }
             totalAmount &&
               suitelet.setValue({
@@ -426,102 +451,21 @@ define([
     }
   }
 
-  /**
-   * Create Payment Record and Assign it to item return scan
-   * @param {number} options.mrrId Master Return Id
-   * @param {number} options.billId Bill Id
-   */
-  function createPayment(options) {
-    console.table(options);
-    const curRec = currentRecord.get();
-    const billStatus = curRec.getValue("custpage_bill_status");
+  function createCreditMemo(invoiceId) {
+    let creditMemoNumber,
+      amount,
+      serviceFee,
+      saveWithoutReconcilingItems,
+      dateIssued,
+      fileId;
 
-    let { mrrId, billId } = options;
     try {
-      console.log("billstatus " + billStatus);
-      if (billStatus == "paidInFull") {
-        alert(
-          "Cannot change payment schedule, related bill record is already paid in full"
-        );
-        return;
-      }
-      let internalIds = [];
-      let rec = currentRecord.get();
+      creditMemoNumber = suitelet.getValue("custpage_credit_memo_number");
+      amount = suitelet.getValue("custpage_amount");
+      serviceFee = suitelet.getValue("custpage_service_fee");
+      dateIssued = suitelet.getText("custpage_issued_on");
+      fileId = suitelet.getValue("custpage_file_upload");
 
-      let newPaymentId = rec.getValue("custpage_payment_name");
-      let paymentSublistCount = rec.getLineCount({
-        sublistId: RETURNABLESUBLIST,
-      });
-      for (let i = 0; i < paymentSublistCount; i++) {
-        if (
-          rec.getSublistValue({
-            sublistId: RETURNABLESUBLIST,
-            fieldId: "custpage_verified",
-            line: i,
-          }) !== true
-        )
-          continue;
-        let internalId = rec.getSublistValue({
-          sublistId: RETURNABLESUBLIST,
-          fieldId: "custpage_internalid",
-          line: i,
-        });
-        internalIds.push(internalId);
-      }
-      console.log(internalIds.length);
-      if (internalIds.length == 0) {
-        alert("Please select item");
-        return;
-      }
-
-      let returnList = JSON.stringify(internalIds.join("_"));
-
-      let rclSuiteletURL = url.resolveScript({
-        scriptId: "customscript_sl_return_cover_letter",
-        deploymentId: "customdeploy_sl_return_cover_letter",
-        returnExternalUrl: false,
-        params: {
-          mrrId: mrrId,
-          isReload: true,
-          inDated: true,
-          isVerifyStaging: false,
-          returnList: returnList,
-          createdPaymentId: newPaymentId,
-          title: "In-Dated Inventory",
-          finalPaymentSched: false,
-          initialSplitpaymentPage: false,
-        },
-      });
-
-      if (billId) {
-        let params = {
-          billId: billId,
-          newPaymentId: newPaymentId,
-          action: "deleteBill",
-          mrrId: mrrId,
-        };
-
-        let functionSLURL = url.resolveScript({
-          scriptId: "customscript_sl_cs_custom_function",
-          deploymentId: "customdeploy_sl_cs_custom_function",
-          returnExternalUrl: false,
-          params: params,
-        });
-
-        postURL({ URL: functionSLURL });
-      }
-
-      window.open(`${rclSuiteletURL}`, "_self");
-    } catch (e) {
-      console.error("createPayment" + e.message);
-    }
-  }
-
-  function updateSO222FormReference(soId) {
-    try {
-      let soDetails = {};
-      soDetails.soId = soId;
-      soDetails.soItemToUpdate = [];
       const SUBLIST = "custpage_items_sublist";
       try {
         for (
@@ -635,6 +579,20 @@ define([
 
   function destroyModal() {
     jQuery("#_loading_dialog").dialog("destroy");
+  }
+
+  function isEmpty(stValue) {
+    return (
+      stValue === "" ||
+      stValue == null ||
+      false ||
+      (stValue.constructor === Array && stValue.length == 0) ||
+      (stValue.constructor === Object &&
+        (function (v) {
+          for (var k in v) return false;
+          return true;
+        })(stValue))
+    );
   }
 
   return {

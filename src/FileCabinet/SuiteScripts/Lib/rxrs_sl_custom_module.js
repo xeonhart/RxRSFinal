@@ -206,9 +206,7 @@ define([
           }
           if (
             attri.id === "custpage_select" ||
-            attri.id === "custpage_form222_ref" ||
-            attri.id === "custpage_unit_price" ||
-            attri.id === "custpage_amount_paid"
+            attri.id === "custpage_form222_ref"
           ) {
           } else {
             fieldName.push(attri.id);
@@ -228,9 +226,7 @@ define([
             if (isEmpty(fieldName[i])) continue;
             if (
               fieldName[i] == "custpage_select" ||
-              fieldName[i] == "custpage_form222_ref" ||
-              fieldName[i] === "custpage_unit_price" ||
-              fieldName[i] === "custpage_amount_paid"
+              fieldName[i] == "custpage_form222_ref"
             ) {
             } else {
               log.debug("else");

@@ -8,6 +8,7 @@ define([
   "../rxrs_transaction_lib",
   "../rxrs_verify_staging_lib",
   "../rxrs_util",
+  "../rxrs_custom_rec_lib",
   "N/cache",
   "N/file",
   "N/record",
@@ -26,6 +27,7 @@ define([
   rxrs_tran_lib,
   rxrs_vb_lib,
   rxrs_util,
+  rxrs_custom_rec,
   cache,
   file,
   record,
@@ -82,7 +84,7 @@ define([
   const createHeaderFields = (options) => {
     let form = options.form;
 
-    let { invId, type, tranId, creditMemoId, total } = options.params;
+    let { invId, type, tranId, total } = options.params;
 
     log.debug("createHeaderFields", options.params);
 
@@ -100,6 +102,7 @@ define([
           })
           .getContents();
       }
+      let creditMemoId = rxrs_custom_rec.lookForExistingCreditMemoRec(invId);
       if (!creditMemoId) {
         const creditMemoNumberField = form.addField({
           id: "custpage_credit_memo_number",
