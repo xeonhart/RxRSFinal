@@ -7,12 +7,13 @@ define([
   "N/record",
   "../rxrs_transaction_lib",
   "../rxrs_return_cover_letter_lib",
+  "../rxrs_custom_rec_lib",
 ], /**
  * @param{serverWidget} serverWidget
  * @param record
  * @param tranLib
  * @param rclLib
- */ (serverWidget, record, tranLib, rclLib) => {
+ */ (serverWidget, record, tranLib, rclLib, custRecLib) => {
   /**
    * Defines the Suitelet script trigger point.
    * @param {Object} scriptContext
@@ -29,6 +30,7 @@ define([
         mrrId,
         entity,
         soDetails,
+        cmDetails,
         action,
         rclId,
         billId,
@@ -41,6 +43,9 @@ define([
         let returnObj;
         log.audit("POST", params);
         switch (action) {
+          case "createCreditMemo":
+            custRecLib.createCreditMemoRec(cmDetails);
+            break;
           case "reloadBill":
             const vbRec = record.load({
               type: record.Type.VENDOR_BILL,

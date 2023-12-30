@@ -457,14 +457,23 @@ define([
       serviceFee,
       saveWithoutReconcilingItems,
       dateIssued,
-      fileId;
-
+      fileId,
+      cmId;
+    let cmLines = [];
+    let params = {};
     try {
-      creditMemoNumber = suitelet.getValue("custpage_credit_memo_number");
-      amount = suitelet.getValue("custpage_amount");
-      serviceFee = suitelet.getValue("custpage_service_fee");
-      dateIssued = suitelet.getText("custpage_issued_on");
-      fileId = suitelet.getValue("custpage_file_upload");
+      cmId = suitelet.getValue("custpage_credit_memo");
+      if (cmId) {
+        params.cmId = cmId;
+      } else {
+        params.creditMemoNumber = suitelet.getValue(
+          "custpage_credit_memo_number"
+        );
+        params.amount = suitelet.getValue("custpage_amount");
+        params.serviceFee = suitelet.getValue("custpage_service_fee");
+        params.dateIssued = suitelet.getText("custpage_issued_on");
+        params.fileId = suitelet.getValue("custpage_file_upload");
+      }
 
       const SUBLIST = "custpage_items_sublist";
       try {
@@ -482,20 +491,30 @@ define([
 
           let lineUniqueKey = suitelet.getSublistValue({
             sublistId: SUBLIST,
-            fieldId: "custpage_linekey",
+            fieldId: "custpage_lineuniquekey",
             line: i,
           });
-          let form222Number = suitelet.getSublistValue({
+          let NDC = suitelet.getSublistValue({
             sublistId: SUBLIST,
-            fieldId: "custpage_form222_ref",
+            fieldId: "custpage_itemid",
             line: i,
           });
-          if (form222Number) {
-            soDetails.soItemToUpdate.push({
-              lineUniqueKey: lineUniqueKey,
-              form222Number: form222Number,
-            });
-          }
+          let unitPrice = suitelet.getSublistValue({
+            sublistId: SUBLIST,
+            fieldId: "custpage_unit_price",
+            line: i,
+          });
+          let amountApplied = suitelet.getSublistValue({
+            sublistId: SUBLIST,
+            fieldId: "custpage_amount_paid",
+            line: i,
+          });
+          cmLines.push({
+            lineUniqueKey: lineUniqueKey,
+            NDC: NDC,
+            unitPrice: unitPrice,
+            amountApplied: amountApplied,
+          });
         }
 
         let m = message.create({
@@ -503,30 +522,29 @@ define([
           title: "WARNING",
           message: "NO ITEM TO PROCESS",
         });
-        if (soDetails.soItemToUpdate.length <= 0) {
+        if (cmLines.length <= 0) {
           m.show({
             duration: 2000,
           });
           return;
         }
-
-        let params = {
-          soDetails: JSON.stringify(soDetails),
-          action: "updateSOItem222FormReference",
+        params.cmLines = cmLines;
+        let cmParams = {
+          cmDetails: JSON.stringify(params),
+          action: "createCreditMemo",
           isReload: true,
         };
 
-        updateSO222Form();
         let stSuiteletUrl = url.resolveScript({
           scriptId: "customscript_sl_cs_custom_function",
           deploymentId: "customdeploy_sl_cs_custom_function",
-          params: params,
+          params: cmParams,
         });
         postURL({ URL: stSuiteletUrl });
         setTimeout(function () {
           let rclSuiteletURL = url.resolveScript({
-            scriptId: "customscript_rxrs_sl_add_222_form_ref",
-            deploymentId: "customdeploy_rxrs_sl_add_222_form_ref",
+            scriptId: "customscript_sl_add_credit_memo",
+            deploymentId: "customdeploy_sl_add_credit_memo",
             returnExternalUrl: false,
             params: {
               isReload: true,
@@ -536,12 +554,17 @@ define([
           window.open(`${rclSuiteletURL}`, "_self");
         }, 2000);
       } catch (e) {
-        console.error("updateSO222FormReference", e.message);
+        console.error("createCreditMemo", e.message);
       }
     } catch (e) {
-      console.error("updateSO222FormReference", e.message);
+      console.error("createCreditMemo", e.message);
     }
   }
+
+  /**
+   * Create Credit Memo Lines
+   */
+  function createCreditMemoLine(options) {}
 
   function update222FormReference() {
     try {
@@ -599,6 +622,7 @@ define([
     pageInit: pageInit,
     fieldChanged: fieldChanged,
     showMessage: showMessage,
+    createCreditMemo: createCreditMemo,
     markAll: markAll,
   };
 });

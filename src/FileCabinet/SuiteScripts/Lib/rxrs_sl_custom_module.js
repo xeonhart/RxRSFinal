@@ -56,6 +56,12 @@ define([
       updateDisplayType: "HIDDEN",
     },
     {
+      id: "custpage_itemid",
+      type: "TEXT",
+      label: "item id",
+      updateDisplayType: "INLINE",
+    },
+    {
       id: "custpage_ndc",
       type: "TEXT",
       label: "NDC",

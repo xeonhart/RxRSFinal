@@ -880,6 +880,7 @@ define([
         }
         itemInfo.push({
           lineUniqueKey: lineUniqueKey,
+          itemId: item,
           item: itemName,
           description: description,
           lotNumber: LOTNUMBER,
@@ -953,6 +954,31 @@ define([
       return objRecord.save({ ignoreMandatoryFields: true });
     } catch (e) {
       log.error("transfromRecord", e.message);
+    }
+  }
+
+  /**
+   * Update transactionline CM SalesOrder
+   * @param {string} options.lineuniquekey
+   * @param {string} options.cmLineId
+   * @param {string} options.invId
+   */
+  function updateTranLineCM(options) {
+    let { lineuniquekey, cmLineId, invId } = options;
+
+    try {
+      const invRec = record.load({
+        type: record.Type.INVOICE,
+        id: invId
+      });
+     const index =  invRec.findSublistLineWithValue({
+        sublistId: "item",
+        fieldId: "lineuniquekey",
+        value: lineuniquekey
+      });
+     if(index )
+    } catch (e) {
+      log.error("updateTranLineCM", e.message);
     }
   }
 

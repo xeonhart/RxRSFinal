@@ -112,8 +112,8 @@ define([
       } else {
         const creditMemoNumberField = form
           .addField({
-            id: "custpage_credit_memo_number",
-            label: "Credit Memo Number",
+            id: "custpage_credit_memo",
+            label: "Credit Memo",
             type: serverWidget.FieldType.SELECT,
             source: "customrecord_creditmemo",
           })
@@ -167,11 +167,6 @@ define([
         .updateDisplayType({
           displayType: serverWidget.FieldDisplayType.INLINE,
         }).defaultValue = invId);
-      form.addButton({
-        id: "custpage_save",
-        label: "Save",
-        functionName: `updateSO222FormReference(${invId})`,
-      });
 
       let numOfRes = " ";
 
@@ -190,6 +185,11 @@ define([
         value: soLine,
         clientScriptAdded: true,
         title: `Item: ${numOfRes}`,
+      });
+      form.addButton({
+        id: "custpage_save",
+        label: "Save",
+        functionName: `createCreditMemo(${invId})`,
       });
       return form;
     } catch (e) {
