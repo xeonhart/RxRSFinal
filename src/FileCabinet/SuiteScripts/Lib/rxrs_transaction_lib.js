@@ -756,7 +756,7 @@ define([
     let itemInfo = [];
     try {
       const currentRecord = record.load({
-        type: type,
+        type: record.Type.INVOICE,
         id: id,
       });
       const lineCount = currentRecord.getLineCount({
@@ -962,23 +962,223 @@ define([
    * @param {string} options.lineuniquekey
    * @param {string} options.cmLineId
    * @param {string} options.invId
+   * @param {string} options.cmId
    */
   function updateTranLineCM(options) {
-    let { lineuniquekey, cmLineId, invId } = options;
+    log.audit("updateTranLineCM", options);
+    let { lineuniquekey, cmLineId, invId, cmId } = options;
 
     try {
       const invRec = record.load({
         type: record.Type.INVOICE,
-        id: invId
+        id: invId,
       });
-     const index =  invRec.findSublistLineWithValue({
+      invRec.setValue({
+        fieldId: "custbody_credit_memos",
+        value: cmId,
+      });
+      const index = invRec.findSublistLineWithValue({
         sublistId: "item",
         fieldId: "lineuniquekey",
-        value: lineuniquekey
+        value: lineuniquekey,
       });
-     if(index )
+      if (index !== -1) {
+        log.audit("updateTranLineCM", cmLineId);
+        invRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_credit_memo_reference",
+          line: index,
+          value: Number(cmLineId),
+        });
+      }
+      invRec.save({
+        ignoreMandatoryFields: true,
+      });
     } catch (e) {
       log.error("updateTranLineCM", e.message);
+    }
+  }
+
+  /**
+   * Create Custom Payment Record
+   * @param {number}options.paymentAmount
+   * @param {string}options.dateReceived
+   * @param {string}options.invId
+   * @param {string}options.creditMemoId
+   * @param {number}options.cmLinesCount
+   * @param {number}options.cmLinesCountWithPayment
+   * @param {string}options.paymentId
+   * @param {number}options.cmAmount
+   * Return the internal Id of the created custom payment
+   */
+  function createPayment(options) {
+    log.audit("createPayment", options);
+    let response = {};
+    const invoiceStatus = {
+      partiallyPaid: 4,
+      fullyPaid: 5,
+    };
+    let invoiceUpdateStatus;
+
+    let params = JSON.parse(options);
+    let {
+      paymentId,
+      dateReceived,
+      invId,
+      cmLinesCount,
+      cmLinesCountWithPayment,
+      cmId,
+      cmAmount,
+      paymentAmount,
+    } = params;
+    try {
+      if (
+        cmLinesCount == cmLinesCountWithPayment &&
+        cmAmount == paymentAmount
+      ) {
+        invoiceUpdateStatus = invoiceStatus.fullyPaid;
+      } else {
+        invoiceUpdateStatus = invoiceStatus.partiallyPaid;
+      }
+      if (!paymentId) {
+        const paymentRec = record.create({
+          type: "customtransaction_payment_info",
+          isDynamic: true,
+        });
+        paymentRec.setValue({
+          fieldId: "subsidiary",
+          value: 2,
+        });
+        dateReceived &&
+          paymentRec.setValue({
+            fieldId: "trandate",
+            value: new Date(dateReceived),
+          });
+        invId &&
+          paymentRec.setValue({
+            fieldId: "custbody_payment_invoice_link",
+            value: invId,
+          });
+        cmId &&
+          paymentRec.setValue({
+            fieldId: "custbody_credit_memos",
+            value: cmId,
+          });
+        paymentRec.selectNewLine({
+          sublistId: "line",
+        });
+        paymentRec.setCurrentSublistValue({
+          sublistId: "line",
+          fieldId: "account",
+          value: 940, //11260 Unapplied Credit
+        });
+        log.debug("paymentamount", paymentAmount);
+        paymentRec.setCurrentSublistValue({
+          sublistId: "line",
+          fieldId: "debit",
+          value: paymentAmount,
+        });
+        paymentRec.commitLine({
+          sublistId: "line",
+        });
+        paymentRec.selectNewLine({
+          sublistId: "line",
+        });
+        paymentRec.setCurrentSublistValue({
+          sublistId: "line",
+          fieldId: "account",
+          value: 119, //11000 Accounts Receivable
+        });
+        paymentRec.setCurrentSublistValue({
+          sublistId: "line",
+          fieldId: "credit",
+          value: paymentAmount,
+        });
+        paymentRec.commitLine({
+          sublistId: "line",
+        });
+        paymentId = paymentRec.save({
+          ignoreMandatoryFields: true,
+        });
+        response.sucessMessage = "Successfully Created Payment: " + paymentId;
+      } else {
+        const paymentRec = record.load({
+          type: "customtransaction_payment_info",
+          id: paymentId,
+        });
+        paymentRec.setSublistValue({
+          sublistId: "line",
+          fieldId: "debit",
+          value: paymentAmount,
+          line: 0,
+        });
+        paymentRec.setSublistValue({
+          sublistId: "line",
+          fieldId: "credit",
+          value: paymentAmount,
+          line: 1,
+        });
+        paymentId = paymentRec.save({
+          ignoreMandatoryFields: true,
+        });
+        response.sucessMessage = "Successfully Updated Payment: " + paymentId;
+      }
+    } catch (e) {
+      log.error("createPayment", e.message);
+      response.error = e.message;
+    }
+    if (paymentId) {
+      record.submitFields({
+        type: record.Type.INVOICE,
+        id: invId,
+        values: { custbody_invoice_status: invoiceUpdateStatus },
+      });
+      return response.sucessMessage;
+    } else {
+      return "ERROR: " + response.error;
+    }
+  }
+
+  /**
+   * Check if the payment is already created for invoice || creditmemo
+   * @param {string} options.invId
+   * @param {string} options.cmId
+   */
+  function checkExistingPayment(options) {
+    let { invId, cmId } = options;
+    let returnObj = {};
+    try {
+      const transactionSearchObj = search.create({
+        type: "transaction",
+        filters: [
+          ["type", "anyof", "Custom107"],
+          "AND",
+          ["custbody_payment_invoice_link", "anyof", invId],
+        ],
+        columns: [
+          search.createColumn({ name: "trandate", label: "Date" }),
+          search.createColumn({ name: "debitamount", label: "Amount (Debit)" }),
+          search.createColumn({ name: "internalid", label: "Internal Id" }),
+        ],
+      });
+      if (cmId) {
+        transactionSearchObj.filters.push(
+          search.createFilter({
+            name: "custbody_credit_memos",
+            operator: "anyof",
+            values: cmId,
+          })
+        );
+      }
+
+      transactionSearchObj.run().each(function (result) {
+        returnObj.date = result.getValue("trandate");
+        returnObj.amount = result.getValue("debitamount");
+        returnObj.id = result.id;
+      });
+      return returnObj;
+    } catch (e) {
+      log.error("checkExistingPayment", e.message);
     }
   }
 
@@ -2449,5 +2649,8 @@ define([
     updateSO222Form: updateSO222Form,
     setPartialAmount: setPartialAmount,
     getSalesTransactionLine: getSalesTransactionLine,
+    updateTranLineCM: updateTranLineCM,
+    createPayment: createPayment,
+    checkExistingPayment: checkExistingPayment,
   };
 });

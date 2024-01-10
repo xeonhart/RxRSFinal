@@ -2,10 +2,7 @@
  * @NApiVersion 2.1
  * @NScriptType UserEventScript
  */
-define(["../rxrs_transaction_lib", "N/ui/serverWidget"], (
-  rxrs_tran_lib,
-  serverWidget
-) => {
+define(["../rxrs_custom_rec_lib", "N/record"], (customLib, record) => {
   /**
    * Defines the function definition that is executed before record is loaded.
    * @param {Object} scriptContext
@@ -15,31 +12,7 @@ define(["../rxrs_transaction_lib", "N/ui/serverWidget"], (
    * @param {ServletRequest} scriptContext.request - HTTP request information sent from the browser for a client action only.
    * @since 2015.2
    */
-  const beforeLoad = (context) => {
-    try {
-      if (context.type === "view" || context.type === "edit") {
-        const curRec = context.newRecord;
-        const status = curRec.getText("custbody_invoice_status");
-        log.debug("status", status);
-        if (status) {
-          var hideFld = context.form.addField({
-            id: "custpage_hide_buttons",
-            label: "not shown - hidden",
-            type: serverWidget.FieldType.INLINEHTML,
-          });
-          var scr = ""; //ext-element-22
-
-          scr += `jQuery('div.uir-record-status').text('${status}');`;
-          hideFld.defaultValue =
-            "<script>jQuery(function($){require([], function(){" +
-            scr +
-            "})})</script>";
-        }
-      }
-    } catch (e) {
-      log.error("beforeLoad", e.message);
-    }
-  };
+  const beforeLoad = (scriptContext) => {};
 
   /**
    * Defines the function definition that is executed before record is submitted.
@@ -49,13 +22,7 @@ define(["../rxrs_transaction_lib", "N/ui/serverWidget"], (
    * @param {string} scriptContext.type - Trigger type; use values from the context.UserEventType enum
    * @since 2015.2
    */
-  const beforeSubmit = (scriptContext) => {
-    try {
-      rxrs_tran_lib.setPartialAmount(scriptContext.newRecord);
-    } catch (e) {
-      log.error("beforeSubmit", e.message);
-    }
-  };
+  const beforeSubmit = (scriptContext) => {};
 
   /**
    * Defines the function definition that is executed after record is submitted.
@@ -65,7 +32,26 @@ define(["../rxrs_transaction_lib", "N/ui/serverWidget"], (
    * @param {string} scriptContext.type - Trigger type; use values from the context.UserEventType enum
    * @since 2015.2
    */
-  const afterSubmit = (scriptContext) => {};
+  const afterSubmit = (scriptContext) => {
+    const rec = scriptContext.newRecord;
 
-  return { beforeLoad, beforeSubmit };
+    try {
+      const curRec = record.load({
+        type: rec.type,
+        id: rec.id,
+      });
+      const result = customLib.getCMParentInfo(rec.id);
+      curRec.setValue({
+        fieldId: "custrecord_amount",
+        value: result.total,
+      });
+      curRec.save({
+        ignoreMandatoryFields: true,
+      });
+    } catch (e) {
+      log.error("afterSubmit", e.message);
+    }
+  };
+
+  return { afterSubmit };
 });

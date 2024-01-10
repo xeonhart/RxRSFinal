@@ -59,7 +59,7 @@ define([
       id: "custpage_itemid",
       type: "TEXT",
       label: "item id",
-      updateDisplayType: "INLINE",
+      updateDisplayType: "HIDDEN",
     },
     {
       id: "custpage_ndc",

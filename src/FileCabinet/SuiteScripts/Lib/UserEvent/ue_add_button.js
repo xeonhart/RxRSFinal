@@ -163,14 +163,36 @@ define([
                 total: invRec.getValue("total"),
               },
             });
-            let invParams = {
+            let invParamsAddCM = {
               action: "add222FormReference",
               url: addCreditMemoUrl,
             };
             context.form.addButton({
               id: "custpage_add_credit_memo",
               label: "Add Credit Memo",
-              functionName: `openSuitelet(${JSON.stringify(invParams)})`,
+              functionName: `openSuitelet(${JSON.stringify(invParamsAddCM)})`,
+            });
+
+            const creditMemoId = invRec.getValue("custbody_credit_memos");
+            let addPaymentUrl = url.resolveScript({
+              scriptId: "customscript_add_payment",
+              deploymentId: "customdeploy_add_payment",
+              returnExternalUrl: false,
+              params: {
+                type: invRec.type,
+                invoiceId: invRec.id,
+                creditMemoId: creditMemoId,
+              },
+            });
+            let invParamsPayment = {
+              action: "add222FormReference",
+              url: addPaymentUrl,
+            };
+
+            context.form.addButton({
+              id: "custpage_add_payment",
+              label: "Add Payment",
+              functionName: `openSuitelet(${JSON.stringify(invParamsPayment)})`,
             });
 
             break;

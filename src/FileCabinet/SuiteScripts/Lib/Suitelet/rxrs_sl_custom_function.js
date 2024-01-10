@@ -13,6 +13,7 @@ define([
  * @param record
  * @param tranLib
  * @param rclLib
+ * @param custRecLib
  */ (serverWidget, record, tranLib, rclLib, custRecLib) => {
   /**
    * Defines the Suitelet script trigger point.
@@ -31,6 +32,7 @@ define([
         entity,
         soDetails,
         cmDetails,
+        paymentDetails,
         action,
         rclId,
         billId,
@@ -43,8 +45,21 @@ define([
         let returnObj;
         log.audit("POST", params);
         switch (action) {
+          case "createCustPayment":
+            const paymentCreationRes = tranLib.createPayment(paymentDetails);
+            log.audit("paymentCreationRes", paymentCreationRes);
+            context.response.writeLine(paymentCreationRes);
+
+            break;
+
           case "createCreditMemo":
-            custRecLib.createCreditMemoRec(cmDetails);
+            let response = custRecLib.createCreditMemoRec(cmDetails);
+            if (response.successMessage) {
+              context.response.writeLine(response.successMessage);
+            }
+            if (response.error) {
+              context.response.writeLine("ERROR:" + response.error);
+            }
             break;
           case "reloadBill":
             const vbRec = record.load({

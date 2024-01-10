@@ -21,7 +21,7 @@ define([
  * @param tranlib
  */ function (runtime, url, currentRecord, message, record, https) {
   let suitelet = null;
-  const RETURNABLESUBLIST = "custpage_items_sublist";
+
   let urlParams;
   const columnToDisable = [
     "custpage_full_partial",
@@ -37,6 +37,11 @@ define([
     "custpage_unit_price",
     "custpage_amount_paid",
   ];
+  const columnToDisableEnabledOnEdit = [
+    "custpage_select",
+    "custpage_unit_price",
+    "custpage_amount_paid",
+  ];
 
   /**
    * Function to be executed after page is initialized.
@@ -49,30 +54,66 @@ define([
    */
   function pageInit(scriptContext) {
     suitelet = scriptContext.currentRecord;
-
-    for (let i = 0; i < suitelet.getLineCount("custpage_items_sublist"); i++) {
-      columnToDisable.forEach((fieldId) => {
-        let amountPaid = suitelet.getSublistValue({
-          sublistId: "custpage_items_sublist",
-          fieldId: "custpage_amount_paid",
-          line: i,
-        });
-        if (isEmpty(amountPaid) == false) {
+    console.log("isEdit:" + suitelet.getValue("custpage_isedit"));
+    if (suitelet.getValue("custpage_isedit") == true) {
+      for (
+        let i = 0;
+        i < suitelet.getLineCount("custpage_items_sublist");
+        i++
+      ) {
+        columnToDisable.forEach((fieldId) => {
+          let amountPaid = suitelet.getSublistValue({
+            sublistId: "custpage_items_sublist",
+            fieldId: "custpage_amount_paid",
+            line: i,
+          });
+          if (isEmpty(amountPaid) == false) {
+            const itemField = suitelet.getSublistField({
+              sublistId: "custpage_items_sublist",
+              fieldId: "custpage_select",
+              line: i,
+            });
+            itemField.isDisabled = false;
+          }
           const itemField = suitelet.getSublistField({
             sublistId: "custpage_items_sublist",
-            fieldId: "custpage_select",
+            fieldId: fieldId,
             line: i,
           });
           itemField.isDisabled = true;
-        }
-        const itemField = suitelet.getSublistField({
-          sublistId: "custpage_items_sublist",
-          fieldId: fieldId,
-          line: i,
         });
-        itemField.isDisabled = true;
-      });
+      }
+    } else {
+      for (
+        let i = 0;
+        i < suitelet.getLineCount("custpage_items_sublist");
+        i++
+      ) {
+        columnToDisable.forEach((fieldId) => {
+          let amountPaid = suitelet.getSublistValue({
+            sublistId: "custpage_items_sublist",
+            fieldId: "custpage_amount_paid",
+            line: i,
+          });
+
+          if (isEmpty(amountPaid) == false) {
+            const itemField = suitelet.getSublistField({
+              sublistId: "custpage_items_sublist",
+              fieldId: "custpage_select",
+              line: i,
+            });
+            itemField.isDisabled = true;
+          }
+          const itemField = suitelet.getSublistField({
+            sublistId: "custpage_items_sublist",
+            fieldId: fieldId,
+            line: i,
+          });
+          itemField.isDisabled = true;
+        });
+      }
     }
+
     let arrTemp = window.location.href.split("?");
     urlParams = new URLSearchParams(arrTemp[1]);
     if (window.location.href.indexOf("isReload") != -1) {
@@ -96,6 +137,10 @@ define([
   window.onload = function () {
     //considering there aren't any hashes in the urls already
   };
+
+  function edit() {
+    location.href = location.href + "&isEdit=T";
+  }
 
   /**
    * Function to be executed when field is changed.
@@ -126,12 +171,6 @@ define([
             fieldId: "custpage_full_partial",
           });
 
-          if (fullPartial.includes("Part")) {
-            columnToDisableEnabled.push("custpage_partial");
-          } else {
-            columnToDisableEnabled.push("custpage_full");
-            console.table(columnToDisableEnabled);
-          }
           if (isSelected == false) {
             suitelet.setCurrentSublistValue({
               sublistId: "custpage_items_sublist",
@@ -424,7 +463,7 @@ define([
     try {
       jQuery("body").loadingModal({
         position: "auto",
-        text: "Updating Verify Status and Creating Bag Label. Please wait...",
+        text: "Creating Credit Memo. Please wait...",
         color: "#fff",
         opacity: "0.7",
         backgroundColor: "rgb(220,220,220)",
@@ -465,6 +504,7 @@ define([
       cmId = suitelet.getValue("custpage_credit_memo");
       if (cmId) {
         params.cmId = cmId;
+        params.invoiceId = invoiceId;
       } else {
         params.creditMemoNumber = suitelet.getValue(
           "custpage_credit_memo_number"
@@ -473,8 +513,9 @@ define([
         params.serviceFee = suitelet.getValue("custpage_service_fee");
         params.dateIssued = suitelet.getText("custpage_issued_on");
         params.fileId = suitelet.getValue("custpage_file_upload");
+        params.invoiceId = invoiceId;
       }
-
+      let total = 0;
       const SUBLIST = "custpage_items_sublist";
       try {
         for (
@@ -509,11 +550,18 @@ define([
             fieldId: "custpage_amount_paid",
             line: i,
           });
+          total += Number(amountApplied);
+          let cmLineId = suitelet.getSublistValue({
+            sublistId: SUBLIST,
+            fieldId: "custpage_credit_memo",
+            line: i,
+          });
           cmLines.push({
             lineUniqueKey: lineUniqueKey,
             NDC: NDC,
             unitPrice: unitPrice,
             amountApplied: amountApplied,
+            cmLineId: cmLineId,
           });
         }
 
@@ -534,12 +582,13 @@ define([
           action: "createCreditMemo",
           isReload: true,
         };
-
+        handleButtonClick();
         let stSuiteletUrl = url.resolveScript({
           scriptId: "customscript_sl_cs_custom_function",
           deploymentId: "customdeploy_sl_cs_custom_function",
           params: cmParams,
         });
+
         postURL({ URL: stSuiteletUrl });
         setTimeout(function () {
           let rclSuiteletURL = url.resolveScript({
@@ -624,5 +673,6 @@ define([
     showMessage: showMessage,
     createCreditMemo: createCreditMemo,
     markAll: markAll,
+    edit: edit,
   };
 });
