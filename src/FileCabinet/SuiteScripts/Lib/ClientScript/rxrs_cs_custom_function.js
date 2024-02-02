@@ -23,6 +23,7 @@ define(["N/currentRecord", "N/search", "N/url", "N/https", "N/ui/message"], /**
     suitelet = scriptContext.currentRecord;
     let arrTemp = window.location.href.split("?");
     urlParams = new URLSearchParams(arrTemp[1]);
+
     if (window.location.href.indexOf("isReload") != -1) {
       let isReload = urlParams.get("isReload");
       console.log("isReload" + isReload);
@@ -57,7 +58,42 @@ define(["N/currentRecord", "N/search", "N/url", "N/https", "N/ui/message"], /**
    *
    * @since 2015.2
    */
-  function fieldChanged(scriptContext) {}
+  function fieldChanged(scriptContext) {
+    let { currentRecord, fieldId } = scriptContext;
+    try {
+      if (fieldId == "custpage_credit_memo") {
+        const creditMemoId = currentRecord.getValue("custpage_credit_memo");
+        const invoiceId = currentRecord.getValue("custpage_invoice_id");
+        const invLineCount = currentRecord.getValue("custpage_num_of_lines");
+        let stSuiteletUrl = url.resolveScript({
+          scriptId: "customscript_add_payment",
+          deploymentId: "customdeploy_add_payment",
+          returnExternalUrl: false,
+          params: {
+            invoiceId: invoiceId,
+            creditMemoId: creditMemoId,
+            lineCount: invLineCount,
+          },
+        });
+        window.ischanged = false;
+        window.open(stSuiteletUrl, "_self");
+      }
+      if (fieldId == "custpage_amount") {
+        const paymentAmount = currentRecord.getValue("custpage_amount");
+        const cmAmount = currentRecord.getValue("custpage_cm_amount");
+
+        if (Number(paymentAmount) > Number(cmAmount)) {
+          alert("Payment must be less than or equal to Credmit Memo Amount");
+          currentRecord.setValue({
+            fieldId: "custpage_amount",
+            value: 0,
+          });
+        }
+      }
+    } catch (e) {
+      console.error("fieldChanged", e.message);
+    }
+  }
 
   /**
    * Function to be executed when field is slaved.
@@ -159,12 +195,12 @@ define(["N/currentRecord", "N/search", "N/url", "N/https", "N/ui/message"], /**
    */
   function saveRecord(scriptContext) {}
 
-  function addPayment() {
+  function addPayment(cmInternalIds) {
     const curRec = currentRecord.get();
 
     let params = {
       dateReceived: curRec.getText("custpage_payment_date_received"),
-      invId: curRec.getValue("custpage_invoice_id"),
+      invoiceId: curRec.getValue("custpage_invoice_id"),
       cmLinesCount: curRec.getValue("custpage_num_of_lines"),
       cmLinesCountWithPayment: curRec.getValue(
         "custpage_num_of_lines_with_amt"
@@ -173,6 +209,8 @@ define(["N/currentRecord", "N/search", "N/url", "N/https", "N/ui/message"], /**
       cmId: curRec.getValue("custpage_credit_memo"),
       cmAmount: curRec.getValue("custpage_cm_amount"),
       paymentId: curRec.getValue("custpage_payment_id"),
+      cmTotalAmount: curRec.getValue("custpage_total_cm_amount"),
+      cmInternalIds: cmInternalIds,
     };
     let paymentParams = {
       paymentDetails: JSON.stringify(params),
@@ -262,5 +300,6 @@ define(["N/currentRecord", "N/search", "N/url", "N/https", "N/ui/message"], /**
   return {
     pageInit: pageInit,
     addPayment: addPayment,
+    fieldChanged: fieldChanged,
   };
 });

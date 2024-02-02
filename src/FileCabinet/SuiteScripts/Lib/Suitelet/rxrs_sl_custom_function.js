@@ -53,7 +53,7 @@ define([
             break;
 
           case "createCreditMemo":
-            let response = custRecLib.createCreditMemoRec(cmDetails);
+            let response = custRecLib.createUpdateCM(cmDetails);
             if (response.successMessage) {
               context.response.writeLine(response.successMessage);
             }

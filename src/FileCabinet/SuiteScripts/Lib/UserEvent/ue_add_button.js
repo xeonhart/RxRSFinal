@@ -10,7 +10,7 @@ define([
   "N/ui/serverWidget",
   "N/file",
   "../rxrs_transaction_lib",
-  "../rxrs_return_cover_letter_lib",
+  "../rxrs_custom_rec_lib",
 ], /**
  * @param{record} record
  * @param{search} search
@@ -19,7 +19,16 @@ define([
  * @param serverWidget
  * @param file
  * @param tranlib
- */ (record, search, url, rxrs_util, serverWidget, file, tranlib, rclLib) => {
+ */ (
+  record,
+  search,
+  url,
+  rxrs_util,
+  serverWidget,
+  file,
+  tranlib,
+  rxrs_cust_rec_lib
+) => {
   /**
    * Defines the function definition that is executed before record is loaded.
    * @param {Object} context
@@ -152,37 +161,79 @@ define([
           case "invoice":
             if (context.type === "create") return;
             let invRec = context.newRecord;
-            let addCreditMemoUrl = url.resolveScript({
-              scriptId: "customscript_sl_add_credit_memo",
-              deploymentId: "customdeploy_sl_add_credit_memo",
-              returnExternalUrl: false,
-              params: {
+            const lineCount = invRec.getLineCount("item");
+            let itemWithCM = 0;
+            let forCreate = false;
+            for (let i = 0; i < lineCount; i++) {
+              const cmId = invRec.getSublistValue({
+                sublistId: "item",
+                fieldId: "custcol_credit_memo_reference",
+                line: i,
+              });
+              if (cmId) itemWithCM++;
+            }
+
+            log.debug("line count", { itemWithCM, lineCount });
+            if (itemWithCM == lineCount || itemWithCM != 0) {
+              const cmParams = {
                 type: invRec.type,
                 invId: invRec.id,
                 tranId: invRec.getValue("tranid"),
                 total: invRec.getValue("total"),
-              },
-            });
-            let invParamsAddCM = {
-              action: "add222FormReference",
-              url: addCreditMemoUrl,
-            };
-            context.form.addButton({
-              id: "custpage_add_credit_memo",
-              label: "Add Credit Memo",
-              functionName: `openSuitelet(${JSON.stringify(invParamsAddCM)})`,
-            });
+                isEdit: true,
+              };
+              let addCreditMemoUrl = url.resolveScript({
+                scriptId: "customscript_sl_add_credit_memo",
+                deploymentId: "customdeploy_sl_add_credit_memo",
+                returnExternalUrl: false,
+                params: cmParams,
+              });
+              const invParamsAddCM = {
+                action: "add222FormReference",
+                url: addCreditMemoUrl,
+              };
+              context.form.addButton({
+                id: "custpage_edit_credit_memo",
+                label: "Edit Credit Memo",
+                functionName: `openSuitelet(${JSON.stringify(invParamsAddCM)})`,
+              });
+            }
+            if (itemWithCM < lineCount) {
+              const cmParams = {
+                type: invRec.type,
+                invId: invRec.id,
+                tranId: invRec.getValue("tranid"),
+                total: invRec.getValue("total"),
+                isEdit: false,
+              };
+              let addCreditMemoUrl = url.resolveScript({
+                scriptId: "customscript_sl_add_credit_memo",
+                deploymentId: "customdeploy_sl_add_credit_memo",
+                returnExternalUrl: false,
+                params: cmParams,
+              });
+              const invParamsAddCM = {
+                action: "add222FormReference",
+                url: addCreditMemoUrl,
+              };
+              context.form.addButton({
+                id: "custpage_add_credit_memo",
+                label: "Add Credit Memo",
+                functionName: `openSuitelet(${JSON.stringify(invParamsAddCM)})`,
+              });
+            }
 
-            const creditMemoId = invRec.getValue("custbody_credit_memos");
+            let params = {
+              type: invRec.type,
+              invoiceId: invRec.id,
+              lineCount: lineCount,
+            };
+
             let addPaymentUrl = url.resolveScript({
               scriptId: "customscript_add_payment",
               deploymentId: "customdeploy_add_payment",
               returnExternalUrl: false,
-              params: {
-                type: invRec.type,
-                invoiceId: invRec.id,
-                creditMemoId: creditMemoId,
-              },
+              params: params,
             });
             let invParamsPayment = {
               action: "add222FormReference",

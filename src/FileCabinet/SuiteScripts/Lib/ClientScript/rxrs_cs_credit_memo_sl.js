@@ -21,7 +21,7 @@ define([
  * @param tranlib
  */ function (runtime, url, currentRecord, message, record, https) {
   let suitelet = null;
-
+  let lineCount = 0;
   let urlParams;
   const columnToDisable = [
     "custpage_full_partial",
@@ -42,6 +42,7 @@ define([
     "custpage_unit_price",
     "custpage_amount_paid",
   ];
+  let isSelectedNeed = true;
 
   /**
    * Function to be executed after page is initialized.
@@ -53,74 +54,16 @@ define([
    * @since 2015.2
    */
   function pageInit(scriptContext) {
-    suitelet = scriptContext.currentRecord;
-    console.log("isEdit:" + suitelet.getValue("custpage_isedit"));
-    if (suitelet.getValue("custpage_isedit") == true) {
-      for (
-        let i = 0;
-        i < suitelet.getLineCount("custpage_items_sublist");
-        i++
-      ) {
-        columnToDisable.forEach((fieldId) => {
-          let amountPaid = suitelet.getSublistValue({
-            sublistId: "custpage_items_sublist",
-            fieldId: "custpage_amount_paid",
-            line: i,
-          });
-          if (isEmpty(amountPaid) == false) {
-            const itemField = suitelet.getSublistField({
-              sublistId: "custpage_items_sublist",
-              fieldId: "custpage_select",
-              line: i,
-            });
-            itemField.isDisabled = false;
-          }
-          const itemField = suitelet.getSublistField({
-            sublistId: "custpage_items_sublist",
-            fieldId: fieldId,
-            line: i,
-          });
-          itemField.isDisabled = true;
-        });
-      }
-    } else {
-      for (
-        let i = 0;
-        i < suitelet.getLineCount("custpage_items_sublist");
-        i++
-      ) {
-        columnToDisable.forEach((fieldId) => {
-          let amountPaid = suitelet.getSublistValue({
-            sublistId: "custpage_items_sublist",
-            fieldId: "custpage_amount_paid",
-            line: i,
-          });
-
-          if (isEmpty(amountPaid) == false) {
-            const itemField = suitelet.getSublistField({
-              sublistId: "custpage_items_sublist",
-              fieldId: "custpage_select",
-              line: i,
-            });
-            itemField.isDisabled = true;
-          }
-          const itemField = suitelet.getSublistField({
-            sublistId: "custpage_items_sublist",
-            fieldId: fieldId,
-            line: i,
-          });
-          itemField.isDisabled = true;
-        });
-      }
-    }
-
+    console.log("pageInit");
     let arrTemp = window.location.href.split("?");
     urlParams = new URLSearchParams(arrTemp[1]);
+    let isEdit = urlParams.get("isEdit");
     if (window.location.href.indexOf("isReload") != -1) {
       let isReload = urlParams.get("isReload");
       console.log("isReload" + isReload);
       if (isReload == true || isReload == "true") {
         setTimeout(function () {
+          console.log("loading main page");
           opener.location.reload();
           if (!window.location.hash) {
             //setting window location
@@ -132,6 +75,58 @@ define([
         }, 100);
       }
     }
+    suitelet = scriptContext.currentRecord;
+    let cmCount = 0;
+    let totalAmount = 0;
+    lineCount = suitelet.getLineCount("custpage_items_sublist");
+    for (let i = 0; i < lineCount; i++) {
+      const parentCM = suitelet.getSublistValue({
+        sublistId: "custpage_items_sublist",
+        fieldId: "custpage_credit_memo_parent",
+        line: i,
+      });
+      const selectField = suitelet.getSublistField({
+        sublistId: "custpage_items_sublist",
+        fieldId: "custpage_select",
+        line: i,
+      });
+      const amount = suitelet.getSublistValue({
+        sublistId: "custpage_items_sublist",
+        fieldId: "custpage_amount_paid",
+        line: i,
+      });
+      console.log("parent cm" + parentCM);
+      if (parentCM !== " ") {
+        cmCount += 1;
+        totalAmount += amount;
+      } else {
+        selectField.isDisabled = false;
+      }
+      console.table(columnToDisable);
+      columnToDisable.forEach((fieldId) => {
+        const itemField = suitelet.getSublistField({
+          sublistId: "custpage_items_sublist",
+          fieldId: fieldId,
+          line: i,
+        });
+        if (
+          fieldId == "custpage_unit_price" ||
+          fieldId == "custpage_amount_paid"
+        ) {
+          if (parentCM) {
+            itemField.isDisabled = false;
+          } else {
+            itemField.isDisabled = true;
+          }
+        } else {
+          itemField.isDisabled = true;
+        }
+      });
+    }
+    suitelet.setValue({
+      fieldId: "custpage_amount",
+      value: +totalAmount,
+    });
   }
 
   window.onload = function () {
@@ -156,6 +151,36 @@ define([
    */
   function fieldChanged(scriptContext) {
     try {
+      console.log(scriptContext.fieldId);
+      if (scriptContext.fieldId == "custpage_custom_amount") {
+        console.log("fieldChanged custpage_custom_amount");
+        const customAmount = suitelet.getValue("custpage_custom_amount");
+        const invAmount = suitelet.getValue("custpage_packing_slip_total");
+        console.table(customAmount, invAmount);
+        for (let i = 0; i < lineCount; i++) {
+          suitelet.selectLine({
+            sublistId: "custpage_items_sublist",
+            line: i,
+          });
+          const lineTotal = suitelet.getCurrentSublistValue({
+            sublistId: "custpage_items_sublist",
+            fieldId: "custpage_packing_slip_value",
+          });
+          const percentage = lineTotal / invAmount;
+          let newAmount = Number(percentage) * customAmount;
+          console.table(percentage, lineTotal);
+          suitelet.setCurrentSublistValue({
+            sublistId: "custpage_items_sublist",
+            fieldId: "custpage_amount_paid",
+            value: newAmount.toFixed(2),
+          });
+        }
+      }
+      if (scriptContext.fieldId == "custpage_credit_memo") {
+        const creditMemoId = suitelet.getValue("custpage_credit_memo");
+        location.href = location.href + "&creditMemoId=" + creditMemoId;
+      }
+
       if (scriptContext.sublistId === "custpage_items_sublist") {
         console.log("FieldId" + scriptContext.fieldId);
         const currIndex = suitelet.getCurrentSublistIndex({
@@ -236,33 +261,24 @@ define([
             fieldId: "custpage_packing_slip_value",
           });
           console.table(newAmount, totalLineAmount);
-          if (Number(newAmount) > Number(totalLineAmount)) {
-            alert(
-              "Amount to be Paid must not be greater than Packing Slip Value"
-            );
-            suitelet.setCurrentSublistValue({
+
+          suitelet.setCurrentSublistValue({
+            sublistId: "custpage_items_sublist",
+            fieldId: "custpage_amount_paid",
+            value: newAmount.toFixed(2),
+          });
+          let totalAmount = 0;
+          for (
+            let i = 0;
+            i < suitelet.getLineCount("custpage_items_sublist");
+            i++
+          ) {
+            let isSelected = suitelet.getSublistValue({
               sublistId: "custpage_items_sublist",
-              fieldId: "custpage_unit_price",
-              value: 0,
+              fieldId: "custpage_select",
+              line: i,
             });
-          } else {
-            suitelet.setCurrentSublistValue({
-              sublistId: "custpage_items_sublist",
-              fieldId: "custpage_amount_paid",
-              value: newAmount.toFixed(2),
-            });
-            let totalAmount = 0;
-            for (
-              let i = 0;
-              i < suitelet.getLineCount("custpage_items_sublist");
-              i++
-            ) {
-              // let isSelected = suitelet.getSublistValue({
-              //   sublistId: "custpage_items_sublist",
-              //   fieldId: "custpage_select",
-              //   line: i,
-              // });
-              // if (isSelected == true || isSelected == "true") {
+            if (isSelected == true || isSelected == "true") {
               let amount = 0;
               amount = suitelet.getSublistValue({
                 sublistId: "custpage_items_sublist",
@@ -270,14 +286,13 @@ define([
                 line: i,
               });
               totalAmount += Number(amount);
-              // }
             }
-            totalAmount &&
-              suitelet.setValue({
-                fieldId: "custpage_amount",
-                value: totalAmount,
-              });
           }
+          totalAmount &&
+            suitelet.setValue({
+              fieldId: "custpage_amount",
+              value: totalAmount,
+            });
         }
         if (scriptContext.fieldId === "custpage_amount_paid") {
           let amountPaid = suitelet.getCurrentSublistValue({
@@ -322,48 +337,38 @@ define([
             fieldId: "custpage_packing_slip_value",
           });
           console.table(amountPaid, totalLineAmount);
-          if (Number(amountPaid) > Number(totalLineAmount)) {
-            alert(
-              "Amount to be Paid must not be greater than Packing Slip Value"
-            );
-            suitelet.setCurrentSublistValue({
+
+          suitelet.setCurrentSublistValue({
+            sublistId: "custpage_items_sublist",
+            fieldId: "custpage_unit_price",
+            value: unitPrice.toFixed(2),
+          });
+          let totalAmount = 0;
+          for (
+            let i = 0;
+            i < suitelet.getLineCount("custpage_items_sublist");
+            i++
+          ) {
+            let isSelected = suitelet.getSublistValue({
               sublistId: "custpage_items_sublist",
-              fieldId: "custpage_unit_price",
-              value: 0,
+              fieldId: "custpage_select",
+              line: i,
             });
-          } else {
-            suitelet.setCurrentSublistValue({
-              sublistId: "custpage_items_sublist",
-              fieldId: "custpage_unit_price",
-              value: unitPrice.toFixed(2),
-            });
-            let totalAmount = 0;
-            for (
-              let i = 0;
-              i < suitelet.getLineCount("custpage_items_sublist");
-              i++
-            ) {
-              let isSelected = suitelet.getSublistValue({
+            if (isSelected == true || isSelected == "true") {
+              let amount = 0;
+              amount = suitelet.getSublistValue({
                 sublistId: "custpage_items_sublist",
-                fieldId: "custpage_select",
+                fieldId: "custpage_amount_paid",
                 line: i,
               });
-              if (isSelected == true || isSelected == "true") {
-                let amount = 0;
-                amount = suitelet.getSublistValue({
-                  sublistId: "custpage_items_sublist",
-                  fieldId: "custpage_amount_paid",
-                  line: i,
-                });
-                totalAmount += Number(amount);
-              }
+              totalAmount += Number(amount);
             }
-            totalAmount &&
-              suitelet.setValue({
-                fieldId: "custpage_amount",
-                value: totalAmount,
-              });
           }
+          totalAmount &&
+            suitelet.setValue({
+              fieldId: "custpage_amount",
+              value: totalAmount,
+            });
         }
       }
     } catch (e) {
@@ -411,6 +416,7 @@ define([
    */
   function postURL(options) {
     let { URL } = options;
+    let errorCount = 0;
     try {
       setTimeout(function () {
         let response = https.post({
@@ -420,6 +426,7 @@ define([
           console.log(response);
           jQuery("body").loadingModal("destroy");
           if (response.body.includes("ERROR")) {
+            error += 1;
             let m = message.create({
               type: message.Type.ERROR,
               title: "ERROR",
@@ -439,23 +446,9 @@ define([
           }
         }
       }, 100);
+      return errorCount;
     } catch (e) {
       console.error("postURL", e.message);
-    }
-  }
-
-  function updateSO222Form() {
-    try {
-      jQuery("body").loadingModal({
-        position: "auto",
-        text: "Updating Sales Order. Please wait...",
-        color: "#fff",
-        opacity: "0.7",
-        backgroundColor: "rgb(220,220,220)",
-        animation: "wave",
-      });
-    } catch (e) {
-      console.error("handleButtonClick", e.message);
     }
   }
 
@@ -463,7 +456,7 @@ define([
     try {
       jQuery("body").loadingModal({
         position: "auto",
-        text: "Creating Credit Memo. Please wait...",
+        text: "Processing. Please wait...",
         color: "#fff",
         opacity: "0.7",
         backgroundColor: "rgb(220,220,220)",
@@ -474,47 +467,54 @@ define([
     }
   }
 
-  function getCertainField(options) {
-    console.table(options);
-    let { type, id, columns } = options;
-    try {
-      const tranSearch = search.lookupFields({
-        type: type,
-        id: id,
-        columns: [columns],
-      });
-      let vbStatus = tranSearch[columns][0].value;
-      return JSON.stringify(vbStatus);
-    } catch (e) {
-      log.error("getTransactionStatus", e.message);
-    }
-  }
+  /**
+   *
+   * @param {object}options
+   * @param {string}options.invId
+   * @param {string}options.isEdit
+   * @param {object}options.previousParam
+   */
+  function createCreditMemo(options) {
+    window.onbeforeunload = null;
+    let creditMemoNumber;
+    console.log("createCreditMemo", JSON.stringify(options));
+    let { isEdit, invId, previousParam } = options;
+    console.log("isEdit" + isEdit);
+    let cmInfo = {};
+    let parentParams = {};
+    parentParams.forUpdate = [];
+    parentParams.forCreation = {};
+    let selectedLine = [];
 
-  function createCreditMemo(invoiceId) {
-    let creditMemoNumber,
-      amount,
-      serviceFee,
-      saveWithoutReconcilingItems,
-      dateIssued,
-      fileId,
-      cmId;
-    let cmLines = [];
-    let params = {};
     try {
-      cmId = suitelet.getValue("custpage_credit_memo");
-      if (cmId) {
-        params.cmId = cmId;
-        params.invoiceId = invoiceId;
-      } else {
-        params.creditMemoNumber = suitelet.getValue(
-          "custpage_credit_memo_number"
-        );
-        params.amount = suitelet.getValue("custpage_amount");
-        params.serviceFee = suitelet.getValue("custpage_service_fee");
-        params.dateIssued = suitelet.getText("custpage_issued_on");
-        params.fileId = suitelet.getValue("custpage_file_upload");
-        params.invoiceId = invoiceId;
+      creditMemoNumber = suitelet.getValue("custpage_credit_memo_number");
+      if (creditMemoNumber) {
+        cmInfo.creditMemoNumber = creditMemoNumber;
+        cmInfo.invoiceId = invId;
+        cmInfo.amount = suitelet.getValue("custpage_amount");
+        cmInfo.serviceFee = suitelet.getValue("custpage_service_fee");
+        cmInfo.dateIssued = suitelet.getText("custpage_issued_on");
+        cmInfo.fileId = suitelet.getValue("custpage_file_upload");
       }
+      if (isEdit == "false")
+        if (
+          isEmpty(cmInfo.creditMemoNumber) ||
+          isEmpty(cmInfo.amount) ||
+          isEmpty(cmInfo.dateIssued)
+        ) {
+          let m = message.create({
+            type: message.Type.WARNING,
+            title: "WARNING",
+            message: "Please enter all required fields",
+          });
+          m.show(2000);
+          return;
+        }
+      parentParams.forCreation = cmInfo;
+      // if (isEmpty(cmInfo.creditMemoNumber) || isEmpty(cmInfo.dateIssued)) {
+      //   alert("Please enter value for mandatory fields");
+      //   return;
+      // }
       let total = 0;
       const SUBLIST = "custpage_items_sublist";
       try {
@@ -528,7 +528,6 @@ define([
             fieldId: "custpage_select",
             line: i,
           });
-          if (isSelected !== true) continue;
 
           let lineUniqueKey = suitelet.getSublistValue({
             sublistId: SUBLIST,
@@ -550,35 +549,68 @@ define([
             fieldId: "custpage_amount_paid",
             line: i,
           });
-          total += Number(amountApplied);
+
           let cmLineId = suitelet.getSublistValue({
             sublistId: SUBLIST,
             fieldId: "custpage_credit_memo",
             line: i,
           });
-          cmLines.push({
-            lineUniqueKey: lineUniqueKey,
-            NDC: NDC,
-            unitPrice: unitPrice,
-            amountApplied: amountApplied,
-            cmLineId: cmLineId,
+          const cmParentId = suitelet.getSublistValue({
+            sublistId: SUBLIST,
+            fieldId: "custpage_credit_memo_parent",
+            line: i,
           });
-        }
+          parentParams.forCreation.cmLines = selectedLine;
 
+          if (isSelected == false) continue;
+          total += Number(amountApplied);
+          console.log("isEdit:" + isEdit);
+          if (isEdit == "true") {
+            console.log("isEdited");
+
+            parentParams.forUpdate.push({
+              unitPrice: unitPrice,
+              amountApplied: amountApplied,
+              lineUniqueKey: lineUniqueKey,
+              invId: invId,
+              cmLineId: cmLineId,
+              cmId: cmParentId,
+            });
+          }
+          if (isEdit != "true") {
+            console.log("isNotEdit");
+
+            selectedLine.push({
+              lineUniqueKey: lineUniqueKey,
+              NDC: NDC,
+              unitPrice: unitPrice,
+              amountApplied: amountApplied,
+              cmLineId: cmLineId,
+              invId: invId,
+            });
+          }
+        }
+        parentParams.forCreation.amount = total;
+        console.table(selectedLine);
         let m = message.create({
           type: message.Type.WARNING,
           title: "WARNING",
           message: "NO ITEM TO PROCESS",
         });
-        if (cmLines.length <= 0) {
-          m.show({
-            duration: 2000,
-          });
-          return;
+
+        console.table(parentParams);
+
+        if (isEdit == "true") {
+          if (parentParams.forUpdate.length <= 0) {
+            m.show({
+              duration: 2000,
+            });
+            return;
+          }
         }
-        params.cmLines = cmLines;
+
         let cmParams = {
-          cmDetails: JSON.stringify(params),
+          cmDetails: JSON.stringify(parentParams),
           action: "createCreditMemo",
           isReload: true,
         };
@@ -589,63 +621,27 @@ define([
           params: cmParams,
         });
 
-        postURL({ URL: stSuiteletUrl });
+        let errorCount = postURL({ URL: stSuiteletUrl });
+
         setTimeout(function () {
-          let rclSuiteletURL = url.resolveScript({
-            scriptId: "customscript_sl_add_credit_memo",
-            deploymentId: "customdeploy_sl_add_credit_memo",
-            returnExternalUrl: false,
-            params: {
-              isReload: true,
-            },
-          });
-          window.ischanged = false;
-          window.open(`${rclSuiteletURL}`, "_self");
-        }, 2000);
+          // let rclSuiteletURL = url.resolveScript({
+          //   scriptId: "customscript_sl_add_credit_memo",
+          //   deploymentId: "customdeploy_sl_add_credit_memo",
+          //   returnExternalUrl: false,
+          //   params: JSON.parse(previousParam),
+          // });
+          // window.ischanged = false;
+          opener.location.reload();
+          setTimeout(function () {
+            window.close();
+          }, 2000);
+          //   window.open(`${rclSuiteletURL}`, "_self");
+        }, 5000);
       } catch (e) {
         console.error("createCreditMemo", e.message);
       }
     } catch (e) {
       console.error("createCreditMemo", e.message);
-    }
-  }
-
-  /**
-   * Create Credit Memo Lines
-   */
-  function createCreditMemoLine(options) {}
-
-  function update222FormReference() {
-    try {
-      const SUBLIST = "custpage_items_sublist";
-      const curRec = currentRecord.get();
-      let lineCount = curRec.getLineCount(SUBLIST);
-      console.log("Linecount" + lineCount);
-      const form222Number = curRec.getValue("custpage_form222_field");
-      if (!form222Number) {
-        alert("Please enter 222 form number");
-      }
-
-      for (let i = 0; i < lineCount; i++) {
-        curRec.selectLine({
-          sublistId: SUBLIST,
-          line: i,
-        });
-        if (
-          curRec.getCurrentSublistValue({
-            sublistId: SUBLIST,
-            fieldId: "custpage_select",
-          }) !== true
-        )
-          continue;
-        curRec.setCurrentSublistValue({
-          sublistId: SUBLIST,
-          fieldId: "custpage_form222_ref",
-          value: form222Number,
-        });
-      }
-    } catch (e) {
-      console.error("update222FormReference", e.message);
     }
   }
 

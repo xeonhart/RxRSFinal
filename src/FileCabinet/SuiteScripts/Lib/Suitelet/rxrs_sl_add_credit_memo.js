@@ -87,8 +87,9 @@ define([
   const createHeaderFields = (options) => {
     let form = options.form;
 
-    let { invId, type, tranId, total, isEdit } = options.params;
-    let cmParentInfo;
+    let { invId, type, tranId, total, isEdit, creditMemoId } = options.params;
+    options.params.isReload = true;
+
     log.debug("createHeaderFields", options.params);
 
     try {
@@ -105,43 +106,44 @@ define([
           })
           .getContents();
       }
-      let creditMemoId = rxrs_custom_rec.lookForExistingCreditMemoRec(invId);
-      if (!creditMemoId) {
-        const creditMemoNumberField = (form.addField({
+      let cmParentInfo;
+
+      if (JSON.parse(isEdit) == false) {
+        const creditMemoNumberField = form.addField({
           id: "custpage_credit_memo_number",
           label: "Credit Memo Number",
           type: serverWidget.FieldType.TEXT,
-        }).isMandatory = true);
+        });
       } else {
-        const creditMemoNumberField = form
-          .addField({
-            id: "custpage_credit_memo",
-            label: "Credit Memo",
-            type: serverWidget.FieldType.SELECT,
-            source: "customrecord_creditmemo",
-          })
-          .updateDisplayType({
-            displayType: serverWidget.FieldDisplayType.INLINE,
-          });
-        creditMemoNumberField.defaultValue = creditMemoId;
-        cmParentInfo = rxrs_custom_rec.getCMParentInfo(creditMemoId);
-        log.error("Cm ParentId info ", cmParentInfo);
-        const isEditField = form.addField({
-          id: "custpage_isedit",
-          label: "ON EDIT",
-          type: serverWidget.FieldType.CHECKBOX,
+        const creditMemoNumberField = form.addField({
+          id: "custpage_credit_memo",
+          label: "Credit Memo",
+          type: serverWidget.FieldType.SELECT,
         });
-        isEditField.updateDisplayType({
-          displayType: serverWidget.FieldDisplayType.HIDDEN,
-        });
-        isEditField.defaultValue = isEdit;
-        if (isEdit == "T") {
-        } else {
-          form.addButton({
-            id: "custpage_edit",
-            label: "Edit",
-            functionName: `edit()`,
+        const cmIds = rxrs_custom_rec.getAllCM(invId);
+        log.emergency("cmIds", cmIds);
+        let cmInternalIds = [];
+        if (cmIds.length > 0) {
+          creditMemoNumberField.addSelectOption({
+            value: " ",
+            text: " ",
           });
+
+          for (let i = 0; i < cmIds.length; i++) {
+            cmInternalIds.push(cmIds[i].value);
+            if (!isEmpty(creditMemoId) && cmIds[i].value == creditMemoId) {
+              creditMemoNumberField.addSelectOption({
+                value: cmIds[i].value,
+                text: cmIds[i].text,
+                isSelected: true,
+              });
+            } else {
+              creditMemoNumberField.addSelectOption({
+                value: cmIds[i].value,
+                text: cmIds[i].text,
+              });
+            }
+          }
         }
       }
 
@@ -172,29 +174,22 @@ define([
         label: "Issued On",
         type: serverWidget.FieldType.DATE,
       });
+
       issuedOnField.isMandatory = true;
-      const amountField = form.addField({
-        id: "custpage_amount",
-        label: "Amount",
+      const amountField = form
+        .addField({
+          id: "custpage_amount",
+          label: "Credit Memo Amount",
+          type: serverWidget.FieldType.CURRENCY,
+        })
+        .updateDisplayType({
+          displayType: serverWidget.FieldDisplayType.INLINE,
+        });
+      const customAmountField = form.addField({
+        id: "custpage_custom_amount",
+        label: "Custom Amount",
         type: serverWidget.FieldType.CURRENCY,
       });
-
-      try {
-        if (cmParentInfo.serviceFee) {
-          serviceFeeField.defaultValue = cmParentInfo.serviceFee;
-        }
-        if (cmParentInfo.dateIssued) {
-          issuedOnField.defaultValue = cmParentInfo.dateIssued;
-        }
-        if (cmParentInfo.file) {
-          fileUpload.defaultValue = cmParentInfo.file;
-        }
-        if (cmParentInfo.total) {
-          amountField.defaultValue = cmParentInfo.total;
-        }
-      } catch (e) {
-        log.error("Setting Parent Value", e.message);
-      }
 
       form.clientScriptFileId = rxrs_util.getFileId(
         "rxrs_cs_credit_memo_sl.js"
@@ -209,12 +204,22 @@ define([
         .updateDisplayType({
           displayType: serverWidget.FieldDisplayType.HIDDEN,
         }).defaultValue = invId);
-
+      if (creditMemoId) {
+        cmParentInfo = rxrs_custom_rec.getCMParentInfo(creditMemoId);
+        if (cmParentInfo.dateIssued) {
+          issuedOnField.defaultValue = cmParentInfo.dateIssued;
+        }
+        if (cmParentInfo.serviceFee) {
+          serviceFeeField.defaultValue = cmParentInfo.serviceFee;
+        }
+      }
       let numOfRes = " ";
 
       let soLine = rxrs_tran_lib.getSalesTransactionLine({
         type: type,
         id: invId,
+        isEdit: isEdit,
+        creditMemoId: creditMemoId,
       });
       if (soLine) {
         numOfRes = soLine.length ? soLine.length : 0;
@@ -223,15 +228,19 @@ define([
       rxrs_sl_module.createSublist({
         form: form,
         sublistFields: sublistFields,
-        creditMemoId: creditMemoId,
         value: soLine,
         clientScriptAdded: true,
         title: `Item: ${numOfRes}`,
       });
+      let createCMParam = {
+        invId: invId,
+        isEdit: isEdit,
+        previousParam: options.params,
+      };
       form.addButton({
         id: "custpage_save",
         label: "Save",
-        functionName: `createCreditMemo(${invId})`,
+        functionName: `createCreditMemo(${JSON.stringify(createCMParam)})`,
       });
 
       return form;

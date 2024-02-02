@@ -130,13 +130,20 @@ define([
     {
       id: "custpage_amount_paid",
       type: "CURRENCY",
-      label: "Amount Paid",
+      label: "Credit Received",
       updateDisplayType: "ENTRY",
     },
     {
       id: "custpage_credit_memo",
       type: "TEXT",
       label: "CREDIT MEMO REFERENCE ID",
+      source: "customrecord_credit_memo_line_applied",
+      updateDisplayType: "INLINE",
+    },
+    {
+      id: "custpage_credit_memo_parent",
+      type: "TEXT",
+      label: "CREDIT MEMO PARENT ID",
       source: "customrecord_creditmemo",
       updateDisplayType: "INLINE",
     },
@@ -155,14 +162,7 @@ define([
       log.debug("createSublist", options);
 
       let fieldName = [];
-      let {
-        form,
-        sublistFields,
-        title,
-        value,
-        creditMemoId,
-        clientScriptAdded,
-      } = options;
+      let { form, sublistFields, title, value, clientScriptAdded } = options;
       if (!clientScriptAdded) {
         form.clientScriptFileId = getFileId("rxrs_cs_verify_staging.js");
       }
@@ -256,7 +256,6 @@ define([
       populateSublist({
         sublist: sublist,
         fieldInfo: mainLineInfo,
-        creditMemoId: creditMemoId,
       });
     } catch (e) {
       log.error("createSublist", e.message);
@@ -273,7 +272,6 @@ define([
       log.audit("populateSublist", options);
       let sublist = options.sublist;
       let sublistFields = options.fieldInfo;
-      let creditMemoId = options.creditMemoId;
       if (sublistFields.length > 0) {
         let lineCount = 0;
         sublistFields.forEach((element) => {

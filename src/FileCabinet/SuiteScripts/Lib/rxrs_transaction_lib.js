@@ -746,15 +746,76 @@ define([
   }
 
   /**
+   * Get Payment SUM based on Invoice
+   * @param {string} invId
+   */
+  function getPaymentSum(invId) {
+    log.audit("getPaymentSum", invId);
+    let total = 0;
+    try {
+      const transactionSearchObj = search.create({
+        type: "transaction",
+        filters: [
+          ["type", "anyof", "Custom107"],
+          "AND",
+          ["custbody_payment_invoice_link", "anyof", invId],
+        ],
+        columns: [
+          search.createColumn({
+            name: "debitamount",
+            summary: "SUM",
+            label: "Amount (Debit)",
+          }),
+        ],
+      });
+
+      transactionSearchObj.run().each(function (result) {
+        total = result.getValue({
+          name: "debitamount",
+          summary: "SUM",
+        });
+      });
+      return total;
+    } catch (e) {
+      log.error("getPaymentSum", e.message);
+    }
+  }
+
+  /**
+   * Get the Total Count of Invoice With CM Payment
+   */
+  function getInvoiceLineCountWithCmPayment(invId) {
+    try {
+      const invoiceSearchObj = search.create({
+        type: "invoice",
+        filters: [
+          ["type", "anyof", "CustInvc"],
+          "AND",
+          ["custcol_credit_memo_reference", "noneof", "@NONE@"],
+          "AND",
+          ["internalid", "anyof", invId],
+        ],
+      });
+      return invoiceSearchObj.runPaged().count;
+    } catch (e) {
+      log.error("getInvoiceLineCountWithCmPayment", e.message);
+    }
+  }
+
+  /**
    * Get the transaction line item details for credit memo suitelet
    * @param {string}options.type transaction type
    * @param {string}options.id transaction id
+   * @param {boolean} options.isEdit
+   * @param {string} options.creditMemoId
    * @return {object[]}
    */
   function getSalesTransactionLine(options) {
-    let { id, type } = options;
+    log.audit("getSalesTransactionLine", options);
+    let { id, type, isEdit, creditMemoId } = options;
     let itemInfo = [];
     try {
+      log.emergency("isEdit", isEdit);
       const currentRecord = record.load({
         type: record.Type.INVOICE,
         id: id,
@@ -766,6 +827,12 @@ define([
         let LOTNUMBER = "";
         let EXPDATE = "";
         log.debug({ title: "line", details: lineCount });
+        let creditMemoReference = currentRecord.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_credit_memo_reference",
+          line: i,
+        });
+
         const item = currentRecord.getSublistValue({
           sublistId: "item",
           fieldId: "item",
@@ -837,9 +904,10 @@ define([
             line: i,
           });
         }
-        let creditMemoReference = currentRecord.getSublistValue({
+
+        let creditMemoParent = currentRecord.getSublistValue({
           sublistId: "item",
-          fieldId: "custcol_credit_memo_reference",
+          fieldId: "custcol_cm_parent_id",
           line: i,
         });
 
@@ -878,23 +946,56 @@ define([
             }
           }
         }
-        itemInfo.push({
-          lineUniqueKey: lineUniqueKey,
-          itemId: item,
-          item: itemName,
-          description: description,
-          lotNumber: LOTNUMBER,
-          expDate: EXPDATE,
-          fullPartial: fullPartialText,
-          packageSize: packageSize,
-          quantity: quantity,
-          partialQuantity: partialQuantity,
-          rate: rate,
-          amount: amount,
-          unitPrice: unitPrice,
-          amountPaid: amountPaid,
-          creditMemoReference: creditMemoReference,
-        });
+        log.emergency("creditMemoReference", isEmpty(creditMemoReference));
+        log.emergency("condition: " + isEdit, JSON.parse(isEdit) == true);
+        if (
+          JSON.parse(isEdit) == true &&
+          isEmpty(creditMemoReference) == false &&
+          creditMemoId == creditMemoParent
+        ) {
+          log.error("pushing edited ");
+          itemInfo.push({
+            lineUniqueKey: lineUniqueKey,
+            itemId: item,
+            item: itemName,
+            description: description,
+            lotNumber: LOTNUMBER,
+            expDate: EXPDATE,
+            fullPartial: fullPartialText,
+            packageSize: packageSize,
+            quantity: quantity,
+            partialQuantity: partialQuantity,
+            rate: rate,
+            amount: amount,
+            unitPrice: unitPrice,
+            amountPaid: amountPaid,
+            creditMemoReference: creditMemoReference,
+            creditMemoParent: creditMemoParent,
+          });
+        }
+        if (
+          JSON.parse(isEdit) == false &&
+          isEmpty(creditMemoReference) == true
+        ) {
+          itemInfo.push({
+            lineUniqueKey: lineUniqueKey,
+            itemId: item,
+            item: itemName,
+            description: description,
+            lotNumber: LOTNUMBER,
+            expDate: EXPDATE,
+            fullPartial: fullPartialText,
+            packageSize: packageSize,
+            quantity: quantity,
+            partialQuantity: partialQuantity,
+            rate: rate,
+            amount: amount,
+            unitPrice: unitPrice,
+            amountPaid: amountPaid,
+            creditMemoReference: creditMemoReference,
+            creditMemoParent: creditMemoParent,
+          });
+        }
 
         log.debug("getSalesTransactionLine itemInfo", itemInfo);
       }
@@ -959,14 +1060,17 @@ define([
 
   /**
    * Update transactionline CM SalesOrder
+   * @param {object} options
    * @param {string} options.lineuniquekey
    * @param {string} options.cmLineId
    * @param {string} options.invId
    * @param {string} options.cmId
+   * @param {number} options.amount
+   * @param {number} options.unitPrice
    */
   function updateTranLineCM(options) {
     log.audit("updateTranLineCM", options);
-    let { lineuniquekey, cmLineId, invId, cmId } = options;
+    let { lineuniquekey, cmLineId, invId, cmId, amount, unitPrice } = options;
 
     try {
       const invRec = record.load({
@@ -990,6 +1094,30 @@ define([
           line: index,
           value: Number(cmLineId),
         });
+        invRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_credit_memo_reference",
+          line: index,
+          value: Number(cmLineId),
+        });
+        invRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "price",
+          line: index,
+          value: -1,
+        });
+        invRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "rate",
+          line: index,
+          value: unitPrice,
+        });
+        invRec.setSublistValue({
+          sublistId: "item",
+          fieldId: "amount",
+          line: index,
+          value: amount,
+        });
       }
       invRec.save({
         ignoreMandatoryFields: true,
@@ -1003,7 +1131,7 @@ define([
    * Create Custom Payment Record
    * @param {number}options.paymentAmount
    * @param {string}options.dateReceived
-   * @param {string}options.invId
+   * @param {string}options.invoiceId
    * @param {string}options.creditMemoId
    * @param {number}options.cmLinesCount
    * @param {number}options.cmLinesCountWithPayment
@@ -1024,22 +1152,16 @@ define([
     let {
       paymentId,
       dateReceived,
-      invId,
+      invoiceId,
       cmLinesCount,
       cmLinesCountWithPayment,
       cmId,
       cmAmount,
       paymentAmount,
+      cmTotalAmount,
     } = params;
+    let paymentTotalAmount = 0;
     try {
-      if (
-        cmLinesCount == cmLinesCountWithPayment &&
-        cmAmount == paymentAmount
-      ) {
-        invoiceUpdateStatus = invoiceStatus.fullyPaid;
-      } else {
-        invoiceUpdateStatus = invoiceStatus.partiallyPaid;
-      }
       if (!paymentId) {
         const paymentRec = record.create({
           type: "customtransaction_payment_info",
@@ -1054,10 +1176,10 @@ define([
             fieldId: "trandate",
             value: new Date(dateReceived),
           });
-        invId &&
+        invoiceId &&
           paymentRec.setValue({
             fieldId: "custbody_payment_invoice_link",
-            value: invId,
+            value: invoiceId,
           });
         cmId &&
           paymentRec.setValue({
@@ -1100,7 +1222,19 @@ define([
         paymentId = paymentRec.save({
           ignoreMandatoryFields: true,
         });
-        response.sucessMessage = "Successfully Created Payment: " + paymentId;
+        if (paymentId) {
+          paymentTotalAmount = getPaymentSum(invoiceId);
+          if (
+            cmLinesCount == cmLinesCountWithPayment &&
+            cmTotalAmount == paymentTotalAmount
+          ) {
+            invoiceUpdateStatus = invoiceStatus.fullyPaid;
+          } else {
+            invoiceUpdateStatus = invoiceStatus.partiallyPaid;
+          }
+
+          response.sucessMessage = "Successfully Created Payment: " + paymentId;
+        }
       } else {
         const paymentRec = record.load({
           type: "customtransaction_payment_info",
@@ -1121,18 +1255,42 @@ define([
         paymentId = paymentRec.save({
           ignoreMandatoryFields: true,
         });
-        response.sucessMessage = "Successfully Updated Payment: " + paymentId;
+        if (paymentId) {
+          paymentTotalAmount = getPaymentSum(invoiceId);
+          if (
+            cmLinesCount == cmLinesCountWithPayment &&
+            cmTotalAmount == paymentTotalAmount
+          ) {
+            invoiceUpdateStatus = invoiceStatus.fullyPaid;
+          } else {
+            invoiceUpdateStatus = invoiceStatus.partiallyPaid;
+          }
+          response.sucessMessage = "Successfully Updated Payment: " + paymentId;
+        }
       }
     } catch (e) {
       log.error("createPayment", e.message);
       response.error = e.message;
     }
     if (paymentId) {
-      record.submitFields({
+      const invRec = record.load({
         type: record.Type.INVOICE,
-        id: invId,
-        values: { custbody_invoice_status: invoiceUpdateStatus },
+        id: invoiceId,
+        isDynamic: true,
       });
+      invRec.setValue({
+        fieldId: "custbody_invoice_status",
+        value: invoiceUpdateStatus,
+      });
+      const total = invRec.getValue("total");
+      invRec.setValue({
+        fieldId: "custbody_remaining_balance",
+        value: Number(total) - Number(paymentTotalAmount),
+      });
+      const invId = invRec.save({
+        ignoreMandatoryFields: true,
+      });
+      log.error("invId", invId);
       return response.sucessMessage;
     } else {
       return "ERROR: " + response.error;
@@ -1145,6 +1303,7 @@ define([
    * @param {string} options.cmId
    */
   function checkExistingPayment(options) {
+    log.audit("checkExistingPayment", options);
     let { invId, cmId } = options;
     let returnObj = {};
     try {
@@ -1176,6 +1335,7 @@ define([
         returnObj.amount = result.getValue("debitamount");
         returnObj.id = result.id;
       });
+      log.audit("checkExistingPayment return", returnObj);
       return returnObj;
     } catch (e) {
       log.error("checkExistingPayment", e.message);
@@ -2629,6 +2789,20 @@ define([
     }
   }
 
+  function isEmpty(stValue) {
+    return (
+      stValue === "" ||
+      stValue == null ||
+      false ||
+      (stValue.constructor === Array && stValue.length == 0) ||
+      (stValue.constructor === Object &&
+        (function (v) {
+          for (var k in v) return false;
+          return true;
+        })(stValue))
+    );
+  }
+
   return {
     createInventoryAdjustment: createInventoryAdjustment,
     createPO: createPO,
@@ -2641,6 +2815,7 @@ define([
     updateProcessing: updateProcessing,
     getBillId: getBillId,
     getAllBills: getAllBills,
+    getInvoiceLineCountWithCmPayment: getInvoiceLineCountWithCmPayment,
     setAdjustmentFee: setAdjustmentFee,
     addAccruedPurchaseItem: addAccruedPurchaseItem,
     createAllServiceFees: createAllServiceFees,
@@ -2652,5 +2827,6 @@ define([
     updateTranLineCM: updateTranLineCM,
     createPayment: createPayment,
     checkExistingPayment: checkExistingPayment,
+    getPaymentSum: getPaymentSum,
   };
 });

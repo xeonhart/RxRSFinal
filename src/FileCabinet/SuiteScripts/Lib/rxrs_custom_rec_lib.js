@@ -36,6 +36,74 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
   }
 
   /**
+   * Get All CM based on the invoice internal Id
+   * @param {string}invId
+   */
+  function getAllCM(invId) {
+    let cmIds = [];
+    try {
+      const customrecord_creditmemoSearchObj = search.create({
+        type: "customrecord_creditmemo",
+        filters: [["custrecord_invoice_applied", "anyof", invId]],
+        columns: [
+          search.createColumn({
+            name: "id",
+            sort: search.Sort.ASC,
+            label: "ID",
+          }),
+          search.createColumn({
+            name: "custrecord_creditmemonum",
+            label: "Credit Memo No.",
+          }),
+        ],
+      });
+      customrecord_creditmemoSearchObj.run().each(function (result) {
+        cmIds.push({
+          text: result.getValue({ name: "custrecord_creditmemonum" }),
+          value: result.id,
+        });
+        return true;
+      });
+      return cmIds;
+    } catch (e) {
+      log.error("getAllCM", e.message);
+    }
+  }
+
+  /**
+   * CM Parent Info
+   * @param options.forUpdate
+   * @param options.forCreation
+   */
+  function createUpdateCM(options) {
+    let response = {};
+    try {
+      log.audit("createUpdateCM", options);
+      let obj = JSON.parse(options);
+      let { forUpdate, forCreation } = obj;
+      if (forUpdate.length > 0) {
+        createCreditMemoLines({ cmLines: forUpdate });
+      }
+      if (forCreation.cmLines.length > 0) {
+        const cmId = createCreditMemoRec(forCreation);
+
+        if (cmId) {
+          createCreditMemoLines({
+            cmLines: forCreation.cmLines,
+            cmParentId: cmId,
+            invId: forCreation.invoiceId,
+          });
+        }
+        response.sucessMessage = "Successfully Created Credit Memo ID: " + cmId;
+      }
+    } catch (e) {
+      log.error("createUpdateCM", e.message);
+      return (response.error = "Error: " + e.message);
+    }
+    return response;
+  }
+
+  /**
    * Create Credit Memo Parent Record
    * @param  options.cmId
    * @param  options.creditMemoNumber
@@ -49,9 +117,7 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
    * @return string id of the parent credit memo
    */
   function createCreditMemoRec(options) {
-    let obj = JSON.parse(options);
-    let response = {};
-    log.audit("createCreditMemoRec", obj);
+    log.audit("createCreditMemoRec", options);
 
     try {
       let {
@@ -63,84 +129,97 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
         dateIssued,
         fileId,
         cmId,
-        cmLines,
-      } = obj;
-      log.audit("cmId", cmId);
-      if (cmId) {
-        log.audit("if");
-        createCreditMemoLines({
-          invId: invoiceId,
-          cmParentId: cmId,
-          cmLines: cmLines,
-        });
-      } else {
-        log.audit("else");
-        const cmRec = record.create({
-          type: "customrecord_creditmemo",
-          isDynamic: true,
-        });
-        if (!invoiceId) throw "No invoice Id. This is a required fields";
-        invoiceId &&
-          cmRec.setValue({
-            fieldId: "custrecord_invoice_applied",
-            value: invoiceId,
-          });
-        creditMemoNumber &&
-          cmRec.setValue({
-            fieldId: "custrecord_creditmemonum",
-            value: creditMemoNumber,
-          });
-        amount &&
-          cmRec.setValue({
-            fieldId: "custrecord_amount",
-            value: amount,
-          });
-        serviceFee &&
-          cmRec.setValue({
-            fieldId: "custrecord_servicefee",
-            value: serviceFee,
-          });
-        dateIssued &&
-          cmRec.setValue({
-            fieldId: "custrecord_issuedon",
-            value: new Date(dateIssued),
-          });
-        fileId &&
-          cmRec.setValue({
-            fieldId: "custrecord_fileupload",
-            value: fileId,
-          });
-        saveWithoutReconcilingItems &&
-          cmRec.setValue({
-            fieldId: "custrecord_savewithoutreconitem",
-            value: saveWithoutReconcilingItems,
-          });
-        cmId = cmRec.save({
-          ignoreMandatoryFields: true,
-        });
-        if (cmId) {
-          record.submitFields({
-            type: record.Type.INVOICE,
-            id: invoiceId,
-            values: {
-              custbody_credit_memos: cmId,
-              custbody_invoice_status: 2, // Open Credit
-            },
-          });
-          createCreditMemoLines({
-            invId: invoiceId,
-            cmParentId: cmId,
-            cmLines: cmLines,
-          });
-        }
-        response.successMessage =
-          "Successfully Created Credit Memo Id: " + cmId;
-      }
+      } = options;
 
-      return response;
+      const cmRec = record.create({
+        type: "customrecord_creditmemo",
+        isDynamic: true,
+      });
+      if (!invoiceId) throw "No invoice Id. This is a required fields";
+      invoiceId &&
+        cmRec.setValue({
+          fieldId: "custrecord_invoice_applied",
+          value: invoiceId,
+        });
+      creditMemoNumber &&
+        cmRec.setValue({
+          fieldId: "custrecord_creditmemonum",
+          value: creditMemoNumber,
+        });
+
+      amount &&
+        cmRec.setValue({
+          fieldId: "custrecord_amount",
+          value: amount,
+        });
+      serviceFee &&
+        cmRec.setValue({
+          fieldId: "custrecord_servicefee",
+          value: serviceFee,
+        });
+      dateIssued &&
+        cmRec.setValue({
+          fieldId: "custrecord_issuedon",
+          value: new Date(dateIssued),
+        });
+      fileId &&
+        cmRec.setValue({
+          fieldId: "custrecord_fileupload",
+          value: fileId,
+        });
+      saveWithoutReconcilingItems &&
+        cmRec.setValue({
+          fieldId: "custrecord_savewithoutreconitem",
+          value: saveWithoutReconcilingItems,
+        });
+      cmId = cmRec.save({
+        ignoreMandatoryFields: true,
+      });
+      if (cmId) {
+        record.submitFields({
+          type: record.Type.INVOICE,
+          id: invoiceId,
+          values: {
+            custbody_invoice_status: 2, // Open Credit
+          },
+        });
+      }
+      return cmId;
     } catch (e) {
       log.error("createCreditMemoRec", e.message);
-      return (response.error = e.message);
+    }
+  }
+
+  /**
+   * Get the all invoice CM total amount
+   * @param {string}invId
+   */
+  function getALlCMTotalAmount(invId) {
+    log.audit("getALlCMTotalAmount", invId);
+    try {
+      let total = 0;
+      const customrecord_creditmemoSearchObj = search.create({
+        type: "customrecord_creditmemo",
+        filters: [["custrecord_invoice_applied", "anyof", invId]],
+        columns: [
+          search.createColumn({
+            name: "custrecord_amount",
+            summary: "SUM",
+            label: "Amount",
+          }),
+        ],
+      });
+
+      customrecord_creditmemoSearchObj.run().each(function (result) {
+        total = result.getValue({
+          name: "custrecord_amount",
+          summary: "SUM",
+        });
+      });
+      log.audit("getALlCMTotalAmount", total);
+      return total;
+    } catch (e) {
+      log.error("getALlCMTotalAmount", e.message);
     }
   }
 
@@ -201,9 +280,10 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
 
   /**
    * Get the CM lineCount that has the payment applied
-   * @param {string}cmId
+   * @param {array}cmId
    */
   function getCMLineCountWithAmount(cmId) {
+    log.audit("getCMLineCountWithAmount", cmId);
     try {
       let count = 0;
       const customrecord_credit_memo_line_appliedSearchObj = search.create({
@@ -240,21 +320,28 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
 
   /**
    * Create credit memo child
-   * @param {string} options.cmParentId
    * @param {string} options.invId
    * @param{[]} options.cmLines
+   * @param{string} options.cmParentId
    */
   function createCreditMemoLines(options) {
     log.audit("createCreditMemoLines", options);
-    let { cmParentId, cmLines, invId } = options;
+    let { cmLines, invId, cmParentId } = options;
 
     try {
-      if (!cmParentId) throw "No Credit Memo Parent is created";
-
       cmLines.forEach((cm) => {
-        let { lineUniqueKey, NDC, unitPrice, amountApplied, cmLineId } = cm;
+        let {
+          lineUniqueKey,
+          NDC,
+          unitPrice,
+          amountApplied,
+          cmLineId,
+          isSelected,
+          cmId,
+          invId,
+        } = cm;
 
-        if (cmLineId !== " ") {
+        if (cmLineId != " ") {
           record.submitFields({
             type: "customrecord_credit_memo_line_applied",
             id: cmLineId,
@@ -267,12 +354,21 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
               ignoreMandatoryFields: true,
             },
           });
+          reloadCM(cmId);
+          tranlib.updateTranLineCM({
+            cmLineId: cmLineId,
+            invId: invId,
+            lineuniquekey: lineUniqueKey,
+            amount: amountApplied,
+            unitPrice: unitPrice,
+          });
         } else {
           const cmChildRec = record.create({
             type: "customrecord_credit_memo_line_applied",
             isDynamic: true,
           });
           try {
+            log.audit("cmParentId", cmParentId);
             cmChildRec.setValue({
               fieldId: "custrecord_credit_memo_id",
               value: cmParentId,
@@ -302,18 +398,41 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
           let cmChildId = cmChildRec.save({ ignoreMandatoryFields: true });
 
           if (cmChildId) {
+            reloadCM(cmParentId);
             tranlib.updateTranLineCM({
               cmLineId: cmChildId,
-              cmId: cmParentId,
               invId: invId,
               lineuniquekey: lineUniqueKey,
+              amount: amountApplied,
+              unitPrice: unitPrice,
             });
           }
         }
       });
     } catch (e) {
-      log.error("createCreditMemoLines", e.message);
+      log.error("createCreditMemoLines", { error: e.message, params: options });
       return "createCreditMemoLines " + e.message;
+    }
+  }
+
+  /**
+   * Reload CM
+   * @param cmId
+   */
+  function reloadCM(cmId) {
+    log.audit("Reload Cm", cmId);
+    try {
+      const curRec = record.load({
+        type: "customrecord_creditmemo",
+        id: cmId,
+        isDynamic: true,
+      });
+
+      return curRec.save({
+        ignoreMandatoryFields: true,
+      });
+    } catch (e) {
+      log.error("reloadCM", e.message);
     }
   }
 
@@ -322,5 +441,8 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
     createCreditMemoRec,
     getCMParentInfo,
     getCMLineCountWithAmount,
+    createUpdateCM,
+    getAllCM,
+    getALlCMTotalAmount,
   };
 });

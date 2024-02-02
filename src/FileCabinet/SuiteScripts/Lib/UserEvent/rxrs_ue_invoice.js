@@ -16,6 +16,7 @@ define(["../rxrs_transaction_lib", "N/ui/serverWidget"], (
    * @since 2015.2
    */
   const beforeLoad = (context) => {
+    let src;
     try {
       if (context.type === "view" || context.type === "edit") {
         const curRec = context.newRecord;
@@ -28,9 +29,10 @@ define(["../rxrs_transaction_lib", "N/ui/serverWidget"], (
             type: serverWidget.FieldType.INLINEHTML,
           });
           var scr = ""; //ext-element-22
+          src += `jQuery("#discounttotal").text('${status}');`;
+          scr += `jQuery('div.uir-record-status').html('${status}');`;
 
-          scr += `jQuery('div.uir-record-status').text('${status}');`;
-          hideFld.defaultValue =
+          scr += hideFld.defaultValue =
             "<script>jQuery(function($){require([], function(){" +
             scr +
             "})})</script>";
