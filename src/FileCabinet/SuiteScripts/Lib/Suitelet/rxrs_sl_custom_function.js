@@ -33,6 +33,7 @@ define([
         soDetails,
         cmDetails,
         paymentDetails,
+        deleteParams,
         action,
         rclId,
         billId,
@@ -49,6 +50,12 @@ define([
             const paymentCreationRes = tranLib.createPayment(paymentDetails);
             log.audit("paymentCreationRes", paymentCreationRes);
             context.response.writeLine(paymentCreationRes);
+
+            break;
+          case "deleteCreditMemo":
+            const deleteResult = custRecLib.deleteCreditMemo(deleteParams);
+            log.audit("deleteResult", deleteResult);
+            context.response.writeLine(deleteResult);
 
             break;
 

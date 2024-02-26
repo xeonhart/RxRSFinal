@@ -91,6 +91,7 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
           createCreditMemoLines({
             cmLines: forCreation.cmLines,
             cmParentId: cmId,
+            isGovernment: forCreation.isGovernment,
             invId: forCreation.invoiceId,
           });
         }
@@ -105,15 +106,18 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
 
   /**
    * Create Credit Memo Parent Record
-   * @param  options.cmId
-   * @param  options.creditMemoNumber
-   * @param  options.amount
-   * @param  options.invoiceId
-   * @param  options.dateIssued
+   * @param  {string}options.cmId
+   * @param {string} options.creditMemoNumber
+   * @param  {number}options.amount
+   * @param  {number}options.invoiceId
+   * @param  {string}options.dateIssued
    * @param options.saveWithoutReconcilingItems
-   * @param options.serviceFee
-   * @param  options.fileId
+   * @param {string}options.serviceFee
+   * @param  {string}options.fileId
+   * @param {number}options.packingSlipAmount
+   * @param {boolean}options.isGovernment
    * @param options.cmLines
+   *
    * @return string id of the parent credit memo
    */
   function createCreditMemoRec(options) {
@@ -129,6 +133,8 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
         dateIssued,
         fileId,
         cmId,
+        packingSlipAmount,
+        isGovernment,
       } = options;
 
       const cmRec = record.create({
@@ -141,12 +147,27 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
           fieldId: "custrecord_invoice_applied",
           value: invoiceId,
         });
+
+      packingSlipAmount &&
+        cmRec.setValue({
+          fieldId: "custrecord_gross_credit_received",
+          value: packingSlipAmount / 0.15,
+        });
+      isGovernment &&
+        cmRec.setValue({
+          fieldId: "custrecord_is_government",
+          value: isGovernment,
+        });
       creditMemoNumber &&
         cmRec.setValue({
           fieldId: "custrecord_creditmemonum",
           value: creditMemoNumber,
         });
-
+      packingSlipAmount &&
+        cmRec.setValue({
+          fieldId: "custrecord_packing_slip_amount",
+          value: packingSlipAmount,
+        });
       amount &&
         cmRec.setValue({
           fieldId: "custrecord_amount",
@@ -187,6 +208,57 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
       return cmId;
     } catch (e) {
       log.error("createCreditMemoRec", e.message);
+    }
+  }
+
+  /**
+   * Remove and delete credit memo including payment
+   * @param {string} options.creditMemoId
+   * @param {string} options.invId
+   */
+  function deleteCreditMemo(options) {
+    log.audit("deleteCreditMemo", options);
+    let { creditMemoId, invId } = JSON.parse(options);
+    try {
+      let updatedInvId = tranlib.removeCMFromInvoiceLine(options);
+      if (updatedInvId) {
+        let cmId = tranlib.checkIfTransAlreadyExist({
+          searchType: "CustCred",
+          creditMemoId: creditMemoId,
+        });
+
+        if (cmId) {
+          let deletedCM = record.delete({
+            type: record.Type.CREDIT_MEMO,
+            id: cmId,
+          });
+          log.audit("deleted native cm", deletedCM);
+          if (deletedCM) {
+            let isCMLineDeleted = deleteCMLine(creditMemoId);
+            log.audit("is cmLine Deleted", isCMLineDeleted);
+            if (isCMLineDeleted) {
+              log.audit("deleting credit memo");
+              record.delete({
+                type: "customrecord_creditmemo",
+                id: creditMemoId,
+              });
+              let cmIds = getAllCM(invId);
+              log.audit("cmIds", cmIds.length);
+              if (cmIds.length == 0) {
+                record.submitFields({
+                  type: record.Type.INVOICE,
+                  id: invId,
+                  values: {
+                    custbody_invoice_status: 1,
+                  },
+                });
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      log.error("deleteCreditMemo", e.message);
     }
   }
 
@@ -319,14 +391,59 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
   }
 
   /**
+   * Get the CM lineCount that has the payment applied
+   * @param {string}creditMemoId
+   */
+  function deleteCMLine(creditMemoId) {
+    log.audit("deleteCMLine", creditMemoId);
+    let count;
+    try {
+      const customrecord_credit_memo_line_appliedSearchObj = search.create({
+        type: "customrecord_credit_memo_line_applied",
+        filters: [["custrecord_credit_memo_id", "anyof", creditMemoId]],
+        columns: [
+          search.createColumn({
+            name: "internalid",
+            label: "Internal ID",
+          }),
+        ],
+      });
+      let searchResultCount =
+        customrecord_credit_memo_line_appliedSearchObj.runPaged().count;
+      customrecord_credit_memo_line_appliedSearchObj
+        .run()
+        .each(function (result) {
+          let id = result.getValue({
+            name: "internalid",
+          });
+          log.debug("deleting cm line id", id);
+          record.delete({
+            type: "customrecord_credit_memo_line_applied",
+            id: id,
+          });
+
+          searchResultCount -= 1;
+          log.audit("searchResultCount", searchResultCount);
+          return true;
+        });
+      if (searchResultCount == 0) {
+        return true;
+      }
+    } catch (e) {
+      log.error("deleteCMLine", e.message);
+    }
+  }
+
+  /**
    * Create credit memo child
    * @param {string} options.invId
+   * @param {boolean} options.isGovernemt
    * @param{[]} options.cmLines
    * @param{string} options.cmParentId
    */
   function createCreditMemoLines(options) {
     log.audit("createCreditMemoLines", options);
-    let { cmLines, invId, cmParentId } = options;
+    let { cmLines, invId, cmParentId, isGovernment } = options;
 
     try {
       cmLines.forEach((cm) => {
@@ -341,7 +458,7 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
           invId,
         } = cm;
 
-        if (cmLineId != " ") {
+        if (cmLineId != "") {
           record.submitFields({
             type: "customrecord_credit_memo_line_applied",
             id: cmLineId,
@@ -374,6 +491,10 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
               value: cmParentId,
             });
             cmChildRec.setValue({
+              fieldId: "custrecord_government",
+              value: isGovernment,
+            });
+            cmChildRec.setValue({
               fieldId: "custrecord_cm_lineuniquekey",
               value: lineUniqueKey,
             });
@@ -385,10 +506,21 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
               fieldId: "custrecord_cm_amount_applied",
               value: amountApplied,
             });
+
             cmChildRec.setValue({
               fieldId: "custrecord_cm_unit_price",
               value: unitPrice,
             });
+            if (isGovernment == true) {
+              cmChildRec.setValue({
+                fieldId: "custrecord_cmline_gross_amount",
+                value: amountApplied / 0.15,
+              });
+              cmChildRec.setValue({
+                fieldId: "custrecord_cmline_gross_unit_price",
+                value: unitPrice / 0.15,
+              });
+            }
           } catch (e) {
             log.error("createCreditMemoLines setting values", {
               error: e.message,
@@ -439,6 +571,7 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
   return {
     lookForExistingCreditMemoRec,
     createCreditMemoRec,
+    deleteCreditMemo,
     getCMParentInfo,
     getCMLineCountWithAmount,
     createUpdateCM,

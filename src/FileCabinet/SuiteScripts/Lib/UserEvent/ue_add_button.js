@@ -163,7 +163,8 @@ define([
             let invRec = context.newRecord;
             const lineCount = invRec.getLineCount("item");
             let itemWithCM = 0;
-            let forCreate = false;
+            const invoiceStatus = invRec.getValue("custbody_invoice_status");
+            if (invoiceStatus == 6 || invoiceStatus == 7) return;
             for (let i = 0; i < lineCount; i++) {
               const cmId = invRec.getSublistValue({
                 sublistId: "item",
@@ -180,6 +181,7 @@ define([
                 invId: invRec.id,
                 tranId: invRec.getValue("tranid"),
                 total: invRec.getValue("total"),
+                isGovernment: invRec.getValue("custbody_plan_type") == 11,
                 isEdit: true,
               };
               let addCreditMemoUrl = url.resolveScript({
@@ -204,6 +206,7 @@ define([
                 invId: invRec.id,
                 tranId: invRec.getValue("tranid"),
                 total: invRec.getValue("total"),
+                isGovernment: invRec.getValue("custbody_plan_type") == 11,
                 isEdit: false,
               };
               let addCreditMemoUrl = url.resolveScript({

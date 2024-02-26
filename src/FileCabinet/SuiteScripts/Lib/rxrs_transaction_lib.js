@@ -174,12 +174,20 @@ define([
    *@param {string} options.searchType - Transaction Type
    *@param {(string || number)} options.finalPaymentSchedule - Final Payment Schedule
    *@param {string} options.status - Transaction Status
+   * @param {string} options.creditMemoId - Custom Credit Memo Id
    *@param {string} options.irsId Item return Scan Id - Transaction Status
    *@return  null if no transaction is created yet | return the internal Id if the transaction exists
    */
   function checkIfTransAlreadyExist(options) {
     log.audit("checkIfTransAlreadyExist", options);
-    let { searchType, mrrId, irsId, finalPaymentSchedule, status } = options;
+    let {
+      searchType,
+      mrrId,
+      irsId,
+      finalPaymentSchedule,
+      creditMemoId,
+      status,
+    } = options;
     log.audit("finalPaymentSchedule", { finalPaymentSchedule, options });
     try {
       let tranId;
@@ -201,6 +209,14 @@ define([
             name: "custbody_kd_master_return_id",
             operator: "anyof",
             values: mrrId,
+          })
+        );
+      creditMemoId &&
+        transactionSearchObj.filters.push(
+          search.createFilter({
+            name: "custbody_credit_memos",
+            operator: "anyof",
+            values: creditMemoId,
           })
         );
       status &&
@@ -452,6 +468,32 @@ define([
     } catch (e) {
       log.error("createPO", e.message);
       return { error: e.message };
+    }
+  }
+
+  /**
+   * Set ERV Discount Price if the selected plan type is government
+   * @param {object} rec
+   * @return  Object with modified amount
+   */
+  function setERVDiscountPrice(rec) {
+    try {
+      log.audit("Setting Partial Amount");
+      for (let i = 0; i < rec.getLineCount("item"); i++) {
+        try {
+          rec.setSublistValue({
+            sublistId: "item",
+            fieldId: "price",
+            line: i,
+            value: 15, // ERV DISCOUNT
+          });
+        } catch (e) {
+          log.error("Setting ERV Amount", e.message);
+        }
+      }
+      return rec;
+    } catch (e) {
+      log.error("setERVDiscountPrice", e.message);
     }
   }
 
@@ -746,6 +788,28 @@ define([
   }
 
   /**
+   * Check If payment info exist
+   * @param {string} cmId
+   * @return true if there is an existing payment for the credit memo
+   */
+  function checkExistingPaymentInfo(cmId) {
+    log.audit("checkExistingPaymentInfo", cmId);
+    try {
+      const transactionSearchObj = search.create({
+        type: "transaction",
+        filters: [
+          ["type", "anyof", "Custom107"],
+          "AND",
+          ["custbody_credit_memos", "anyof", cmId],
+        ],
+      });
+      return transactionSearchObj.runPaged().count > 0;
+    } catch (e) {
+      log.error("checkExistingPaymentInfo", e.message);
+    }
+  }
+
+  /**
    * Get Payment SUM based on Invoice
    * @param {string} invId
    */
@@ -890,6 +954,16 @@ define([
           fieldId: "rate",
           line: i,
         });
+        const ervDiscUnitPrice = currentRecord.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_erv_disc_unit_price",
+          line: i,
+        });
+        const ervDiscAmount = currentRecord.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_erv_disc_amount",
+          line: i,
+        });
         let amount = currentRecord.getSublistValue({
           sublistId: "item",
           fieldId: "amount",
@@ -969,6 +1043,8 @@ define([
             amount: amount,
             unitPrice: unitPrice,
             amountPaid: amountPaid,
+            ervDiscUnitPrice: ervDiscUnitPrice,
+            ervDiscAmount: ervDiscAmount,
             creditMemoReference: creditMemoReference,
             creditMemoParent: creditMemoParent,
           });
@@ -1002,6 +1078,201 @@ define([
       return itemInfo;
     } catch (e) {
       log.error("getSalesTransactionLine", e.message);
+    }
+  }
+
+  /**
+   * Transfrom invoice into credit memo and remove all of the item that is not mark as denied
+   * @param {object} options
+   * @param {string}options.invId
+   * @param {string}options.cmId
+   * @param {number}options.amount
+   * @param {number}options.itemId
+   * @param {number}options.creditType
+   * @param {number}options.invStatus
+   * @param {number}options.creditAdjustmentAmount
+   * @param {number}options.creditAdjustmentItem
+   * @return {string} credit memo Id
+   */
+  function createCreditMemoFromInv(options) {
+    log.audit("createCreditMemoFromInv", options);
+    let {
+      invId,
+      cmId,
+      amount,
+      itemId,
+      creditAdjustmentAmount,
+      creditAdjustmentItem,
+      creditType,
+      invStatus,
+    } = options;
+    try {
+      const objRecord = record.transform({
+        fromType: record.Type.INVOICE,
+        fromId: invId,
+        toType: record.Type.CREDIT_MEMO,
+        isDynamic: true,
+      });
+      objRecord.setValue({
+        fieldId: "custbody_credit_type",
+        value: creditType,
+      });
+      objRecord.setValue({
+        fieldId: "tobeemailed",
+        value: false,
+      });
+
+      for (let i = 0; i < objRecord.getLineCount("item"); i++) {
+        objRecord.removeLine({
+          sublistId: "item",
+          line: 0,
+        });
+      }
+      objRecord.selectLine({
+        sublistId: "item",
+        line: 0,
+      });
+      objRecord.setCurrentSublistValue({
+        sublistId: "item",
+        fieldId: "item",
+        value: itemId,
+      });
+      objRecord.setCurrentSublistValue({
+        sublistId: "item",
+        fieldId: "amount",
+        value: amount,
+      });
+      objRecord.commitLine({
+        sublistId: "item",
+      });
+      if (creditAdjustmentAmount != 0) {
+        objRecord.selectLine({
+          sublistId: "item",
+          line: 1,
+        });
+        objRecord.setCurrentSublistValue({
+          sublistId: "item",
+          fieldId: "item",
+          value: creditAdjustmentItem,
+        });
+        objRecord.setCurrentSublistValue({
+          sublistId: "item",
+          fieldId: "amount",
+          value: creditAdjustmentAmount,
+        });
+        objRecord.commitLine({
+          sublistId: "item",
+        });
+      }
+      cmId &&
+        objRecord.setValue({
+          fieldId: "custbody_credit_memos",
+          value: cmId,
+        });
+      const invIndex = objRecord.findSublistLineWithValue({
+        sublistId: "apply",
+        fieldId: "internalid",
+        value: invId,
+      });
+
+      objRecord.selectLine({
+        sublistId: "apply",
+        line: 0,
+      });
+      objRecord.setCurrentSublistValue({
+        sublistId: "apply",
+        fieldId: "apply",
+        value: false,
+      });
+      objRecord.commitLine({
+        sublistId: "apply",
+      });
+      log.audit(
+        "objRecord applied",
+        objRecord.getCurrentSublistValue({
+          sublistId: "apply",
+          fieldId: "apply",
+        })
+      );
+      if (invIndex !== 0) {
+        log.audit("Invoice index", invIndex);
+        objRecord.selectLine({
+          sublistId: "apply",
+          line: invIndex,
+        });
+        objRecord.setCurrentSublistValue({
+          sublistId: "apply",
+          fieldId: "apply",
+          value: true,
+        });
+        log.audit(
+          "objRecord applied invoice",
+          objRecord.getCurrentSublistValue({
+            sublistId: "apply",
+            fieldId: "apply",
+          })
+        );
+        objRecord.commitLine({
+          sublistId: "apply",
+        });
+      }
+
+      let Id = objRecord.save({
+        ignoreMandatoryFields: true,
+      });
+      log.audit("CM ID Created", Id);
+      if (invStatus) {
+        log.audit("Setting Invoice to Deny");
+        record.submitFields({
+          type: "invoice",
+          id: invId,
+          values: {
+            custbody_invoice_status: invStatus, //set the invoice status to denied
+          },
+        });
+      }
+      return Id;
+    } catch (e) {
+      log.error("createCreditMemoFromInv", e.message);
+    }
+  }
+
+  /**
+   * Get the accumulated total amount of the invoice that has cmMemo Applied to Id
+   * @param {object} options
+   * @param {string} options.cmId
+   * @param {string} options.invId
+   * @return total amount
+   */
+  function getInvoiceLineAmount(options) {
+    let { cmId, invId } = options;
+    log.audit("getInvoiceLineAmount", options);
+    let totalAmount = 0;
+    try {
+      const invRec = record.load({
+        type: record.Type.INVOICE,
+        id: invId,
+      });
+      for (let i = 0; i < invRec.getLineCount("item"); i++) {
+        const cmRef = invRec.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_credit_memo_reference",
+          line: i,
+        });
+        const amount = invRec.getSublistValue({
+          sublistId: "item",
+          fieldId: "amount",
+          line: i,
+        });
+        log.debug("line details", { cmRef, amount });
+        if (cmRef == cmId) {
+          totalAmount += amount;
+        }
+      }
+      log.debug("total amount", totalAmount);
+      return totalAmount;
+    } catch (e) {
+      log.error("getInvoiceLineAmount", e.message);
     }
   }
 
@@ -1100,24 +1371,24 @@ define([
           line: index,
           value: Number(cmLineId),
         });
-        invRec.setSublistValue({
-          sublistId: "item",
-          fieldId: "price",
-          line: index,
-          value: -1,
-        });
-        invRec.setSublistValue({
-          sublistId: "item",
-          fieldId: "rate",
-          line: index,
-          value: unitPrice,
-        });
-        invRec.setSublistValue({
-          sublistId: "item",
-          fieldId: "amount",
-          line: index,
-          value: amount,
-        });
+        // invRec.setSublistValue({
+        //   sublistId: "item",
+        //   fieldId: "price",
+        //   line: index,
+        //   value: -1,
+        // });
+        // invRec.setSublistValue({
+        //   sublistId: "item",
+        //   fieldId: "rate",
+        //   line: index,
+        //   value: unitPrice,
+        // });
+        // invRec.setSublistValue({
+        //   sublistId: "item",
+        //   fieldId: "amount",
+        //   line: index,
+        //   value: amount,
+        // });
       }
       invRec.save({
         ignoreMandatoryFields: true,
@@ -1192,7 +1463,7 @@ define([
         paymentRec.setCurrentSublistValue({
           sublistId: "line",
           fieldId: "account",
-          value: 940, //11260 Unapplied Credit
+          value: 122, //10300 Undeposited Funds
         });
         log.debug("paymentamount", paymentAmount);
         paymentRec.setCurrentSublistValue({
@@ -1209,7 +1480,7 @@ define([
         paymentRec.setCurrentSublistValue({
           sublistId: "line",
           fieldId: "account",
-          value: 119, //11000 Accounts Receivable
+          value: 940, //Unapplied Credits
         });
         paymentRec.setCurrentSublistValue({
           sublistId: "line",
@@ -2789,6 +3060,48 @@ define([
     }
   }
 
+  /**
+   * Remove CM from Invoice
+   * @param options
+   * @param {string} options.creditMemoId
+   * @param {string} options.invId
+   */
+  function removeCMFromInvoiceLine(options) {
+    let jsonParse = JSON.parse(options);
+    let { creditMemoId, invId } = jsonParse;
+    log.audit("removeCMFromInvoiceLine", options);
+
+    try {
+      const invRec = record.load({
+        type: record.Type.INVOICE,
+        id: invId,
+      });
+
+      for (let i = 0; i < invRec.getLineCount("item"); i++) {
+        const cmRef = invRec.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_cm_parent_id",
+          line: i,
+        });
+
+        log.debug("line details", cmRef);
+        if (cmRef == creditMemoId) {
+          invRec.setSublistValue({
+            sublistId: "item",
+            fieldId: "custcol_credit_memo_reference",
+            value: "",
+            line: i,
+          });
+        }
+      }
+      return invRec.save({
+        ignoreMandatoryFields: "true",
+      });
+    } catch (e) {
+      log.error("removeCMFromInvoiceLine", e.message);
+    }
+  }
+
   function isEmpty(stValue) {
     return (
       stValue === "" ||
@@ -2828,5 +3141,10 @@ define([
     createPayment: createPayment,
     checkExistingPayment: checkExistingPayment,
     getPaymentSum: getPaymentSum,
+    createCreditMemoFromInv: createCreditMemoFromInv,
+    getInvoiceLineAmount: getInvoiceLineAmount,
+    removeCMFromInvoiceLine: removeCMFromInvoiceLine,
+    checkExistingPaymentInfo: checkExistingPaymentInfo,
+    setERVDiscountPrice: setERVDiscountPrice,
   };
 });

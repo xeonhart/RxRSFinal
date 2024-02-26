@@ -53,7 +53,12 @@ define(["../rxrs_transaction_lib", "N/ui/serverWidget"], (
    */
   const beforeSubmit = (scriptContext) => {
     try {
-      rxrs_tran_lib.setPartialAmount(scriptContext.newRecord);
+      let rec = scriptContext.newRecord;
+      if (rec.getValue("custbody_plan_type") == 11) {
+        // GOVERNMENT
+        rec = rxrs_tran_lib.setERVDiscountPrice(rec);
+      }
+      rxrs_tran_lib.setPartialAmount(rec);
     } catch (e) {
       log.error("beforeSubmit", e.message);
     }
@@ -67,7 +72,61 @@ define(["../rxrs_transaction_lib", "N/ui/serverWidget"], (
    * @param {string} scriptContext.type - Trigger type; use values from the context.UserEventType enum
    * @since 2015.2
    */
-  const afterSubmit = (scriptContext) => {};
+  const afterSubmit = (scriptContext) => {
+    try {
+      const rec = scriptContext.newRecord;
+      log.debug("scriptContext", scriptContext.type);
+      if (scriptContext.type != "edit") return;
+      const status = rec.getValue("custbody_invoice_status");
+      let createCM = false;
+      let deniedAmount = 0;
+      if (status == 7 || status == 6 || status == 5) return;
+      for (let i = 0; i < rec.getLineCount("item"); i++) {
+        const linestatus = rec.getSublistValue({
+          sublistId: "item",
+          fieldId: "custcol_line_status",
+          line: i,
+        });
+        log.debug("status", status);
+        const amount = rec.getSublistValue({
+          sublistId: "item",
+          fieldId: "amount",
+          line: i,
+        });
+        if (!isEmpty(linestatus)) {
+          log.debug("linestatus", linestatus);
+          deniedAmount += amount;
+          createCM = true;
+        }
+      }
+      const DENIEDCREDITITEMID = 924;
+      if (createCM == true) {
+        rxrs_tran_lib.createCreditMemoFromInv({
+          invId: rec.id,
+          amount: deniedAmount,
+          itemId: DENIEDCREDITITEMID,
+          creditType: 1,
+          invStatus: 7,
+        });
+      }
+    } catch (e) {
+      log.error("afterSubmit", e.message);
+    }
+  };
 
-  return { beforeLoad, beforeSubmit };
+  function isEmpty(stValue) {
+    return (
+      stValue === "" ||
+      stValue == null ||
+      false ||
+      (stValue.constructor === Array && stValue.length == 0) ||
+      (stValue.constructor === Object &&
+        (function (v) {
+          for (var k in v) return false;
+          return true;
+        })(stValue))
+    );
+  }
+
+  return { beforeLoad, beforeSubmit, afterSubmit };
 });

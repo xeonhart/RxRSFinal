@@ -87,7 +87,8 @@ define([
   const createHeaderFields = (options) => {
     let form = options.form;
 
-    let { invId, type, tranId, total, isEdit, creditMemoId } = options.params;
+    let { invId, type, tranId, total, isEdit, creditMemoId, isGovernment } =
+      options.params;
     options.params.isReload = true;
 
     log.debug("createHeaderFields", options.params);
@@ -120,6 +121,7 @@ define([
           label: "Credit Memo",
           type: serverWidget.FieldType.SELECT,
         });
+
         const cmIds = rxrs_custom_rec.getAllCM(invId);
         log.emergency("cmIds", cmIds);
         let cmInternalIds = [];
@@ -146,7 +148,13 @@ define([
           }
         }
       }
-
+      if (JSON.parse(isGovernment) == true) {
+        const governmentField = (form.addField({
+          id: "custpage_is_government",
+          label: "Government",
+          type: serverWidget.FieldType.CHECKBOX,
+        }).defaultValue = "T");
+      }
       const packingSlipTotalField = form
         .addField({
           id: "custpage_packing_slip_total",
@@ -211,6 +219,17 @@ define([
         }
         if (cmParentInfo.serviceFee) {
           serviceFeeField.defaultValue = cmParentInfo.serviceFee;
+        }
+        const deleteParams = {
+          invId: invId,
+          creditMemoId: creditMemoId,
+        };
+        if (rxrs_tran_lib.checkExistingPaymentInfo(creditMemoId) == false) {
+          form.addButton({
+            id: "custpage_delete",
+            label: "Delete",
+            functionName: `deleteCreditMemo(${JSON.stringify(deleteParams)})`,
+          });
         }
       }
       let numOfRes = " ";

@@ -23,6 +23,7 @@ define([
   let suitelet = null;
   let lineCount = 0;
   let urlParams;
+  let isGovernment = false;
   const columnToDisable = [
     "custpage_full_partial",
     "custpage_package_size",
@@ -32,6 +33,8 @@ define([
     "custpage_amount_paid",
     "custpage_packing_slip_value",
     "custpage_packing_slip_price",
+    "custpage_erv_discounted_unit_price",
+    "custpage_erv_discounted_amount",
   ];
   const columnToDisableEnabled = [
     "custpage_unit_price",
@@ -42,6 +45,7 @@ define([
     "custpage_unit_price",
     "custpage_amount_paid",
   ];
+
   let isSelectedNeed = true;
 
   /**
@@ -78,6 +82,8 @@ define([
     suitelet = scriptContext.currentRecord;
     let cmCount = 0;
     let totalAmount = 0;
+    isGovernment = suitelet.getValue("custpage_is_government");
+
     lineCount = suitelet.getLineCount("custpage_items_sublist");
     for (let i = 0; i < lineCount; i++) {
       const parentCM = suitelet.getSublistValue({
@@ -102,13 +108,14 @@ define([
       } else {
         selectField.isDisabled = false;
       }
-      console.table(columnToDisable);
+      // console.table(columnToDisable);
       columnToDisable.forEach((fieldId) => {
         const itemField = suitelet.getSublistField({
           sublistId: "custpage_items_sublist",
           fieldId: fieldId,
           line: i,
         });
+
         if (
           fieldId == "custpage_unit_price" ||
           fieldId == "custpage_amount_paid"
@@ -153,10 +160,10 @@ define([
     try {
       console.log(scriptContext.fieldId);
       if (scriptContext.fieldId == "custpage_custom_amount") {
-        console.log("fieldChanged custpage_custom_amount");
+        //console.log("fieldChanged custpage_custom_amount");
         const customAmount = suitelet.getValue("custpage_custom_amount");
         const invAmount = suitelet.getValue("custpage_packing_slip_total");
-        console.table(customAmount, invAmount);
+        // console.table(customAmount, invAmount);
         for (let i = 0; i < lineCount; i++) {
           suitelet.selectLine({
             sublistId: "custpage_items_sublist",
@@ -168,21 +175,35 @@ define([
           });
           const percentage = lineTotal / invAmount;
           let newAmount = Number(percentage) * customAmount;
-          console.table(percentage, lineTotal);
+          //  console.table(percentage, lineTotal);
+
           suitelet.setCurrentSublistValue({
             sublistId: "custpage_items_sublist",
             fieldId: "custpage_amount_paid",
             value: newAmount.toFixed(2),
           });
+          if (isGovernment == true) {
+            console.log("erv amount " + newAmount * 0.15);
+            suitelet.setCurrentSublistValue({
+              sublistId: "custpage_items_sublist",
+              fieldId: "custpage_erv_discounted_amount",
+              value: newAmount * 0.15,
+            });
+          }
         }
       }
       if (scriptContext.fieldId == "custpage_credit_memo") {
         const creditMemoId = suitelet.getValue("custpage_credit_memo");
-        location.href = location.href + "&creditMemoId=" + creditMemoId;
+        let URL = removeParamFromURL(location.href, "creditMemoId");
+        URL += "&creditMemoId=" + creditMemoId;
+        // console.log("newURL: " + URL);
+        window.onbeforeunload = null;
+        window.open(URL, "_self");
       }
 
       if (scriptContext.sublistId === "custpage_items_sublist") {
-        console.log("FieldId" + scriptContext.fieldId);
+        //  console.log("FieldId" + scriptContext.fieldId);
+
         const currIndex = suitelet.getCurrentSublistIndex({
           sublistId: "custpage_items_sublist",
         });
@@ -227,7 +248,7 @@ define([
             sublistId: "custpage_items_sublist",
             fieldId: "custpage_package_size",
           });
-          console.log("packageSize", packageSize);
+          //  console.log("packageSize", packageSize);
           let quantity = suitelet.getCurrentSublistValue({
             sublistId: "custpage_items_sublist",
             fieldId: "custpage_full",
@@ -241,13 +262,13 @@ define([
             fieldId: "custpage_full_partial",
           });
 
-          console.table([
-            unitPrice,
-            packageSize,
-            quantity,
-            partialCount,
-            fullPartial,
-          ]);
+          // console.table([
+          //   unitPrice,
+          //   packageSize,
+          //   quantity,
+          //   partialCount,
+          //   fullPartial,
+          // ]);
           let newAmount = 0;
           if (fullPartial.includes("Part")) {
             newAmount =
@@ -260,12 +281,18 @@ define([
             sublistId: "custpage_items_sublist",
             fieldId: "custpage_packing_slip_value",
           });
-          console.table(newAmount, totalLineAmount);
+
+          // console.table(newAmount, totalLineAmount);
 
           suitelet.setCurrentSublistValue({
             sublistId: "custpage_items_sublist",
             fieldId: "custpage_amount_paid",
             value: newAmount.toFixed(2),
+          });
+          suitelet.setCurrentSublistValue({
+            sublistId: "custpage_items_sublist",
+            fieldId: "custpage_erv_discounted_amount",
+            value: newAmount * 0.15,
           });
           let totalAmount = 0;
           for (
@@ -288,6 +315,7 @@ define([
               totalAmount += Number(amount);
             }
           }
+
           totalAmount &&
             suitelet.setValue({
               fieldId: "custpage_amount",
@@ -303,7 +331,7 @@ define([
             sublistId: "custpage_items_sublist",
             fieldId: "custpage_package_size",
           });
-          console.log("packageSize", packageSize);
+          // console.log("packageSize", packageSize);
           let quantity = suitelet.getCurrentSublistValue({
             sublistId: "custpage_items_sublist",
             fieldId: "custpage_full",
@@ -317,13 +345,13 @@ define([
             fieldId: "custpage_full_partial",
           });
 
-          console.table([
-            amountPaid,
-            packageSize,
-            quantity,
-            partialCount,
-            fullPartial,
-          ]);
+          // console.table([
+          //   amountPaid,
+          //   packageSize,
+          //   quantity,
+          //   partialCount,
+          //   fullPartial,
+          // ]);
           let unitPrice = 0;
           if (fullPartial.includes("Part")) {
             unitPrice =
@@ -336,13 +364,20 @@ define([
             sublistId: "custpage_items_sublist",
             fieldId: "custpage_packing_slip_value",
           });
-          console.table(amountPaid, totalLineAmount);
+          // console.table(amountPaid, totalLineAmount);
 
           suitelet.setCurrentSublistValue({
             sublistId: "custpage_items_sublist",
             fieldId: "custpage_unit_price",
             value: unitPrice.toFixed(2),
           });
+          if (isGovernment == true) {
+            suitelet.setCurrentSublistValue({
+              sublistId: "custpage_items_sublist",
+              fieldId: "custpage_erv_discounted_unit_price",
+              value: (unitPrice * 0.15).toFixed(2),
+            });
+          }
           let totalAmount = 0;
           for (
             let i = 0;
@@ -364,6 +399,7 @@ define([
               totalAmount += Number(amount);
             }
           }
+
           totalAmount &&
             suitelet.setValue({
               fieldId: "custpage_amount",
@@ -423,7 +459,7 @@ define([
           url: URL,
         });
         if (response) {
-          console.log(response);
+          //console.log(response);
           jQuery("body").loadingModal("destroy");
           if (response.body.includes("ERROR")) {
             error += 1;
@@ -495,6 +531,7 @@ define([
         cmInfo.serviceFee = suitelet.getValue("custpage_service_fee");
         cmInfo.dateIssued = suitelet.getText("custpage_issued_on");
         cmInfo.fileId = suitelet.getValue("custpage_file_upload");
+        cmInfo.isGovernment = isGovernment;
       }
       if (isEdit == "false")
         if (
@@ -515,6 +552,7 @@ define([
       //   alert("Please enter value for mandatory fields");
       //   return;
       // }
+      let packingSlipAmountTotal = 0;
       let total = 0;
       const SUBLIST = "custpage_items_sublist";
       try {
@@ -539,22 +577,33 @@ define([
             fieldId: "custpage_itemid",
             line: i,
           });
+
           let unitPrice = suitelet.getSublistValue({
             sublistId: SUBLIST,
             fieldId: "custpage_unit_price",
             line: i,
           });
+
           let amountApplied = suitelet.getSublistValue({
             sublistId: SUBLIST,
             fieldId: "custpage_amount_paid",
             line: i,
           });
-
+          if (isGovernment == true) {
+            unitPrice *= 0.15;
+            amountApplied *= 0.15;
+          }
           let cmLineId = suitelet.getSublistValue({
             sublistId: SUBLIST,
             fieldId: "custpage_credit_memo",
             line: i,
           });
+          const packingSlipAmount = suitelet.getSublistValue({
+            sublistId: SUBLIST,
+            fieldId: "custpage_packing_slip_value",
+            line: i,
+          });
+
           const cmParentId = suitelet.getSublistValue({
             sublistId: SUBLIST,
             fieldId: "custpage_credit_memo_parent",
@@ -564,6 +613,7 @@ define([
 
           if (isSelected == false) continue;
           total += Number(amountApplied);
+          packingSlipAmountTotal += Number(packingSlipAmount);
           console.log("isEdit:" + isEdit);
           if (isEdit == "true") {
             console.log("isEdited");
@@ -590,8 +640,9 @@ define([
             });
           }
         }
+        parentParams.forCreation.packingSlipAmount = packingSlipAmountTotal;
         parentParams.forCreation.amount = total;
-        console.table(selectedLine);
+        //console.table(selectedLine);
         let m = message.create({
           type: message.Type.WARNING,
           title: "WARNING",
@@ -663,6 +714,47 @@ define([
     );
   }
 
+  /**
+   *
+   * @param options
+   */
+  function deleteCreditMemo(options) {
+    alert(JSON.stringify(options));
+    try {
+      let deleteParams = {
+        deleteParams: JSON.stringify(options),
+        action: "deleteCreditMemo",
+        isReload: true,
+      };
+      handleButtonClick();
+      let stSuiteletUrl = url.resolveScript({
+        scriptId: "customscript_sl_cs_custom_function",
+        deploymentId: "customdeploy_sl_cs_custom_function",
+        params: deleteParams,
+      });
+
+      let errorCount = postURL({ URL: stSuiteletUrl });
+
+      setTimeout(function () {
+        opener.location.reload();
+        setTimeout(function () {
+          window.close();
+        }, 2000);
+      }, 5000);
+    } catch (e) {
+      console.error("deleteCreditMemo", e.message);
+    }
+  }
+
+  function removeParamFromURL(url, param) {
+    const [path, searchParams] = url.split("?");
+    const newSearchParams = searchParams
+      ?.split("&")
+      .filter((p) => !(p === param || p.startsWith(`${param}=`)))
+      .join("&");
+    return newSearchParams ? `${path}?${newSearchParams}` : path;
+  }
+
   return {
     pageInit: pageInit,
     fieldChanged: fieldChanged,
@@ -670,5 +762,6 @@ define([
     createCreditMemo: createCreditMemo,
     markAll: markAll,
     edit: edit,
+    deleteCreditMemo: deleteCreditMemo,
   };
 });

@@ -38,14 +38,25 @@ define(
       partialPkg: '2',
     };
 
+    // Non-Returnable Reason List > https://6816904.app.netsuite.com/app/common/custom/custrecordentrylist.nl?rectype=406
+    const nonReturnableReasonList = {
+      mfgNotAllowReturn: '1',
+      mfgNotAllowPartialReturn: '2',
+      itemDrugNotAcceptable: '3',
+      pharmaIsPrepaidOrDestruction: '4',
+      itemIsOutdated: '5',
+      itemIsBeyondHandicappedPeriod: '6',
+    };
+
     const stateRuleIncludedFromPartial = ['MS', 'GA', 'NC'];
     const planSelectTypePharmaQuickCash = '4';
 
-    const validateSystemDateProcess = (expirationDate, pharmaValue, mfgValue) => {
+    const validateSystemDateProcess = (expirationDate, pharmaValue, mfgValue, nonRetValue) => {
       const logTitle = 'validateSystemDateProcess';
       const returnObj = {
         finalPharmaValue: pharmaValue,
         finalMfgValue: mfgValue,
+        finalNonRetValue: nonRetValue,
         inDateCb: false,
         overrideExpirationDate: false,
         dates: {},
@@ -117,6 +128,7 @@ define(
         returnObj.finalMfgValue = processingRequestList.returnable;
         // System Date within Handicap Days?
         if (systemDate >= handicapStartDate && systemDate <= handicapEndDate) {
+          returnObj.finalNonRetValue = nonReturnableReasonList.itemIsBeyondHandicappedPeriod;
           returnObj.finalPharmaValue = processingRequestList.nonReturnable;
         } else {
           returnObj.finalPharmaValue = processingRequestList.returnable;
@@ -137,6 +149,7 @@ define(
           title: logTitle,
           details: 'After End Of Returnable Period',
         });
+        returnObj.finalNonRetValue = nonReturnableReasonList.itemIsOutdated;
         returnObj.finalPharmaValue = processingRequestList.nonReturnable;
         returnObj.finalMfgValue = processingRequestList.nonReturnable;
       }
@@ -199,6 +212,7 @@ define(
 
       let finalPharmaProcessingValue = '';
       let finalMfgProcessingValue = '';
+      let finalNonReturnableValue = '';
       let scanInDate = false;
       let overrideExpDate = false;
       let datesObj = {};
@@ -238,271 +252,285 @@ define(
         fieldId: 'custrecord_cs__rqstprocesing',
       });
 
-      log.debug({
-        title: `Before Return Policy Checking ${returnPolicyValue}`,
-        details: sharedFuncUtil.isNotEmpty(returnPolicyValue),
-      });
-
-      // Set Return Policy
-      if (sharedFuncUtil.isNotEmpty(returnPolicyValue)) {
-        const loadReturnPolicy = record.load({
-          type: 'customrecord_kod_returnpolicy_cr',
-          id: returnPolicyValue,
+      try {
+        log.debug({
+          title: `Before Return Policy Checking ${returnPolicyValue}`,
+          details: sharedFuncUtil.isNotEmpty(returnPolicyValue),
         });
-        const notAllowReturnBool = loadReturnPolicy.getValue({
-          fieldId: 'custrecord_kd_notallowsrtrn',
-        });
-        const allowsPartialBool = loadReturnPolicy.getValue({
-          fieldId: 'custrecord_kd_partialallowed',
-        });
-        // MFG Allow Returns
-        if (sharedFuncUtil.isFalse(notAllowReturnBool)) {
-          log.debug({
-            title: 'Verify Entity ID',
-            details: entityId,
-          });
 
-          const loadEntityRec = record.load({
-            type: search.Type.CUSTOMER,
-            id: entityId,
-            isDynamic: true,
+        // Set Return Policy
+        if (sharedFuncUtil.isNotEmpty(returnPolicyValue)) {
+          const loadReturnPolicy = record.load({
+            type: 'customrecord_kod_returnpolicy_cr',
+            id: returnPolicyValue,
           });
-          const planSelectionType = loadEntityRec.getValue({
-            fieldId: 'custentity_planselectiontype',
+          const notAllowReturnBool = loadReturnPolicy.getValue({
+            fieldId: 'custrecord_kd_notallowsrtrn',
           });
-
-          // Check Address Exists
-          const entityState = getState(loadEntityRec);
-
-          const loadItemRecord = search.lookupFields({
-            type: search.Type.ITEM,
-            id: itemId,
-            columns: ['custitem_kod_returnable', 'custitem_kd_prescription_otc'],
+          const allowsPartialBool = loadReturnPolicy.getValue({
+            fieldId: 'custrecord_kd_partialallowed',
           });
+          // MFG Allow Returns
+          if (sharedFuncUtil.isFalse(notAllowReturnBool)) {
+            log.debug({
+              title: 'Verify Entity ID',
+              details: entityId,
+            });
 
-          log.debug({
-            title: logTitle,
-            details: `Verify for Quick Cash EID ${planSelectionType} - \n default ${planSelectTypePharmaQuickCash}`,
-          });
+            const loadEntityRec = record.load({
+              type: search.Type.CUSTOMER,
+              id: entityId,
+              isDynamic: true,
+            });
+            const planSelectionType = loadEntityRec.getValue({
+              fieldId: 'custentity_planselectiontype',
+            });
 
-          // Check Entity Plan Selection Type
-          if (planSelectionType === planSelectTypePharmaQuickCash) {
+            // Check Address Exists
+            const entityState = getState(loadEntityRec);
+
+            const loadItemRecord = search.lookupFields({
+              type: search.Type.ITEM,
+              id: itemId,
+              columns: ['custitem_kod_returnable', 'custitem_kd_prescription_otc'],
+            });
+
             log.debug({
               title: logTitle,
-              details: 'Plan Selection Type for Entity is Quick Cash',
+              details: `Verify for Quick Cash EID ${planSelectionType} - \n default ${planSelectTypePharmaQuickCash}`,
             });
-            finalPharmaProcessingValue = processingRequestList.nonReturnable;
-            verifyEntityQuickCash = true;
-          }
 
-          // Check Item Returnable
-          if (sharedFuncUtil.isTrue(loadItemRecord.custitem_kod_returnable)) {
-            // Check if Damaged Item
-            if (sharedFuncUtil.isTrue(damagedItemBool)) {
-              if (damageType === damageCodesList.illegibleLot) {
-                log.debug({
-                  title: logTitle,
-                  details: 'Damage Type is Illegible Lot',
-                });
-                finalPharmaProcessingValue = processingRequestList.nonReturnable;
-                finalMfgProcessingValue = processingRequestList.returnable;
-
-              // (damageType === damageCodesList.containsPatientLabel)
-              } else {
-                log.debug({
-                  title: logTitle,
-                  details: 'Damage Type Contains Patient Label',
-                });
-                finalPharmaProcessingValue = processingRequestList.nonReturnable;
-                finalMfgProcessingValue = processingRequestList.nonReturnable;
-              }
-            } else {
-              const isOtcAllowed = loadReturnPolicy.getValue({
-                fieldId: 'custrecord_kod_otcallowed',
-              });
-              const isStateIncluded = stateRuleIncludedFromPartial.includes(entityState);
+            // Check Entity Plan Selection Type
+            if (planSelectionType === planSelectTypePharmaQuickCash) {
               log.debug({
                 title: logTitle,
-                details: {
-                  title: 'Per Logic Validation',
-                  logic1Name: `${loadItemRecord.custitem_kd_prescription_otc[0].value}
-                  === ${prescriptionOtcList.otc}
-                  && sharedFuncUtil.isFalse(${isOtcAllowed})`,
-                  logic1: loadItemRecord.custitem_kd_prescription_otc === prescriptionOtcList.otc
-                  && sharedFuncUtil.isFalse(isOtcAllowed),
-                  logic2Name: `${fullPartialListValue} === ${fullPartialList.fullPkg}
-                  && ${allowsPartialBool} === true`,
-                  logic2: fullPartialListValue === fullPartialList.fullPkg
-                  && sharedFuncUtil.isTrue(allowsPartialBool),
-                  logic3Name: `(${fullPartialListValue} === ${fullPartialList.partialPkg}
-                    && ${allowsPartialBool} === true) && !(quantity >= packageSize)`,
-                  logic3: (fullPartialListValue === fullPartialList.partialPkg
-                    && allowsPartialBool === true) && !(quantity >= packageSize),
-                  logic4Name: `(fullPartialListValue === fullPartialList.partialPkg
-                    && allowsPartialBool === false)
-                    && (!isStateIncluded || !(quantity >= packageSize))`,
-                  logic4: (fullPartialListValue === fullPartialList.partialPkg
-                    && allowsPartialBool === false)
-                    && (!isStateIncluded || !(quantity >= packageSize)),
-                },
+                details: 'Plan Selection Type for Entity is Quick Cash',
               });
-              // Proceed on checking Product = OTC / or Prescription
-              if (loadItemRecord.custitem_kd_prescription_otc[0].value === prescriptionOtcList.otc
-                && sharedFuncUtil.isFalse(isOtcAllowed)) {
-                log.debug({
-                  title: logTitle,
-                  details: 'Prescription is OTC and OTC is Not Allowed',
-                });
-                finalPharmaProcessingValue = processingRequestList.nonReturnable;
-                finalMfgProcessingValue = processingRequestList.nonReturnable;
-                // Item is Full or Partial
-              } else if (fullPartialListValue === fullPartialList.fullPkg
-                && sharedFuncUtil.isTrue(allowsPartialBool)) {
-                // Set Mfg Processing = Non-Returnable
-                log.debug({
-                  title: logTitle,
-                  details: 'Package is Full and Allow Partial is True',
-                });
-                finalPharmaProcessingValue = processingRequestList.nonReturnable;
-                finalMfgProcessingValue = processingRequestList.nonReturnable;
-              } else if ((fullPartialListValue === fullPartialList.partialPkg
-                && sharedFuncUtil.isTrue(allowsPartialBool)) && !(quantity >= packageSize)) {
-                log.debug({
-                  title: logTitle,
-                  details: `Package is Partial and Allow Partial is True and 
-                  Quantity is not greater or equal then Package Size`,
-                });
-                finalPharmaProcessingValue = processingRequestList.nonReturnable;
-                finalMfgProcessingValue = processingRequestList.nonReturnable;
-              } else if ((fullPartialListValue === fullPartialList.partialPkg
-                && sharedFuncUtil.isFalse(allowsPartialBool))
-                && (!isStateIncluded || !(quantity >= packageSize))) {
-                // Customer State = MS or GA, or NC
-                // Mississippi MS
-                // GA - Georgia
-                // NC - North Carolina
+              finalNonReturnableValue = nonReturnableReasonList.pharmaIsPrepaidOrDestruction;
+              finalPharmaProcessingValue = processingRequestList.nonReturnable;
+              verifyEntityQuickCash = true;
+            }
 
-                log.debug({
-                  title: logTitle,
-                  details: `Package is Partial and Allow Partial is False and 
-                  Quantity is not greater or equal then Package Size or Not Included in
-                  the state selection.`,
-                });
-                finalPharmaProcessingValue = processingRequestList.nonReturnable;
-                finalMfgProcessingValue = processingRequestList.nonReturnable;
+            // Check Item Returnable
+            if (sharedFuncUtil.isTrue(loadItemRecord.custitem_kod_returnable)) {
+              // Check if Damaged Item
+              if (sharedFuncUtil.isTrue(damagedItemBool)) {
+                if (damageType === damageCodesList.illegibleLot) {
+                  log.debug({
+                    title: logTitle,
+                    details: 'Damage Type is Illegible Lot',
+                  });
+                  finalPharmaProcessingValue = processingRequestList.nonReturnable;
+                  finalMfgProcessingValue = processingRequestList.returnable;
+
+                // (damageType === damageCodesList.containsPatientLabel)
+                } else {
+                  log.debug({
+                    title: logTitle,
+                    details: 'Damage Type Contains Patient Label',
+                  });
+                  finalPharmaProcessingValue = processingRequestList.nonReturnable;
+                  finalMfgProcessingValue = processingRequestList.nonReturnable;
+                }
               } else {
+                const isOtcAllowed = loadReturnPolicy.getValue({
+                  fieldId: 'custrecord_kod_otcallowed',
+                });
+                const isStateIncluded = stateRuleIncludedFromPartial.includes(entityState);
                 log.debug({
                   title: logTitle,
-                  details: 'Reached all is returnable',
+                  details: {
+                    title: 'Per Logic Validation',
+                    logic1Name: `${loadItemRecord.custitem_kd_prescription_otc[0].value}
+                    === ${prescriptionOtcList.otc}
+                    && sharedFuncUtil.isFalse(${isOtcAllowed})`,
+                    logic1: loadItemRecord.custitem_kd_prescription_otc === prescriptionOtcList.otc
+                    && sharedFuncUtil.isFalse(isOtcAllowed),
+                    logic2Name: `${fullPartialListValue} === ${fullPartialList.fullPkg}
+                    && ${allowsPartialBool} === true`,
+                    logic2: fullPartialListValue === fullPartialList.fullPkg
+                    && sharedFuncUtil.isTrue(allowsPartialBool),
+                    logic3Name: `(${fullPartialListValue} === ${fullPartialList.partialPkg}
+                      && ${allowsPartialBool} === true) && !(quantity >= packageSize)`,
+                    logic3: (fullPartialListValue === fullPartialList.partialPkg
+                      && allowsPartialBool === true) && !(quantity >= packageSize),
+                    logic4Name: `(fullPartialListValue === fullPartialList.partialPkg
+                      && allowsPartialBool === false)
+                      && (!isStateIncluded || !(quantity >= packageSize))`,
+                    logic4: (fullPartialListValue === fullPartialList.partialPkg
+                      && allowsPartialBool === false)
+                      && (!isStateIncluded || !(quantity >= packageSize)),
+                  },
                 });
+                // Proceed on checking Product = OTC / or Prescription
+                if (loadItemRecord.custitem_kd_prescription_otc[0].value === prescriptionOtcList.otc
+                  && sharedFuncUtil.isFalse(isOtcAllowed)) {
+                  log.debug({
+                    title: logTitle,
+                    details: 'Prescription is OTC and OTC is Not Allowed',
+                  });
+                  finalPharmaProcessingValue = processingRequestList.nonReturnable;
+                  finalMfgProcessingValue = processingRequestList.nonReturnable;
+                  // Item is Full or Partial
+                } else if (fullPartialListValue === fullPartialList.fullPkg
+                  && sharedFuncUtil.isTrue(allowsPartialBool)) {
+                  // Set Mfg Processing = Non-Returnable
+                  log.debug({
+                    title: logTitle,
+                    details: 'Package is Full and Allow Partial is True',
+                  });
+                  finalPharmaProcessingValue = processingRequestList.nonReturnable;
+                  finalMfgProcessingValue = processingRequestList.nonReturnable;
+                  finalNonReturnableValue = nonReturnableReasonList.mfgNotAllowPartialReturn;
+                } else if ((fullPartialListValue === fullPartialList.partialPkg
+                  && sharedFuncUtil.isTrue(allowsPartialBool)) && !(quantity >= packageSize)) {
+                  log.debug({
+                    title: logTitle,
+                    details: `Package is Partial and Allow Partial is True and 
+                    Quantity is not greater or equal then Package Size`,
+                  });
+                  finalPharmaProcessingValue = processingRequestList.nonReturnable;
+                  finalMfgProcessingValue = processingRequestList.nonReturnable;
+                } else if ((fullPartialListValue === fullPartialList.partialPkg
+                  && sharedFuncUtil.isFalse(allowsPartialBool))
+                  && (!isStateIncluded || !(quantity >= packageSize))) {
+                  // Customer State = MS or GA, or NC
+                  // Mississippi MS
+                  // GA - Georgia
+                  // NC - North Carolina
 
-                finalPharmaProcessingValue = processingRequestList.returnable;
-                finalMfgProcessingValue = processingRequestList.returnable;
+                  log.debug({
+                    title: logTitle,
+                    details: `Package is Partial and Allow Partial is False and 
+                    Quantity is not greater or equal then Package Size or Not Included in
+                    the state selection.`,
+                  });
+                  finalPharmaProcessingValue = processingRequestList.nonReturnable;
+                  finalMfgProcessingValue = processingRequestList.nonReturnable;
+                } else {
+                  log.debug({
+                    title: logTitle,
+                    details: 'Reached all is returnable',
+                  });
 
-                // System Date within Returnable Period Logic
-                const getReturnObj = validateSystemDateProcess(
-                  expirationDate,
-                  finalPharmaProcessingValue,
-                  finalMfgProcessingValue,
-                );
+                  finalPharmaProcessingValue = processingRequestList.returnable;
+                  finalMfgProcessingValue = processingRequestList.returnable;
 
-                finalPharmaProcessingValue = getReturnObj.finalPharmaValue;
-                finalMfgProcessingValue = getReturnObj.finalMfgValue;
-                scanInDate = getReturnObj.inDateCb;
-                overrideExpDate = getReturnObj.overrideExpirationDate;
-                datesObj = getReturnObj.dates;
+                  // System Date within Returnable Period Logic
+                  const getReturnObj = validateSystemDateProcess(
+                    expirationDate,
+                    finalPharmaProcessingValue,
+                    finalMfgProcessingValue,
+                    finalNonReturnableValue,
+                  );
+
+                  finalPharmaProcessingValue = getReturnObj.finalPharmaValue;
+                  finalMfgProcessingValue = getReturnObj.finalMfgValue;
+                  finalNonReturnableValue = getReturnObj.finalNonRetValue;
+                  scanInDate = getReturnObj.inDateCb;
+                  overrideExpDate = getReturnObj.overrideExpirationDate;
+                  datesObj = getReturnObj.dates;
+                }
               }
+            } else {
+              finalNonReturnableValue = nonReturnableReasonList.itemDrugNotAcceptable;
+              log.debug({
+                title: logTitle,
+                details: 'Item is NOT Returnable',
+              });
+
+              finalPharmaProcessingValue = processingRequestList.nonReturnable;
+              finalMfgProcessingValue = processingRequestList.nonReturnable;
             }
           } else {
             log.debug({
               title: logTitle,
-              details: 'Item is NOT Returnable',
+              details: 'Return Policy does not allow Return',
             });
 
+            finalNonReturnableValue = nonReturnableReasonList.mfgNotAllowReturn;
             finalPharmaProcessingValue = processingRequestList.nonReturnable;
             finalMfgProcessingValue = processingRequestList.nonReturnable;
           }
         } else {
           log.debug({
             title: logTitle,
-            details: 'Return Policy does not allow Return',
+            details: 'There is no return Policy',
           });
 
           finalPharmaProcessingValue = processingRequestList.nonReturnable;
           finalMfgProcessingValue = processingRequestList.nonReturnable;
         }
-      } else {
+
+        // Check if Entity is Quick Cash
+        if (sharedFuncUtil.isTrue(verifyEntityQuickCash)) {
+          finalPharmaProcessingValue = processingRequestList.nonReturnable;
+        }
+
+        // Override via Checkbox
+        if (sharedFuncUtil.isTrue(overridePhrm)) {
+          finalPharmaProcessingValue = currentPhrmValue;
+        }
+
+        // Set Field Values
+        currentRecord.setValue({
+          fieldId: 'custrecord_cs__rqstprocesing',
+          value: finalPharmaProcessingValue,
+        });
+        currentRecord.setValue({
+          fieldId: 'custrecord_cs__mfgprocessing',
+          value: finalMfgProcessingValue,
+        });
+        currentRecord.setValue({
+          fieldId: 'custrecord_scannonreturnreason',
+          value: finalNonReturnableValue,
+        });
+        currentRecord.setValue({
+          fieldId: 'custrecord_scanindated',
+          value: scanInDate,
+        });
+
+        if (sharedFuncUtil.isTrue(overrideExpDate)) {
+          currentRecord.setValue({
+            fieldId: 'custrecord_cs_expiration_date',
+            value: datesObj.returnableStartDate,
+          });
+        }
+
+        // Set Date Fields
+
+        if (sharedFuncUtil.isTrue(scanInDate)) {
+          currentRecord.setValue({
+            fieldId: 'custrecord_cs_expiration_date',
+            value: datesObj.returnableStartDate,
+          });
+        }
+
         log.debug({
-          title: logTitle,
-          details: 'There is no return Policy',
+          title: 'scanInDate and datesObj',
+          details: `${scanInDate} --- ${datesObj}`,
         });
 
-        finalPharmaProcessingValue = processingRequestList.nonReturnable;
-        finalMfgProcessingValue = processingRequestList.nonReturnable;
-      }
-
-      // Check if Entity is Quick Cash
-      if (sharedFuncUtil.isTrue(verifyEntityQuickCash)) {
-        finalPharmaProcessingValue = processingRequestList.nonReturnable;
-      }
-
-      // Override via Checkbox
-      if (sharedFuncUtil.isTrue(overridePhrm)) {
-        finalPharmaProcessingValue = currentPhrmValue;
-      }
-
-      // Set Field Values
-      currentRecord.setValue({
-        fieldId: 'custrecord_cs__rqstprocesing',
-        value: finalPharmaProcessingValue,
-      });
-      currentRecord.setValue({
-        fieldId: 'custrecord_cs__mfgprocessing',
-        value: finalMfgProcessingValue,
-      });
-      currentRecord.setValue({
-        fieldId: 'custrecord_scanindated',
-        value: scanInDate,
-      });
-
-      if (sharedFuncUtil.isTrue(overrideExpDate)) {
-        currentRecord.setValue({
-          fieldId: 'custrecord_cs_expiration_date',
-          value: datesObj.returnableStartDate,
-        });
-      }
-
-      // Set Date Fields
-
-      if (sharedFuncUtil.isTrue(scanInDate)) {
-        currentRecord.setValue({
-          fieldId: 'custrecord_cs_expiration_date',
-          value: datesObj.returnableStartDate,
-        });
-      }
-
-      log.debug({
-        title: 'scanInDate and datesObj',
-        details: `${scanInDate} --- ${datesObj}`,
-      });
-
-      if (sharedFuncUtil.isNotEmpty(datesObj)) {
-        currentRecord.setValue({
-          fieldId: 'custrecord_ret_start_date',
-          value: datesObj.returnableStartDate,
-        });
-        currentRecord.setValue({
-          fieldId: 'custrecord_ret_end_date',
-          value: datesObj.returnableEndDate,
-        });
-        currentRecord.setValue({
-          fieldId: 'custrecord_hand_start_date',
-          value: datesObj.handicapStartDate,
-        });
-        currentRecord.setValue({
-          fieldId: 'custrecord_hand_end_date',
-          value: datesObj.handicapEndDate,
-        });
+        if (sharedFuncUtil.isNotEmpty(datesObj)) {
+          currentRecord.setValue({
+            fieldId: 'custrecord_ret_start_date',
+            value: datesObj.returnableStartDate,
+          });
+          currentRecord.setValue({
+            fieldId: 'custrecord_ret_end_date',
+            value: datesObj.returnableEndDate,
+          });
+          currentRecord.setValue({
+            fieldId: 'custrecord_hand_start_date',
+            value: datesObj.handicapStartDate,
+          });
+          currentRecord.setValue({
+            fieldId: 'custrecord_hand_end_date',
+            value: datesObj.handicapEndDate,
+          });
+        }
+      } catch (e) {
+        log.error({ title: 'ue after submit', details: e });
       }
     };
 

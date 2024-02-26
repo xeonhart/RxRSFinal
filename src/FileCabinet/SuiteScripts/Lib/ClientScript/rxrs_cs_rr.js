@@ -224,7 +224,7 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
         window.open(url, "_blank", "width=1500,height=1200,left=100,top=1000");
         break;
       case "add222FormReference":
-        window.open(url, "_blank", "width=1500,height=1200,left=100,top=1000");
+        window.open(url, "_blank", "width=2000,height=1200,left=100,top=1000");
         break;
       case "splitPayment":
         window.open(url, "_blank", "width=1500,height=1200,left=100,top=1000");

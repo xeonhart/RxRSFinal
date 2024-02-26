@@ -268,6 +268,10 @@ define([
     }
   }
 
+  function hey() {
+    alert("test");
+  }
+
   function destroyModal() {
     jQuery("#_loading_dialog").dialog("destroy");
   }
