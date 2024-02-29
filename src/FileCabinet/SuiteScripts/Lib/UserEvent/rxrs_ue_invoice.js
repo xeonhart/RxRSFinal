@@ -16,10 +16,11 @@ define(["../rxrs_transaction_lib", "N/ui/serverWidget"], (
    * @since 2015.2
    */
   const beforeLoad = (context) => {
+    const curRec = context.newRecord;
     let src;
+
     try {
       if (context.type === "view" || context.type === "edit") {
-        const curRec = context.newRecord;
         const status = curRec.getText("custbody_invoice_status");
         log.debug("status", status);
         if (status) {

@@ -33,8 +33,8 @@ define([
     "custpage_amount_paid",
     "custpage_packing_slip_value",
     "custpage_packing_slip_price",
-    "custpage_erv_discounted_unit_price",
-    "custpage_erv_discounted_amount",
+    // "custpage_erv_discounted_unit_price",
+    // "custpage_erv_discounted_amount",
   ];
   const columnToDisableEnabled = [
     "custpage_unit_price",
@@ -91,6 +91,12 @@ define([
         fieldId: "custpage_credit_memo_parent",
         line: i,
       });
+      const fullPartial = suitelet.getSublistText({
+        sublistId: "custpage_items_sublist",
+        fieldId: "custpage_full_partial",
+        line: i,
+      });
+
       const selectField = suitelet.getSublistField({
         sublistId: "custpage_items_sublist",
         fieldId: "custpage_select",
@@ -108,17 +114,28 @@ define([
       } else {
         selectField.isDisabled = false;
       }
-      // console.table(columnToDisable);
-      columnToDisable.forEach((fieldId) => {
+
+      for (let a = 0; a < columnToDisable.length; a++) {
         const itemField = suitelet.getSublistField({
           sublistId: "custpage_items_sublist",
-          fieldId: fieldId,
+          fieldId: columnToDisable[a],
           line: i,
         });
-
         if (
-          fieldId == "custpage_unit_price" ||
-          fieldId == "custpage_amount_paid"
+          fullPartial.includes("Full") &&
+          columnToDisable[a] == "custpage_full"
+        ) {
+          continue;
+        }
+        if (
+          !fullPartial.includes("Full") &&
+          columnToDisable[a] == "custpage_partial"
+        ) {
+          continue;
+        }
+        if (
+          columnToDisable[a] == "custpage_unit_price" ||
+          columnToDisable[a] == "custpage_amount_paid"
         ) {
           if (parentCM) {
             itemField.isDisabled = false;
@@ -128,8 +145,9 @@ define([
         } else {
           itemField.isDisabled = true;
         }
-      });
+      }
     }
+
     suitelet.setValue({
       fieldId: "custpage_amount",
       value: +totalAmount,
@@ -182,14 +200,14 @@ define([
             fieldId: "custpage_amount_paid",
             value: newAmount.toFixed(2),
           });
-          if (isGovernment == true) {
-            console.log("erv amount " + newAmount * 0.15);
-            suitelet.setCurrentSublistValue({
-              sublistId: "custpage_items_sublist",
-              fieldId: "custpage_erv_discounted_amount",
-              value: newAmount * 0.15,
-            });
-          }
+          // if (isGovernment == true) {
+          //   console.log("erv amount " + newAmount * 0.15);
+          //   suitelet.setCurrentSublistValue({
+          //     sublistId: "custpage_items_sublist",
+          //     fieldId: "custpage_erv_discounted_amount",
+          //     value: newAmount * 0.15,
+          //   });
+          // }
         }
       }
       if (scriptContext.fieldId == "custpage_credit_memo") {
@@ -207,14 +225,48 @@ define([
         const currIndex = suitelet.getCurrentSublistIndex({
           sublistId: "custpage_items_sublist",
         });
+        let unitPrice = suitelet.getCurrentSublistValue({
+          sublistId: "custpage_items_sublist",
+          fieldId: "custpage_unit_price",
+        });
+        let packageSize = suitelet.getCurrentSublistValue({
+          sublistId: "custpage_items_sublist",
+          fieldId: "custpage_package_size",
+        });
+
+        let quantity = suitelet.getCurrentSublistValue({
+          sublistId: "custpage_items_sublist",
+          fieldId: "custpage_full",
+        });
+        let partialCount = suitelet.getCurrentSublistValue({
+          sublistId: "custpage_items_sublist",
+          fieldId: "custpage_partial",
+        });
+        let fullPartial = suitelet.getCurrentSublistText({
+          sublistId: "custpage_items_sublist",
+          fieldId: "custpage_full_partial",
+        });
+        if (scriptContext.fieldId == "custpage_partial") {
+          let creditAmount = (partialCount / packageSize) * +unitPrice;
+          console.table(partialCount, packageSize, unitPrice);
+          suitelet.setCurrentSublistValue({
+            sublistId: "custpage_items_sublist",
+            fieldId: "custpage_amount_paid",
+            value: creditAmount.toFixed(2),
+          });
+        }
+        if (scriptContext.fieldId == "custpage_full") {
+          let creditAmount = quantity * +unitPrice;
+          suitelet.setCurrentSublistValue({
+            sublistId: "custpage_items_sublist",
+            fieldId: "custpage_amount_paid",
+            value: creditAmount.toFixed(2),
+          });
+        }
         if (scriptContext.fieldId == "custpage_select") {
           let isSelected = suitelet.getCurrentSublistValue({
             sublistId: "custpage_items_sublist",
             fieldId: "custpage_select",
-          });
-          let fullPartial = suitelet.getCurrentSublistText({
-            sublistId: "custpage_items_sublist",
-            fieldId: "custpage_full_partial",
           });
 
           if (isSelected == false) {
@@ -240,28 +292,6 @@ define([
         }
 
         if (scriptContext.fieldId === "custpage_unit_price") {
-          let unitPrice = suitelet.getCurrentSublistValue({
-            sublistId: "custpage_items_sublist",
-            fieldId: "custpage_unit_price",
-          });
-          let packageSize = suitelet.getCurrentSublistValue({
-            sublistId: "custpage_items_sublist",
-            fieldId: "custpage_package_size",
-          });
-          //  console.log("packageSize", packageSize);
-          let quantity = suitelet.getCurrentSublistValue({
-            sublistId: "custpage_items_sublist",
-            fieldId: "custpage_full",
-          });
-          let partialCount = suitelet.getCurrentSublistValue({
-            sublistId: "custpage_items_sublist",
-            fieldId: "custpage_partial",
-          });
-          let fullPartial = suitelet.getCurrentSublistText({
-            sublistId: "custpage_items_sublist",
-            fieldId: "custpage_full_partial",
-          });
-
           // console.table([
           //   unitPrice,
           //   packageSize,
@@ -289,11 +319,11 @@ define([
             fieldId: "custpage_amount_paid",
             value: newAmount.toFixed(2),
           });
-          suitelet.setCurrentSublistValue({
-            sublistId: "custpage_items_sublist",
-            fieldId: "custpage_erv_discounted_amount",
-            value: newAmount * 0.15,
-          });
+          // suitelet.setCurrentSublistValue({
+          //   sublistId: "custpage_items_sublist",
+          //   fieldId: "custpage_erv_discounted_amount",
+          //   value: newAmount * 0.15,
+          // });
           let totalAmount = 0;
           for (
             let i = 0;
@@ -371,13 +401,13 @@ define([
             fieldId: "custpage_unit_price",
             value: unitPrice.toFixed(2),
           });
-          if (isGovernment == true) {
-            suitelet.setCurrentSublistValue({
-              sublistId: "custpage_items_sublist",
-              fieldId: "custpage_erv_discounted_unit_price",
-              value: (unitPrice * 0.15).toFixed(2),
-            });
-          }
+          // if (isGovernment == true) {
+          //   suitelet.setCurrentSublistValue({
+          //     sublistId: "custpage_items_sublist",
+          //     fieldId: "custpage_erv_discounted_unit_price",
+          //     value: (unitPrice * 0.15).toFixed(2),
+          //   });
+          // }
           let totalAmount = 0;
           for (
             let i = 0;

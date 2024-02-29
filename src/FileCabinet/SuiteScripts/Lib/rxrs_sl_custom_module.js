@@ -133,18 +133,18 @@ define([
       label: "Credit Received",
       updateDisplayType: "ENTRY",
     },
-    {
-      id: "custpage_erv_discounted_unit_price",
-      type: "CURRENCY",
-      label: "ERV DISCOUNTED UNIT PRICE",
-      updateDisplayType: "ENTRY",
-    },
-    {
-      id: "custpage_erv_discounted_amount",
-      type: "CURRENCY",
-      label: "ERV DISCOUNTED AMOUNT",
-      updateDisplayType: "ENTRY",
-    },
+    // {
+    //   id: "custpage_erv_discounted_unit_price",
+    //   type: "CURRENCY",
+    //   label: "ERV DISCOUNTED UNIT PRICE",
+    //   updateDisplayType: "ENTRY",
+    // },
+    // {
+    //   id: "custpage_erv_discounted_amount",
+    //   type: "CURRENCY",
+    //   label: "ERV DISCOUNTED AMOUNT",
+    //   updateDisplayType: "ENTRY",
+    // },
     {
       id: "custpage_credit_memo",
       type: "TEXT",

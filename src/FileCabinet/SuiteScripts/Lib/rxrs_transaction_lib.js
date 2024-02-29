@@ -487,6 +487,30 @@ define([
             line: i,
             value: 15, // ERV DISCOUNT
           });
+          const amount = rec.getSublistValue({
+            sublistId: "item",
+            fieldId: "amount",
+            line: i,
+          });
+          const rate = rec.getSublistValue({
+            sublistId: "item",
+            fieldId: "rate",
+            line: i,
+          });
+          const ervAmount = amount / 0.15;
+          const ervRate = rate / 0.15;
+          rec.setSublistValue({
+            sublistId: "item",
+            fieldId: "custcol_full_amount",
+            line: i,
+            value: ervAmount, // ERV DISCOUNT
+          });
+          rec.setSublistValue({
+            sublistId: "item",
+            fieldId: "custcol_full_unit_price",
+            line: i,
+            value: ervRate, // ERV DISCOUNT
+          });
         } catch (e) {
           log.error("Setting ERV Amount", e.message);
         }
@@ -670,7 +694,10 @@ define([
             name: "custrecord_cs__rqstprocesing",
             label: "Pharmacy Processing",
           }),
-          search.createColumn({ name: "custrecord_cs_qty", label: "Qty" }),
+          search.createColumn({
+            name: "custrecord_cs_qty",
+            label: "Qty",
+          }),
           search.createColumn({ name: "custrecord_scanrate", label: "Rate" }),
           search.createColumn({
             name: "custrecord_irc_total_amount",
@@ -884,6 +911,7 @@ define([
         type: record.Type.INVOICE,
         id: id,
       });
+      const isGoverment = currentRecord.getValue("custbody_plan_type") == 11; // Government
       const lineCount = currentRecord.getLineCount({
         sublistId: "item",
       });
@@ -954,16 +982,7 @@ define([
           fieldId: "rate",
           line: i,
         });
-        const ervDiscUnitPrice = currentRecord.getSublistValue({
-          sublistId: "item",
-          fieldId: "custcol_erv_disc_unit_price",
-          line: i,
-        });
-        const ervDiscAmount = currentRecord.getSublistValue({
-          sublistId: "item",
-          fieldId: "custcol_erv_disc_amount",
-          line: i,
-        });
+
         let amount = currentRecord.getSublistValue({
           sublistId: "item",
           fieldId: "amount",
@@ -1020,6 +1039,15 @@ define([
             }
           }
         }
+        log.audit("isgovernemt", isGoverment);
+        log.audit("isgovernemt", {
+          unitrice: (rate = rate / 0.15),
+          amountPaid: (amount = amount / 0.15),
+        });
+        if (isGoverment == true) {
+          unitPrice /= 0.15;
+          amountPaid /= 0.15;
+        }
         log.emergency("creditMemoReference", isEmpty(creditMemoReference));
         log.emergency("condition: " + isEdit, JSON.parse(isEdit) == true);
         if (
@@ -1043,8 +1071,6 @@ define([
             amount: amount,
             unitPrice: unitPrice,
             amountPaid: amountPaid,
-            ervDiscUnitPrice: ervDiscUnitPrice,
-            ervDiscAmount: ervDiscAmount,
             creditMemoReference: creditMemoReference,
             creditMemoParent: creditMemoParent,
           });
@@ -1586,8 +1612,14 @@ define([
           ["custbody_payment_invoice_link", "anyof", invId],
         ],
         columns: [
-          search.createColumn({ name: "trandate", label: "Date" }),
-          search.createColumn({ name: "debitamount", label: "Amount (Debit)" }),
+          search.createColumn({
+            name: "trandate",
+            label: "Date",
+          }),
+          search.createColumn({
+            name: "debitamount",
+            label: "Amount (Debit)",
+          }),
           search.createColumn({ name: "internalid", label: "Internal Id" }),
         ],
       });

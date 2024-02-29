@@ -147,12 +147,15 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
           fieldId: "custrecord_invoice_applied",
           value: invoiceId,
         });
+      if (isGovernment == true) {
+        amount &&
+          cmRec.setValue({
+            fieldId: "custrecord_gross_credit_received",
+            value: (amount / 0.15).toFixed(2),
+          });
+        packingSlipAmount *= 0.15;
+      }
 
-      packingSlipAmount &&
-        cmRec.setValue({
-          fieldId: "custrecord_gross_credit_received",
-          value: packingSlipAmount / 0.15,
-        });
       isGovernment &&
         cmRec.setValue({
           fieldId: "custrecord_is_government",
@@ -458,7 +461,7 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
           invId,
         } = cm;
 
-        if (cmLineId != "") {
+        if (cmLineId != " " || cmLineId == "") {
           record.submitFields({
             type: "customrecord_credit_memo_line_applied",
             id: cmLineId,
@@ -530,6 +533,7 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
           let cmChildId = cmChildRec.save({ ignoreMandatoryFields: true });
 
           if (cmChildId) {
+            log.audit("Created Lines: ", { cmChildId, cmParentId });
             reloadCM(cmParentId);
             tranlib.updateTranLineCM({
               cmLineId: cmChildId,

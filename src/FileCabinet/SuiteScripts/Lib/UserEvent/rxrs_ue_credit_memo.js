@@ -26,7 +26,20 @@ define(["../rxrs_transaction_lib", "../rxrs_custom_rec_lib", "N/record"], (
    * @param {string} scriptContext.type - Trigger type; use values from the context.UserEventType enum
    * @since 2015.2
    */
-  const beforeSubmit = (scriptContext) => {};
+  const beforeSubmit = (scriptContext) => {
+    try {
+      const rec = scriptContext.newRecord;
+      if (rec.getValue("custrecord_is_government") == true) {
+        const amount = rec.getValue("custrecord_amount");
+        rec.setValue({
+          fieldId: "custrecord_gross_credit_received",
+          value: amount / 0.15,
+        });
+      }
+    } catch (e) {
+      log.error("beforeSubmit", e.message);
+    }
+  };
 
   /**
    * Defines the function definition that is executed after record is submitted.
@@ -113,5 +126,5 @@ define(["../rxrs_transaction_lib", "../rxrs_custom_rec_lib", "N/record"], (
     }
   };
 
-  return { afterSubmit };
+  return { beforeSubmit, afterSubmit };
 });
