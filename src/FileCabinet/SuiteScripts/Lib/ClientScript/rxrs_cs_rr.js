@@ -221,13 +221,25 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
     console.log(action);
     switch (action) {
       case "verifyItems":
-        window.open(url, "_blank", "width=1500,height=1200,left=100,top=1000");
+        window.open(
+          url,
+          "verifyItems",
+          "width=1500,height=1200,left=100,top=1000",
+        );
         break;
       case "add222FormReference":
-        window.open(url, "_blank", "width=2000,height=1200,left=100,top=1000");
+        window.open(
+          url,
+          "add222FormReference",
+          "width=2000,height=1200,left=100,top=1000",
+        );
         break;
       case "splitPayment":
-        window.open(url, "_blank", "width=1500,height=1200,left=100,top=1000");
+        window.open(
+          url,
+          "splitPayment",
+          "width=1500,height=1200,left=100,top=1000",
+        );
         break;
       default:
         window.open(url, "_blank");

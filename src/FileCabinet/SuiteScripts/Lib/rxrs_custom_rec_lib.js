@@ -5,6 +5,17 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
  * @param{record} record
  * @param{search} search
  */ (record, search, tranlib) => {
+  const PRICINGMAP = {
+    6: 4, //direct package price
+    8: 3, // Suggested wholesale price
+    10: 1, // Wholesale Acquisition Cost (WAC) Package Price
+    16: 2, //Consolidated Price 1 Package Price
+    9: 7, // Wholesale Acquisition Cost (WAC) Unit Price
+    5: 8, // Direct Unit Price
+    15: 5, // Consolidated Price 1 Unit Price
+    14: 6, // No Price
+  };
+
   /**
    * Look if there is already a custom credit memo created for the invoice
    * @param invId
@@ -68,6 +79,112 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
     } catch (e) {
       log.error("getAllCM", e.message);
     }
+  }
+
+  /**
+   * Delete the Price History if exists
+   * @param options main object
+   * @param {string} options.date,
+   * @param {string} options.priceType
+   * @param {string} options.itemId
+   * @return the delete price history record.
+   */
+  function deletePriceHistory(options) {
+    let { date, itemId, priceType } = options;
+    let newdate =
+      date.getMonth() + 1 + "/" + date.getDate() + "/" + date.getFullYear();
+    try {
+      const customrecord_kd_price_historySearchObj = search.create({
+        type: "customrecord_kd_price_history",
+        filters: [
+          ["custrecord_fdbdate", "on", newdate],
+          "AND",
+          ["custrecord_kd_item", "anyof", itemId],
+          "AND",
+          ["custrecord_kd_price_type", "anyof", PRICINGMAP[priceType]],
+        ],
+        columns: [
+          search.createColumn({
+            name: "id",
+            sort: search.Sort.ASC,
+            label: "ID",
+          }),
+          search.createColumn({ name: "scriptid", label: "Script ID" }),
+        ],
+      });
+      const searchResultCount =
+        customrecord_kd_price_historySearchObj.runPaged().count;
+      log.debug("getPriceHistory", searchResultCount);
+      customrecord_kd_price_historySearchObj.run().each(function (result) {
+        if (result.id) {
+          log.audit(
+            "Deleting Pricing History",
+            record.delete({
+              type: "customrecord_kd_price_history",
+              id: result.id,
+            }),
+          );
+        }
+      });
+    } catch (e) {
+      log.error("getPriceHistory", e.message);
+    }
+  }
+
+  /**
+   *
+   * @param options main object
+   * @param options.itemId - Item Id
+   * @param options.date - Date
+   * @param options.priceType - Price Level
+   * @param options.newPrice - Latest Price
+   */
+  function createPriceHistory(options) {
+    let { itemId, date, priceType, newPrice } = options;
+
+    try {
+      const priceHistoryRec = record.create({
+        type: "customrecord_kd_price_history",
+      });
+      priceHistoryRec.setValue({
+        fieldId: "custrecord_kd_item",
+        value: itemId,
+      });
+      priceHistoryRec.setValue({
+        fieldId: "custrecord_kd_price_type",
+        value: PRICINGMAP[priceType],
+      });
+      priceHistoryRec.setValue({
+        fieldId: "custrecord_kd_price_type",
+        value: PRICINGMAP[priceType],
+      });
+
+      priceHistoryRec.setValue({
+        fieldId: "custrecord_fdbdate",
+        value: new Date(parseDate(date)),
+      });
+      priceHistoryRec.setValue({
+        fieldId: "custrecord_kd_new_price",
+        value: newPrice,
+      });
+
+      return priceHistoryRec.save({ ignoreMandatoryFields: true });
+    } catch (e) {
+      log.error("createPriceHistory", e.message);
+    }
+  }
+
+  /**
+   * Parse Date formatted as YYYYMMDD
+   * @param str
+   * @returns {Date|string}
+   */
+  function parseDate(str) {
+    if (!/^(\d){8}$/.test(str)) return "invalid date";
+    let y = str.substr(0, 4),
+      m = str.substr(4, 2),
+      d = str.substr(6, 2);
+    return new Date(y, m, d);
   }
 
   /**
@@ -461,19 +578,29 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
           invId,
         } = cm;
 
-        if (cmLineId != " " || cmLineId == "") {
-          record.submitFields({
+        if (!isEmpty(+cmLineId)) {
+          let values = {
+            custrecord_cm_amount_applied: amountApplied,
+            custrecord_cm_unit_price: unitPrice,
+          };
+
+          const cmLineRec = record.load({
             type: "customrecord_credit_memo_line_applied",
             id: cmLineId,
-            values: {
-              custrecord_cm_amount_applied: amountApplied,
-              custrecord_cm_unit_price: unitPrice,
-            },
-            options: {
-              enableSourcing: false,
-              ignoreMandatoryFields: true,
-            },
+            isDynamic: true,
           });
+          cmLineRec.setValue({
+            fieldId: "custrecord_cm_amount_applied",
+            value: amountApplied,
+          });
+          cmLineRec.setValue({
+            fieldId: "custrecord_cm_unit_price",
+            value: unitPrice,
+          });
+          const updateCMLineId = cmLineRec.save({
+            ignoreMandatoryFields: true,
+          });
+          log.audit("createCreditMemoLines updateCMLineId", updateCMLineId);
           reloadCM(cmId);
           tranlib.updateTranLineCM({
             cmLineId: cmLineId,
@@ -551,6 +678,20 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
     }
   }
 
+  function isEmpty(stValue) {
+    return (
+      stValue === "" ||
+      stValue == null ||
+      false ||
+      (stValue.constructor === Array && stValue.length == 0) ||
+      (stValue.constructor === Object &&
+        (function (v) {
+          for (var k in v) return false;
+          return true;
+        })(stValue))
+    );
+  }
+
   /**
    * Reload CM
    * @param cmId
@@ -581,5 +722,7 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
     createUpdateCM,
     getAllCM,
     getALlCMTotalAmount,
+    createPriceHistory,
+    deletePriceHistory,
   };
 });

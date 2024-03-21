@@ -154,7 +154,7 @@ define([
     } else {
       params.isMainInDated = true;
     }
-
+    78;
     let stSuiteletUrl = url.resolveScript({
       scriptId: "customscript_sl_returnable_page",
       deploymentId: "customdeploy_sl_returnable_page",
@@ -201,7 +201,7 @@ define([
           prevBag = null;
         }
         if (returnType != "Destruction") {
-          if (+amount > +maxAmount) {
+          if (+amount > +maxAmount && +maxAmount != 0) {
             alert(
               `Line #${
                 i + 1

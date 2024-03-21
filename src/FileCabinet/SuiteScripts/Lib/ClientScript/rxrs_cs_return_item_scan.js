@@ -189,7 +189,7 @@ define(["N/search"], function (search) {
       });
       return tranSearch[columns][0].value;
     } catch (e) {
-      log.error("getTransactionStatus", e.message);
+      log.error("getTrans...0Status", e.message);
     }
   }
 

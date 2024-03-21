@@ -195,19 +195,20 @@ define([
           let newAmount = Number(percentage) * customAmount;
           //  console.table(percentage, lineTotal);
 
-          suitelet.setCurrentSublistValue({
-            sublistId: "custpage_items_sublist",
-            fieldId: "custpage_amount_paid",
-            value: newAmount.toFixed(2),
-          });
-          // if (isGovernment == true) {
-          //   console.log("erv amount " + newAmount * 0.15);
-          //   suitelet.setCurrentSublistValue({
-          //     sublistId: "custpage_items_sublist",
-          //     fieldId: "custpage_erv_discounted_amount",
-          //     value: newAmount * 0.15,
-          //   });
-          // }
+          if (isGovernment == true) {
+            console.log("erv amount " + newAmount * 0.15);
+            suitelet.setCurrentSublistValue({
+              sublistId: "custpage_items_sublist",
+              fieldId: "custpage_amount_paid",
+              value: newAmount * 0.15,
+            });
+          } else {
+            suitelet.setCurrentSublistValue({
+              sublistId: "custpage_items_sublist",
+              fieldId: "custpage_amount_paid",
+              value: newAmount.toFixed(2),
+            });
+          }
         }
       }
       if (scriptContext.fieldId == "custpage_credit_memo") {
@@ -551,7 +552,7 @@ define([
     parentParams.forUpdate = [];
     parentParams.forCreation = {};
     let selectedLine = [];
-
+    parentParams.isGovernment = isGovernment;
     try {
       creditMemoNumber = suitelet.getValue("custpage_credit_memo_number");
       if (creditMemoNumber) {
@@ -749,7 +750,7 @@ define([
    * @param options
    */
   function deleteCreditMemo(options) {
-    alert(JSON.stringify(options));
+    //alert(JSON.stringify(options));
     try {
       let deleteParams = {
         deleteParams: JSON.stringify(options),

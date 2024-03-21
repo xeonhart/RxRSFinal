@@ -1040,13 +1040,12 @@ define([
           }
         }
         log.audit("isgovernemt", isGoverment);
-        log.audit("isgovernemt", {
-          unitrice: (rate = rate / 0.15),
-          amountPaid: (amount = amount / 0.15),
-        });
+
         if (isGoverment == true) {
           unitPrice /= 0.15;
           amountPaid /= 0.15;
+          rate /= 0.15;
+          amount /= 0.15;
         }
         log.emergency("creditMemoReference", isEmpty(creditMemoReference));
         log.emergency("condition: " + isEdit, JSON.parse(isEdit) == true);
@@ -1521,10 +1520,7 @@ define([
         });
         if (paymentId) {
           paymentTotalAmount = getPaymentSum(invoiceId);
-          if (
-            cmLinesCount == cmLinesCountWithPayment &&
-            cmTotalAmount == paymentTotalAmount
-          ) {
+          if (cmLinesCount == cmLinesCountWithPayment) {
             invoiceUpdateStatus = invoiceStatus.fullyPaid;
           } else {
             invoiceUpdateStatus = invoiceStatus.partiallyPaid;
@@ -1554,10 +1550,7 @@ define([
         });
         if (paymentId) {
           paymentTotalAmount = getPaymentSum(invoiceId);
-          if (
-            cmLinesCount == cmLinesCountWithPayment &&
-            cmTotalAmount == paymentTotalAmount
-          ) {
+          if (cmLinesCount == cmLinesCountWithPayment) {
             invoiceUpdateStatus = invoiceStatus.fullyPaid;
           } else {
             invoiceUpdateStatus = invoiceStatus.partiallyPaid;
