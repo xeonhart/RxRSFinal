@@ -103,6 +103,7 @@ define([
         custom_rec.deletePriceHistory({
           itemId: itemId,
           date: date,
+          priceType: priceType,
         });
       }
     }

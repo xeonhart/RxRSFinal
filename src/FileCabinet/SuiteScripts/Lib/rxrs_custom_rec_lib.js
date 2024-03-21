@@ -84,15 +84,19 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
   /**
    * Delete the Price History if exists
    * @param options main object
-   * @param {string} options.date,
    * @param {string} options.priceType
    * @param {string} options.itemId
+   * @param {string} options.date
    * @return the delete price history record.
    */
   function deletePriceHistory(options) {
+    // log.audit("deletePriceHistory", options);
     let { date, itemId, priceType } = options;
+    date = parseDate(date);
     let newdate =
       date.getMonth() + 1 + "/" + date.getDate() + "/" + date.getFullYear();
+    let priceLevel = PRICINGMAP[priceType];
+    log.audit("searchValues", { newdate, itemId, priceLevel });
     try {
       const customrecord_kd_price_historySearchObj = search.create({
         type: "customrecord_kd_price_history",
@@ -100,8 +104,6 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
           ["custrecord_fdbdate", "on", newdate],
           "AND",
           ["custrecord_kd_item", "anyof", itemId],
-          "AND",
-          ["custrecord_kd_price_type", "anyof", PRICINGMAP[priceType]],
         ],
         columns: [
           search.createColumn({
@@ -112,6 +114,15 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
           search.createColumn({ name: "scriptid", label: "Script ID" }),
         ],
       });
+      if (priceLevel) {
+        customrecord_kd_price_historySearchObj.filters.push(
+          search.createFilter({
+            name: "custrecord_kd_price_type",
+            operator: "anyof",
+            values: priceLevel,
+          }),
+        );
+      }
       const searchResultCount =
         customrecord_kd_price_historySearchObj.runPaged().count;
       log.debug("getPriceHistory", searchResultCount);
@@ -138,8 +149,10 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
    * @param options.date - Date
    * @param options.priceType - Price Level
    * @param options.newPrice - Latest Price
+   * @return the created Price History Id
    */
   function createPriceHistory(options) {
+    log.audit("createPriceHistory", options);
     let { itemId, date, priceType, newPrice } = options;
 
     try {
