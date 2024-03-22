@@ -1,4 +1,4 @@
-./**
+/**
  * @NApiVersion 2.x
  * @NScriptType ClientScript
  */
@@ -61,7 +61,7 @@ define([
     window.open(
       "/app/common/custom/custrecordentry.nl?rectype=402&custscript_rrid=" +
         currRecord.id,
-      "_self"
+      "_self",
     );
   }
 
@@ -88,7 +88,7 @@ define([
 
   function generateOutboundLabel() {
     alert(
-      "Outbound Label will be generated!\nPlease wait for the record to be created."
+      "Outbound Label will be generated!\nPlease wait for the record to be created.",
     );
     var currRec = currentRecord.get();
     var rrId = currRec.id;
@@ -140,7 +140,7 @@ define([
     alert("Outbound Label is generated!");
     log.debug(
       "generateOutboundLabel",
-      "Return Package " + recordId + " is generated!"
+      "Return Package " + recordId + " is generated!",
     );
   }
 
@@ -187,53 +187,53 @@ define([
             var qty = currRec.getCurrentSublistValue("item", "quantity");
             var expiDate = currRec.getCurrentSublistValue(
               "item",
-              "custcol_kd_expiration"
+              "custcol_kd_expiration",
             );
 
             /*var objSubrecord = currRec.getCurrentSublistSubrecord({
-                                            sublistId: 'item',
-                                            fieldId: 'inventorydetail'
-                                        });*/
+                                                        sublistId: 'item',
+                                                        fieldId: 'inventorydetail'
+                                                    });*/
 
             /*objSubrecord.selectNewLine({
-                                            sublistId: 'inventoryassignment',
-                                        });
-
-                                        objSubrecord.setCurrentSublistValue({
-                                            sublistId: 'inventoryassignment',
-                                            fieldId: 'numberedrecordid',
-                                            value: 2022
-                                        });
-
-                                        objSubrecord.setCurrentSublistValue({
-                                            sublistId: 'inventoryassignment',
-                                            fieldId: 'quantity',
-                                            value: qty
-                                        });
-
-                                        objSubrecord.setCurrentSublistValue({
-                                            sublistId: 'inventoryassignment',
-                                            fieldId: 'expirationdate',
-                                            value: expiDate
-                                        });
-
-                                        objSubrecord.commitLine({
-                                            sublistId: 'inventoryassignment'
-                                        });
-
-                                        objSubrecord.commit();     */
+                                                        sublistId: 'inventoryassignment',
+                                                    });
+            
+                                                    objSubrecord.setCurrentSublistValue({
+                                                        sublistId: 'inventoryassignment',
+                                                        fieldId: 'numberedrecordid',
+                                                        value: 2022
+                                                    });
+            
+                                                    objSubrecord.setCurrentSublistValue({
+                                                        sublistId: 'inventoryassignment',
+                                                        fieldId: 'quantity',
+                                                        value: qty
+                                                    });
+            
+                                                    objSubrecord.setCurrentSublistValue({
+                                                        sublistId: 'inventoryassignment',
+                                                        fieldId: 'expirationdate',
+                                                        value: expiDate
+                                                    });
+            
+                                                    objSubrecord.commitLine({
+                                                        sublistId: 'inventoryassignment'
+                                                    });
+            
+                                                    objSubrecord.commit();     */
             break;
           case "custcol_kod_fullpartial":
             if (
               context.currentRecord.getCurrentSublistValue(
                 "item",
-                "custcol_kod_fullpartial"
+                "custcol_kod_fullpartial",
               ) == PARTIAL_PACKAGE
             ) {
               context.currentRecord.setCurrentSublistValue(
                 "item",
                 "quantity",
-                1
+                1,
               );
               //var partialCountField = context.currentRecord.getField('custcol_kd_partialcount');
               //partialCountField.isDisabled = false;
@@ -241,14 +241,14 @@ define([
               if (
                 context.currentRecord.getCurrentSublistValue(
                   "item",
-                  "custcol_kd_partialcount"
+                  "custcol_kd_partialcount",
                 ) != ""
               ) {
                 alert("Setting Partial Count to empty.");
                 context.currentRecord.setCurrentSublistValue(
                   "item",
                   "custcol_kd_partialcount",
-                  ""
+                  "",
                 );
               }
               //var partialCountField = context.currentRecord.getField('custcol_kd_partialcount');
@@ -259,18 +259,18 @@ define([
             if (
               context.currentRecord.getCurrentSublistValue(
                 "item",
-                "custcol_kod_fullpartial"
+                "custcol_kod_fullpartial",
               ) == PARTIAL_PACKAGE &&
               context.currentRecord.getCurrentSublistValue("item", "quantity") >
                 1
             ) {
               alert(
-                "Quantity cannot be greater than 1 when Partial Package is selected."
+                "Quantity cannot be greater than 1 when Partial Package is selected.",
               );
               context.currentRecord.setCurrentSublistValue(
                 "item",
                 "quantity",
-                1
+                1,
               );
             }
             break;
@@ -278,15 +278,15 @@ define([
             if (
               context.currentRecord.getCurrentSublistValue(
                 "item",
-                "custcol_kod_fullpartial"
+                "custcol_kod_fullpartial",
               ) == FULL_PACKAGE &&
               context.currentRecord.getCurrentSublistValue(
                 "item",
-                "custcol_kd_partialcount"
+                "custcol_kd_partialcount",
               ) >= 0
             ) {
               alert(
-                "Partial Count is not necessary when Full Package is selected."
+                "Partial Count is not necessary when Full Package is selected.",
               );
               context.currentRecord.setCurrentSublistValue({
                 sublistId: "item",
@@ -320,22 +320,22 @@ define([
       if (
         currentRecord.getCurrentSublistValue(
           sublistName,
-          "custcol_kod_fullpartial"
+          "custcol_kod_fullpartial",
         ) == 2
       ) {
         //2 Partial Package
         if (
           currentRecord.getCurrentSublistValue(
             sublistName,
-            "custcol_kd_partialcount"
+            "custcol_kd_partialcount",
           ) == "" ||
           currentRecord.getCurrentSublistValue(
             sublistName,
-            "custcol_kd_partialcount"
+            "custcol_kd_partialcount",
           ) == null
         ) {
           alert(
-            "Partial Count is required when Partial Package is selected.\nPlease enter Partial Count."
+            "Partial Count is required when Partial Package is selected.\nPlease enter Partial Count.",
           );
           return false;
         }
@@ -348,7 +348,7 @@ define([
       var retPolicyDetails = getReturnPolicyDetails(returnPolicy);
       log.debug(
         "TEST",
-        "RET POLICY DETAILS " + JSON.stringify(retPolicyDetails)
+        "RET POLICY DETAILS " + JSON.stringify(retPolicyDetails),
       );
       var customerType = currentRecord.getValue("custbody_kd_customer_type");
       var returnable = currentRecord.getCurrentSublistValue({
@@ -416,7 +416,7 @@ define([
             indate: "",
           };
           alert(
-            "damaged item " + pharmaProcessing + " " + mfgProcessing.processing
+            "damaged item " + pharmaProcessing + " " + mfgProcessing.processing,
           );
           //mfgProcessing = PROCESSING_RETURNABLE;
         } else if (damageType == DAMAGE_TYPE_2) {
@@ -427,7 +427,7 @@ define([
             indate: "",
           };
           alert(
-            "damaged item " + pharmaProcessing + " " + mfgProcessing.processing
+            "damaged item " + pharmaProcessing + " " + mfgProcessing.processing,
           );
           //mfgProcessing = PROCESSING_NON_RETURNABLE;
         }
@@ -456,7 +456,7 @@ define([
           ) {
             log.debug(
               "TEST",
-              "Drug Form is allowed for full container on Return Policy"
+              "Drug Form is allowed for full container on Return Policy",
             );
             pharmaProcessing = PROCESSING_RETURNABLE;
             mfgProcessing = {
@@ -469,7 +469,7 @@ define([
           } else {
             log.debug(
               "TEST",
-              "Drug Form is NOT allowed for full container on Return Policy"
+              "Drug Form is NOT allowed for full container on Return Policy",
             );
             pharmaProcessing = PROCESSING_NON_RETURNABLE;
             mfgProcessing = {
@@ -520,7 +520,7 @@ define([
           });
           log.debug(
             "TEST",
-            drugFormMinQty + " * " + packageSize + " = " + minQtyPackageSize
+            drugFormMinQty + " * " + packageSize + " = " + minQtyPackageSize,
           );
           if (retPolicyDetails.allowspartial) {
             if (
@@ -532,7 +532,7 @@ define([
               if (itemPartialQty < minQtyPackageSize) {
                 log.debug(
                   "TEST",
-                  "item partial qty is less than minQtyOfPackageSize"
+                  "item partial qty is less than minQtyOfPackageSize",
                 );
                 pharmaProcessing = PROCESSING_NON_RETURNABLE;
                 mfgProcessing = {
@@ -544,7 +544,7 @@ define([
               } else {
                 log.debug(
                   "TEST",
-                  "item partial qty is greater than minQtyOfPackageSize"
+                  "item partial qty is greater than minQtyOfPackageSize",
                 );
                 pharmaProcessing = PROCESSING_RETURNABLE;
                 mfgProcessing = {
@@ -613,7 +613,7 @@ define([
               } else {
                 log.debug(
                   "TEST",
-                  "item qty is greater than minQtyOfPackageSize"
+                  "item qty is greater than minQtyOfPackageSize",
                 );
                 pharmaProcessing = PROCESSING_RETURNABLE;
                 mfgProcessing = {
@@ -634,7 +634,7 @@ define([
             currentRecord.getCurrentSublistValue({
               sublistId: "item",
               fieldId: FLD_RR_IT_EXPIRATION_DATE,
-            })
+            }),
           );
           log.debug("TEST", "expi date" + expiDate);
           if (expiDate == "Invalid Date" || expiDate == "") {
@@ -644,11 +644,11 @@ define([
           var firstDayExpiDate = new Date(
             expiDate.getFullYear(),
             expiDate.getMonth(),
-            1
+            1,
           );
           log.debug(
             "CHECK HERE",
-            "expiration date adjusted " + firstDayExpiDate
+            "expiration date adjusted " + firstDayExpiDate,
           );
           var itemControlType = currentRecord.getCurrentSublistValue({
             sublistId: "item",
@@ -656,12 +656,12 @@ define([
           });
           log.debug(
             "TEST",
-            "passed to getPharmaProcessing " + JSON.stringify(retPolicyDetails)
+            "passed to getPharmaProcessing " + JSON.stringify(retPolicyDetails),
           );
           pharmaProcessing = getPharmaProcessing(
             firstDayExpiDate,
             retPolicyDetails,
-            itemControlType
+            itemControlType,
           );
           mfgProcessing = getMfgProcessing(firstDayExpiDate, retPolicyDetails);
         } else {
@@ -675,22 +675,22 @@ define([
       ) {
         pharmaProcessing = PROCESSING_NON_RETURNABLE;
         /*log.debug('TEST', 'get expi date');
-                            var expiDate = new Date(currentRecord.getCurrentSublistValue({
-                                sublistId: 'item',
-                                fieldId: FLD_RR_IT_EXPIRATION_DATE
-                            }));
-                            log.debug('TEST', 'expi date' + expiDate);
-                            if(expiDate == 'Invalid Date' || expiDate == ''){
-                                alert('Please enter Expiration Date!');
-                                return false;
-                            }
-                            var firstDayExpiDate = new Date(expiDate.getFullYear(), expiDate.getMonth(), 1);
-                            mfgProcessing = getMfgProcessing(expiDate, retPolicyDetails)*/
+                                    var expiDate = new Date(currentRecord.getCurrentSublistValue({
+                                        sublistId: 'item',
+                                        fieldId: FLD_RR_IT_EXPIRATION_DATE
+                                    }));
+                                    log.debug('TEST', 'expi date' + expiDate);
+                                    if(expiDate == 'Invalid Date' || expiDate == ''){
+                                        alert('Please enter Expiration Date!');
+                                        return false;
+                                    }
+                                    var firstDayExpiDate = new Date(expiDate.getFullYear(), expiDate.getMonth(), 1);
+                                    mfgProcessing = getMfgProcessing(expiDate, retPolicyDetails)*/
       }
 
       log.debug(
         "TEST",
-        "PP: " + pharmaProcessing + "; MP: " + mfgProcessing.processing
+        "PP: " + pharmaProcessing + "; MP: " + mfgProcessing.processing,
       );
       if (pharmaProcessing != null && pharmaProcessing != "") {
         currentRecord.setCurrentSublistValue({
@@ -717,10 +717,10 @@ define([
         var inDate = new Date(
           firstDayExpiDate.getFullYear(),
           firstDayExpiDate.getMonth(),
-          firstDayExpiDate.getDate()
+          firstDayExpiDate.getDate(),
         );
         inDate.setMonth(
-          inDate.getMonth() - (parseInt(retPolicyDetails.inmonths) - 1)
+          inDate.getMonth() - (parseInt(retPolicyDetails.inmonths) - 1),
         );
         //log.debug('TEST', mfgReturnableStart.getMonth() + ' - (' + returnPolicyDays.inmonths + ' - 1)');
         //var inDate = new Date(mfgReturnableStart.getFullYear(), mfgReturnableStart.getMonth(), mfgReturnableStart.getDate());
@@ -775,12 +775,12 @@ define([
   function authorize(context) {
     //alert('authorize ' + currentRecord.get().id);
     /*redirect.toSuitelet({
-                            scriptId: 'customscript_kd_sl_generate_form222',
-                            deploymentId: 'customdeploy_kd_sl_generate_form222',
-                            parameters: {
-                                'custscript_kd_rr_id': currentRecord.get().id
-                            }
-                        });*/
+                                scriptId: 'customscript_kd_sl_generate_form222',
+                                deploymentId: 'customdeploy_kd_sl_generate_form222',
+                                parameters: {
+                                    'custscript_kd_rr_id': currentRecord.get().id
+                                }
+                            });*/
     if (!isAllForm222NoHasContent()) {
       alert("All Form 222 No. must at least have 1 item on it.");
     } else {
@@ -815,7 +815,7 @@ define([
         name: "custrecord_kd_rir_masterid",
         operator: search.Operator.ANYOF,
         values: rrMrr,
-      })
+      }),
     );
     var rs = c2RirSearch.run().getRange({ start: 0, end: 1000 });
     if (rs.length > 0) {
@@ -915,7 +915,7 @@ define([
         i++
       ) {
         acceptedPartial.push(
-          lookupFieldsRs[FLD_RP_ACCEPTED_PARTIAL_CONTAINER][i].value
+          lookupFieldsRs[FLD_RP_ACCEPTED_PARTIAL_CONTAINER][i].value,
         );
       }
 
@@ -926,7 +926,7 @@ define([
         i++
       ) {
         acceptedFull.push(
-          lookupFieldsRs[FLD_RP_ACCEPTED_FULL_CONTAINER][i].value
+          lookupFieldsRs[FLD_RP_ACCEPTED_FULL_CONTAINER][i].value,
         );
       }
 
@@ -1001,7 +1001,7 @@ define([
     nextDayExpiDate,
     outDate,
     processing,
-    controlType
+    controlType,
   ) {
     var meetsOutDays = false;
     var sysDate = new Date();
@@ -1010,11 +1010,11 @@ define([
     outDaysEnd = new Date(
       outDate.getFullYear(),
       outDate.getMonth(),
-      outDate.getDate()
+      outDate.getDate(),
     );
     log.debug("TEST", outDaysEnd + " + " + returnPolicyDays.outmonths);
     outDaysEnd.setMonth(
-      outDaysEnd.getMonth() + parseInt(returnPolicyDays.outmonths)
+      outDaysEnd.getMonth() + parseInt(returnPolicyDays.outmonths),
     );
 
     var handicapDays;
@@ -1028,14 +1028,14 @@ define([
       outDaysEnd = new Date(
         outDaysEnd.getFullYear(),
         outDaysEnd.getMonth() + 1,
-        0
+        0,
       );
     } else {
       outDaysEnd.setDate(outDaysEnd.getDate() - parseInt(handicapDays));
     }
     log.debug(
       "TEST",
-      processing + " OUTDAYS: " + outDaysStart + " to " + outDaysEnd
+      processing + " OUTDAYS: " + outDaysStart + " to " + outDaysEnd,
     );
     if (sysDate >= outDaysStart && sysDate <= outDaysEnd) {
       meetsOutDays = true;
@@ -1051,22 +1051,22 @@ define([
     inDaysStart = new Date(
       inDate.getFullYear(),
       inDate.getMonth(),
-      inDate.getDate()
+      inDate.getDate(),
     );
     inDaysStart.setMonth(
-      inDate.getMonth() - parseInt(returnPolicyDays.inmonths)
+      inDate.getMonth() - parseInt(returnPolicyDays.inmonths),
     );
     if (processing == "manufacturing") {
       inDaysStart.setMonth(inDaysStart.getMonth() + parseInt(1));
       inDaysStart = new Date(
         inDaysStart.getFullYear(),
         inDaysStart.getMonth(),
-        1
+        1,
       );
     }
     log.debug(
       "TEST",
-      processing + " INDAYS: " + inDaysStart + " to " + inDaysEnd
+      processing + " INDAYS: " + inDaysStart + " to " + inDaysEnd,
     );
     if (sysDate >= inDaysStart && sysDate <= inDaysEnd) {
       meetsInDays = true;
@@ -1078,7 +1078,7 @@ define([
     returnPolicyDays,
     expirationDate,
     handicapDate,
-    controlType
+    controlType,
   ) {
     var meetsHandicapDays = false;
     var sysDate = new Date();
@@ -1120,27 +1120,27 @@ define([
     var pharmaReturnableStart = new Date(
       expirationDate.getFullYear(),
       expirationDate.getMonth(),
-      expirationDate.getDate()
+      expirationDate.getDate(),
     );
     pharmaReturnableStart.setMonth(
-      pharmaReturnableStart.getMonth() - parseInt(returnPolicyDays.inmonths)
+      pharmaReturnableStart.getMonth() - parseInt(returnPolicyDays.inmonths),
     );
 
     var pharmaReturnableEnd = new Date(
       expirationDate.getFullYear(),
       expirationDate.getMonth(),
-      expirationDate.getDate()
+      expirationDate.getDate(),
     );
     pharmaReturnableEnd.setMonth(
-      pharmaReturnableEnd.getMonth() + parseInt(returnPolicyDays.outmonths) - 1
+      pharmaReturnableEnd.getMonth() + parseInt(returnPolicyDays.outmonths) - 1,
     );
     pharmaReturnableEnd = new Date(
       pharmaReturnableEnd.getFullYear(),
       pharmaReturnableEnd.getMonth() + 1,
-      0
+      0,
     );
     pharmaReturnableEnd.setDate(
-      pharmaReturnableEnd.getDate() - parseInt(handicapDays)
+      pharmaReturnableEnd.getDate() - parseInt(handicapDays),
     );
 
     log.debug("TEST", sysDate);
@@ -1149,11 +1149,11 @@ define([
 
     log.debug(
       "TEST",
-      "sysDate >= pharmaReturnableStart " + sysDate >= pharmaReturnableStart
+      "sysDate >= pharmaReturnableStart " + sysDate >= pharmaReturnableStart,
     );
     log.debug(
       "TEST",
-      "sysDate <= pharmaReturnableEnd " + sysDate <= pharmaReturnableEnd
+      "sysDate <= pharmaReturnableEnd " + sysDate <= pharmaReturnableEnd,
     );
 
     if (sysDate >= pharmaReturnableStart && sysDate <= pharmaReturnableEnd) {
@@ -1161,22 +1161,22 @@ define([
       var handicapStart = new Date(
         pharmaReturnableEnd.getFullYear(),
         pharmaReturnableEnd.getMonth(),
-        pharmaReturnableEnd.getDate()
+        pharmaReturnableEnd.getDate(),
       );
       //handicapStart.setDate(handicapStart.getDate() - parseInt(handicapDays));
       handicapStart.setDate(handicapStart.getDate() + 1);
       var handicapEnd = new Date(
         expirationDate.getFullYear(),
         expirationDate.getMonth(),
-        expirationDate.getDate()
+        expirationDate.getDate(),
       );
       handicapEnd.setMonth(
-        expirationDate.getMonth() + parseInt(returnPolicyDays.outmonths) - 1
+        expirationDate.getMonth() + parseInt(returnPolicyDays.outmonths) - 1,
       );
       handicapEnd = new Date(
         handicapEnd.getFullYear(),
         handicapEnd.getMonth() + 1,
-        0
+        0,
       );
       log.debug("TEST", "handicap start " + handicapStart);
       log.debug("TEST", "handicap end " + handicapEnd);
@@ -1207,37 +1207,37 @@ define([
     var mfgReturnableStart = new Date(
       expirationDate.getFullYear(),
       expirationDate.getMonth(),
-      expirationDate.getDate()
+      expirationDate.getDate(),
     );
     mfgReturnableStart.setMonth(
-      mfgReturnableStart.getMonth() - (parseInt(returnPolicyDays.inmonths) - 1)
+      mfgReturnableStart.getMonth() - (parseInt(returnPolicyDays.inmonths) - 1),
     );
     log.debug(
       "TEST",
       mfgReturnableStart.getMonth() +
         " - (" +
         returnPolicyDays.inmonths +
-        " - 1)"
+        " - 1)",
     );
 
     var mfgReturnableEnd = new Date(
       expirationDate.getFullYear(),
       expirationDate.getMonth(),
-      expirationDate.getDate()
+      expirationDate.getDate(),
     );
     mfgReturnableEnd.setMonth(
-      mfgReturnableEnd.getMonth() + parseInt(returnPolicyDays.outmonths)
+      mfgReturnableEnd.getMonth() + parseInt(returnPolicyDays.outmonths),
     );
     mfgReturnableEnd = new Date(
       mfgReturnableEnd.getFullYear(),
       mfgReturnableEnd.getMonth() + 1,
-      0
+      0,
     );
 
     var inDate = new Date(
       mfgReturnableStart.getFullYear(),
       mfgReturnableStart.getMonth(),
-      mfgReturnableStart.getDate()
+      mfgReturnableStart.getDate(),
     );
     inDate.setDate(inDate.getDate() - 1);
     inDate.setHours(0, 0, 0, 0);
@@ -1322,24 +1322,24 @@ define([
             currentRec.getCurrentSublistValue({
               sublistId: "item",
               fieldId: FLD_RR_IT_EXPIRATION_DATE,
-            })
+            }),
           );
 
           var sysDate = new Date();
           var inDate = new Date(
             expiDate.getFullYear(),
             expiDate.getMonth(),
-            expiDate.getDate()
+            expiDate.getDate(),
           );
           var outDate = new Date(
             expiDate.getFullYear(),
             expiDate.getMonth(),
-            expiDate.getDate()
+            expiDate.getDate(),
           );
           var handicapDate = new Date(
             expiDate.getFullYear(),
             expiDate.getMonth(),
-            expiDate.getDate()
+            expiDate.getDate(),
           );
 
           itemControlType = currentRec.getCurrentSublistValue({
@@ -1362,7 +1362,7 @@ define([
                     retPolicyDays,
                     expiDate,
                     handicapDate,
-                    itemControlType
+                    itemControlType,
                   )
                 ) {
                   currentRec.setCurrentSublistValue({
@@ -1457,7 +1457,7 @@ define([
         name: "internalid",
         operator: search.Operator.ANYOF,
         values: manufs,
-      })
+      }),
     );
 
     var manufRs = manufSearch.run().getRange({ start: 0, end: 1000 });
@@ -1513,7 +1513,7 @@ define([
         name: "internalid",
         operator: search.Operator.ANYOF,
         values: bins,
-      })
+      }),
     );
     var binQtySearchRs = binQtySearch.run();
     start = 0;
@@ -1704,7 +1704,7 @@ define([
                   parseFloat(manufTagTotal[j]) +
                     parseFloat(returnableItem.amount) +
                     " <= " +
-                    manufSoMaxAmount
+                    manufSoMaxAmount,
                 );
                 if (
                   parseFloat(manufTagTotal[j]) +
@@ -1890,13 +1890,13 @@ define([
       var width = window.innerWidth
         ? window.innerWidth
         : document.documentElement.clientWidth
-        ? document.documentElement.clientWidth
-        : screen.width;
+          ? document.documentElement.clientWidth
+          : screen.width;
       var height = window.innerHeight
         ? window.innerHeight
         : document.documentElement.clientHeight
-        ? document.documentElement.clientHeight
-        : screen.height;
+          ? document.documentElement.clientHeight
+          : screen.height;
 
       var systemZoom = width / window.screen.availWidth;
       var left = (width - intWidth) / 2 / systemZoom + dualScreenLeft;
@@ -1912,7 +1912,7 @@ define([
           ",top=" +
           top +
           ",left=" +
-          left
+          left,
       );
       newWindow.focus();
     } catch (e) {
@@ -1938,13 +1938,13 @@ define([
       var width = window.innerWidth
         ? window.innerWidth
         : document.documentElement.clientWidth
-        ? document.documentElement.clientWidth
-        : screen.width;
+          ? document.documentElement.clientWidth
+          : screen.width;
       var height = window.innerHeight
         ? window.innerHeight
         : document.documentElement.clientHeight
-        ? document.documentElement.clientHeight
-        : screen.height;
+          ? document.documentElement.clientHeight
+          : screen.height;
 
       var systemZoom = width / window.screen.availWidth;
       var left = (width - intWidth) / 2 / systemZoom + dualScreenLeft;
@@ -1960,7 +1960,7 @@ define([
           ",top=" +
           top +
           ",left=" +
-          left
+          left,
       );
       newWindow.focus();
     } catch (e) {
@@ -1985,13 +1985,13 @@ define([
         name: FLD_FORM222_RR,
         operator: search.Operator.ANYOF,
         values: rrId,
-      })
+      }),
     );
     /*form222RefSearch.filters.push(search.createFilter({
-                    name: FLD_FORM222_PAGE,
-                    operator: search.Operator.GREATERTHAN,
-                    values: noForm222
-                }));*/
+                        name: FLD_FORM222_PAGE,
+                        operator: search.Operator.GREATERTHAN,
+                        values: noForm222
+                    }));*/
     var form222RefRecIds = [];
     var rs = form222RefSearch.run().getRange({ start: 0, end: 1000 });
     for (var i = 0; i < rs.length; i++) {
@@ -2091,7 +2091,7 @@ define([
         name: "custrecord_kd_rir_masterid",
         operator: search.Operator.ANYOF,
         values: mrrId,
-      })
+      }),
     );
     var searchRs = objSearch.run().getRange({ start: 0, end: 1000 });
     var currentPageCount = 0;
@@ -2129,33 +2129,33 @@ define([
     location.reload();
 
     /*var rrSearch = search.load({
-                    id: 'customsearch_kd_mr_rr_sublist'
-                });
-                rrSearch.filters.push(search.createFilter({
-                    name: 'custbody_kd_master_return_id',
-                    operator: search.Operator.ANYOF,
-                    values: mrrId
-                }));
-                rrSearch.filters.push(search.createFilter({
-                    name: 'custbody_kd_rr_category',
-                    operator: search.Operator.ANYOF,
-                    values: CATEGORY_C2
-                }));
-                var rs = rrSearch.run().getRange({ start: 0, end: 1 });
-                if(rs.length > 0){
-                    var rrId = rs[0].id;
-                    record.submitFields({
-                        type: 'customsale_kod_returnrequest',
-                        id: rrId,
-                        values: {
-                            'custbody_kd_no_form_222': form222Count
-                        },
-                        options: {
-                            enableSourcing: false,
-                            ignoreMandatoryFields : true
-                        }
+                        id: 'customsearch_kd_mr_rr_sublist'
                     });
-                }*/
+                    rrSearch.filters.push(search.createFilter({
+                        name: 'custbody_kd_master_return_id',
+                        operator: search.Operator.ANYOF,
+                        values: mrrId
+                    }));
+                    rrSearch.filters.push(search.createFilter({
+                        name: 'custbody_kd_rr_category',
+                        operator: search.Operator.ANYOF,
+                        values: CATEGORY_C2
+                    }));
+                    var rs = rrSearch.run().getRange({ start: 0, end: 1 });
+                    if(rs.length > 0){
+                        var rrId = rs[0].id;
+                        record.submitFields({
+                            type: 'customsale_kod_returnrequest',
+                            id: rrId,
+                            values: {
+                                'custbody_kd_no_form_222': form222Count
+                            },
+                            options: {
+                                enableSourcing: false,
+                                ignoreMandatoryFields : true
+                            }
+                        });
+                    }*/
   }
 
   function saveRecord(scriptContext) {
@@ -2165,13 +2165,13 @@ define([
       currRec.selectLine("item", i);
       itPackageSize = currRec.getCurrentSublistValue(
         "item",
-        "custcol_package_size"
+        "custcol_package_size",
       );
       itPackageSize =
         itPackageSize == null || itPackageSize == "" ? 0 : itPackageSize;
       partialCount = currRec.getCurrentSublistValue(
         "item",
-        "custcol_kd_partialcount"
+        "custcol_kd_partialcount",
       );
       qty = currRec.getCurrentSublistValue("item", "quantity");
       rate = currRec.getCurrentSublistValue("item", "rate");
@@ -2184,7 +2184,7 @@ define([
           "; itPackageSize: " +
           itPackageSize +
           "; rate: " +
-          rate
+          rate,
       );
       if (partialCount > 0) {
         amount = qty * (partialCount / itPackageSize) * rate;

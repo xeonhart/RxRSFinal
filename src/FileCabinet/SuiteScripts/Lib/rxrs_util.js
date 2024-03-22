@@ -38,6 +38,25 @@ define([
   ];
 
   /**
+   * Move the processed CSV file to done folder
+   * @param {*} options.fileId
+   * @param {*} options.folderId
+   */
+  function moveFolderToDone(options) {
+    let { fileId, folderId } = options;
+    const fileObj = file.load({
+      id: fileId,
+    });
+    if (fileObj) {
+      fileObj.folder = folderId;
+      const moved = fileObj.save();
+      log.debug(
+        `File with internal ID: ${moved}  moved to folder ${folderId}.`,
+      );
+    } else log.debug(`File with internal ID:  ${fileId} not found.`);
+  }
+
+  /**
    * Return file Id based on filename
    * @param fileName
    * @returns {number}
@@ -423,7 +442,7 @@ define([
           rpIds[0].getValue({
             name: "internalid",
             summary: search.Summary.MAX,
-          })
+          }),
         ) +
           parseInt(1));
 
@@ -729,5 +748,6 @@ define([
     getFileId,
     getFolderId,
     formatDate,
+    moveFolderToDone,
   };
 });

@@ -10,10 +10,11 @@ define([
   "../rxrs_csv_import_lib.js",
   "../rxrs_item_lib",
   "../rxrs_custom_rec_lib",
+  "../rxrs_util",
 ] /**
  * @param{record} record
  * @param{search} search
- */, (file, runtime, record, search, csv_lib, item_lib, custom_rec) => {
+ */, (file, runtime, record, search, csv_lib, item_lib, custom_rec, util) => {
   /**
    * Defines the function that is executed at the beginning of the map/reduce process and generates the input data.
    * @param {Object} inputContext
@@ -36,7 +37,7 @@ define([
       log.audit("params", params);
 
       const fileObj = file.load({
-        id: csv_lib.getFileId(params.fileName),
+        id: util.getFileId(params.fileName),
       });
       return csv_lib.getPricing(fileObj);
     } catch (e) {
@@ -134,6 +135,11 @@ define([
    * @since 2015.2
    */
   const summarize = (summaryContext) => {
+    let params = getParameters();
+    util.moveFolderToDone({
+      fileId: util.getFileId(params.fileName),
+      folderId: params.doneFolderId,
+    });
     const functionName = "summarize";
     log.audit(functionName, {
       UsageConsumed: summaryContext.usage,
