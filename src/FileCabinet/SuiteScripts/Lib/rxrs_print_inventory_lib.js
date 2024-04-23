@@ -25,7 +25,7 @@ define(["N/record", "N/search"], /**
         .getValue("custbody_location_address")
         .replaceAll("\r\n", ",");
 
-      if(options.manufId){
+      if (options.manufId) {
         const manufRec = record.load({
           type: "customrecord_csegmanufacturer",
           id: options.manufId,
@@ -85,8 +85,8 @@ define(["N/record", "N/search"], /**
             label: "Control #",
           }),
           search.createColumn({
-            name: "custrecord_scan_222form",
-            label: "222 Form Reference",
+            name: "name",
+            join: "CUSTRECORD_SCAN_222FORM",
           }),
           search.createColumn({
             name: "custrecord_cs_lotnum",

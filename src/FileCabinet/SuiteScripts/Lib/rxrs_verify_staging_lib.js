@@ -36,7 +36,7 @@ define([
   rxrs_util,
   rxrs_vs_lib,
   rxrs_PI_lib,
-  rxrs_tran_lib
+  rxrs_tran_lib,
 ) => {
   const VERIFYSTAGINGRETURNABLECOLUMNS = [
     search.createColumn({
@@ -623,35 +623,35 @@ define([
           name: "custrecord_cs_ret_req_scan_rrid",
           operator: "anyof",
           values: options.rrId,
-        })
+        }),
       );
       filters.push(
         search.createFilter({
           name: "custrecord_cs__mfgprocessing",
           operator: "anyof",
           values: 2, // returnable = true
-        })
+        }),
       );
       filters.push(
         search.createFilter({
           name: "custrecord_scanindated",
           operator: "is",
           values: inDated,
-        })
+        }),
       );
       let columns = [];
       columns.push(
         search.createColumn({
           name: "custrecord_cs_item_manufacturer",
           summary: "GROUP",
-        })
+        }),
       );
       if (options.inDated == true) {
         columns.push(
           search.createColumn({
             name: "custrecord_scanindate",
             summary: "MAX",
-          })
+          }),
         );
       }
 
@@ -868,28 +868,28 @@ define([
           name: "custrecord_cs_ret_req_scan_rrid",
           operator: "anyof",
           values: options.recId,
-        })
+        }),
       );
       filters.push(
         search.createFilter({
           name: "custrecord_cs__mfgprocessing",
           operator: "anyof",
           values: 2,
-        })
+        }),
       );
       filters.push(
         search.createFilter({
           name: "custrecord_scanindated",
           operator: "is",
           values: options.inDated,
-        })
+        }),
       );
       filters.push(
         search.createFilter({
           name: "internalid",
           operator: "anyof",
           values: options.returnList,
-        })
+        }),
       );
 
       const transactionSearchObj = search.create({
@@ -946,7 +946,7 @@ define([
           name: "internalid",
           operator: "anyof",
           values: options.returnList,
-        })
+        }),
       );
       const customrecord_cs_item_ret_scanSearchObj = search.create({
         type: "customrecord_cs_item_ret_scan",
@@ -996,7 +996,7 @@ define([
           name: "custrecord_cs_ret_req_scan_rrid",
           operator: "anyof",
           values: options.rrId,
-        })
+        }),
       );
 
       const transactionSearchObj = search.create({
@@ -1066,7 +1066,7 @@ define([
         id: rclId,
       });
       nonReturnableAmount = rclRec.getValue(
-        "custrecord_rcl_non_returnable_fee_amt"
+        "custrecord_rcl_non_returnable_fee_amt",
       );
       return nonReturnableAmount;
     } catch (e) {
@@ -1136,7 +1136,7 @@ define([
             name: "custrecord_payment_schedule_updated",
             operator: "is",
             values: "F",
-          })
+          }),
         );
       }
     }
@@ -1153,7 +1153,7 @@ define([
             name: "internalid",
             operator: "anyof",
             values: returnList,
-          })
+          }),
         );
       } else {
         if (mrrId) {
@@ -1162,7 +1162,7 @@ define([
               name: "custrecord_irs_master_return_request",
               operator: "anyof",
               values: mrrId,
-            })
+            }),
           );
         }
         if (rrId) {
@@ -1171,7 +1171,7 @@ define([
               name: "custrecord_cs_ret_req_scan_rrid",
               operator: "anyof",
               values: rrId,
-            })
+            }),
           );
         }
 
@@ -1182,7 +1182,7 @@ define([
                 name: "custrecord_cs_item_manufacturer",
                 operator: "is",
                 values: manufacturer,
-              })
+              }),
             );
         }
         if (paymentSchedId) {
@@ -1191,15 +1191,15 @@ define([
               name: paymentFields,
               operator: "anyof",
               values: paymentSchedId,
-            })
+            }),
           );
         }
         filters.push(
           search.createFilter({
-            name: "custrecord_cs__rqstprocesing",
+            name: "custrecord_cs__mfgprocessing",
             operator: "anyof",
             values: 2,
-          })
+          }),
         );
 
         if (inDated) {
@@ -1208,7 +1208,7 @@ define([
               name: "custrecord_scanindated",
               operator: "is",
               values: inDated,
-            })
+            }),
           );
         }
       }
@@ -1532,7 +1532,7 @@ define([
    * @return {object} array object of the des destruction item return scan
    */
   function getItemScanByDescrutionType(options) {
-    // log.audit("getItemScanByDescrutionType", options);
+    log.audit("getItemScanByDescrutionType", options);
     try {
       let destructionList = [];
       let rrId = options.rrId;
@@ -1555,7 +1555,9 @@ define([
           }),
         ],
       });
-
+      var searchResultCount =
+        customrecord_cs_item_ret_scanSearchObj.runPaged().count;
+      log.error("customrecord_cs_item_ret_scanSearchObj", searchResultCount);
       let column = customrecord_cs_item_ret_scanSearchObj.columns;
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
         let isHazardous = result.getValue(column[0]);
@@ -2204,7 +2206,7 @@ define([
           name: "custrecord_cs__mfgprocessing",
           operator: "anyof",
           values: mfgProcessing,
-        })
+        }),
       );
     }
 

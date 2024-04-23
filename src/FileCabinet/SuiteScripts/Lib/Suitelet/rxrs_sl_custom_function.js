@@ -8,13 +8,14 @@ define([
   "../rxrs_transaction_lib",
   "../rxrs_return_cover_letter_lib",
   "../rxrs_custom_rec_lib",
+  "../rxrs_util",
 ], /**
  * @param{serverWidget} serverWidget
  * @param record
  * @param tranLib
  * @param rclLib
  * @param custRecLib
- */ (serverWidget, record, tranLib, rclLib, custRecLib) => {
+ */ (serverWidget, record, tranLib, rclLib, custRecLib, util) => {
   /**
    * Defines the Suitelet script trigger point.
    * @param {Object} scriptContext
@@ -41,6 +42,7 @@ define([
         newPaymentId,
         returnableFee,
         vbId,
+        planSelectionType,
       } = params;
       try {
         let returnObj;
@@ -82,9 +84,17 @@ define([
               rrId: rrId,
               mrrId: mrrId,
               entity: entity,
+              planSelectionType: planSelectionType,
             });
             let { error, resMessage } = returnObj;
             if (resMessage) {
+              record.submitFields({
+                type: util.getReturnRequestType(rrId),
+                id: rrId,
+                values: {
+                  transtatus: util.rrStatus.Approved,
+                },
+              });
               context.response.writeLine(resMessage);
             } else {
               context.response.writeLine("ERROR:" + error);
@@ -163,7 +173,7 @@ define([
               context.response.writeLine(resMessage);
             } else {
               context.response.writeLine(
-                "ERROR:" + "Failed to create all vendor bill"
+                "ERROR:" + "Failed to create all vendor bill",
               );
             }
 
@@ -187,9 +197,13 @@ define([
                   id: newVBiD,
                 });
               }
-
-              break;
             }
+            break;
+          case "createTopCOBill":
+            tranLib.createBill({
+              poId: poId,
+            });
+            break;
         }
       } catch (e) {
         context.response.writeLine("ERROR:" + e.message);

@@ -8,6 +8,8 @@ define([
   "N/ui/dialog",
   "N/ui/message",
   "N/ui/serverWidget",
+  "./rxrs_custom_rec_lib",
+  "N/url",
 ], /**
  * @param{record} record
  * @param{render} render
@@ -15,7 +17,9 @@ define([
  * @param{dialog} dialog
  * @param{message} message
  * @param{serverWidget} serverWidget
- */ (record, render, search, dialog, message, serverWidget) => {
+ * @param customrec
+ * @param url
+ */ (record, render, search, dialog, message, serverWidget, customrec, url) => {
   let SOFORM222SUBLIST = [
     {
       id: "custpage_select",
@@ -341,10 +345,189 @@ define([
     );
   }
 
+  /**
+   * Create Sublist for the Item Requested of the return request
+   * @param context
+   */
+  function addC2ItemsReqSublist(context) {
+    context.form.addTab({
+      id: "custpage_tab_items_requested",
+      label: "Return Item Requested",
+    });
+    log.debug("addC2ItemsReqSublist", "Added Items Requested tab");
+
+    const objSublist = context.form.addSublist({
+      id: "custpage_sublist_items_requested",
+      type: serverWidget.SublistType.LIST,
+      label: "Items Requested",
+      tab: "custpage_tab_items_requested",
+    });
+    objSublist.addField({
+      id: "custpage_edit",
+      type: serverWidget.FieldType.TEXT,
+      label: "Edit",
+    });
+    objSublist
+      .addField({
+        id: "custpage_col_id",
+        label: "ID",
+        type: serverWidget.FieldType.SELECT,
+        source: "customrecord_kod_mr_item_request",
+      })
+      .updateDisplayType({
+        displayType: serverWidget.FieldDisplayType.INLINE,
+      });
+    objSublist
+      .addField({
+        id: "custpage_col_item",
+        label: "Item",
+        type: serverWidget.FieldType.SELECT,
+        source: "item",
+      })
+      .updateDisplayType({
+        displayType: serverWidget.FieldDisplayType.INLINE,
+      });
+    objSublist
+      .addField({
+        id: "custpage_col_item_description",
+        label: "Item Description",
+        type: serverWidget.FieldType.TEXT,
+      })
+      .updateDisplayType({
+        displayType: serverWidget.FieldDisplayType.INLINE,
+      });
+    objSublist
+      .addField({
+        id: "custpage_col_item_ndc",
+        label: "Item NDC",
+        type: serverWidget.FieldType.TEXT,
+      })
+      .updateDisplayType({
+        displayType: serverWidget.FieldDisplayType.INLINE,
+      });
+    objSublist
+      .addField({
+        id: "custpage_col_item_qty",
+        label: "Quantity",
+        type: serverWidget.FieldType.TEXT,
+      })
+      .updateDisplayType({
+        displayType: serverWidget.FieldDisplayType.INLINE,
+      });
+    objSublist
+      .addField({
+        id: "custpage_col_item_ful_par",
+        label: "Full/Partial",
+        type: serverWidget.FieldType.SELECT,
+        source: "customlist_kod_fullpartial",
+      })
+      .updateDisplayType({
+        displayType: serverWidget.FieldDisplayType.INLINE,
+      });
+    objSublist
+      .addField({
+        id: "custpage_col_item_form_222_no",
+        label: "Form 222 No.",
+        type: serverWidget.FieldType.TEXT,
+      })
+      .updateDisplayType({
+        displayType: serverWidget.FieldDisplayType.INLINE,
+      });
+    objSublist.addField({
+      id: "custpage_col_item_form_222_ref_no",
+      type: serverWidget.FieldType.TEXT,
+      label: "Form 222 Ref No.",
+    });
+    const itemsRequested = customrec.getReturnRequestItemRequested(
+      context.newRecord.id,
+    );
+
+    const domain = url.resolveDomain({
+      hostType: url.HostType.APPLICATION,
+    });
+
+    for (let i = 0; i < itemsRequested.length; i++) {
+      let editUrl = url.resolveRecord({
+        recordType: "customrecord_kod_mr_item_request",
+        recordId: itemsRequested[i].id,
+        isEditMode: true,
+      });
+      let lineUrl = "https://" + domain + editUrl;
+      objSublist.setSublistValue({
+        id: "custpage_edit",
+        line: i,
+        value: '<a href="' + lineUrl + '">EDIT</a>',
+      });
+      objSublist.setSublistValue({
+        id: "custpage_col_id",
+        value: itemsRequested[i].id,
+        line: i,
+      });
+      objSublist.setSublistValue({
+        id: "custpage_col_item",
+        value: itemsRequested[i].item,
+        line: i,
+      });
+      objSublist.setSublistValue({
+        id: "custpage_col_item_description",
+        value: itemsRequested[i].displayname,
+        line: i,
+      });
+      objSublist.setSublistValue({
+        id: "custpage_col_item_ndc",
+        value: itemsRequested[i].ndc,
+        line: i,
+      });
+      if (itemsRequested[i].qty != "") {
+        objSublist.setSublistValue({
+          id: "custpage_col_item_qty",
+          value: itemsRequested[i].qty,
+          line: i,
+        });
+      }
+      objSublist.setSublistValue({
+        id: "custpage_col_item_ful_par",
+        value: itemsRequested[i].fulpar,
+        line: i,
+      });
+      if (itemsRequested[i].form222No != "") {
+        objSublist.setSublistValue({
+          id: "custpage_col_item_form_222_no",
+          value: itemsRequested[i].form222No,
+          line: i,
+        });
+      }
+      if (itemsRequested[i].form222RefNo != "") {
+        objSublist.setSublistValue({
+          id: "custpage_col_item_form_222_ref_no",
+          value: itemsRequested[i].form222RefNo,
+          line: i,
+        });
+        let form222RefNoViewUrl = url.resolveRecord({
+          recordType: "customrecord_kd_222formrefnum",
+          recordId: itemsRequested[i].form222RefNoId,
+          isEditMode: false,
+        });
+        let lineUrl = "https://" + domain + editUrl;
+        objSublist.setSublistValue({
+          id: "custpage_col_item_form_222_ref_no",
+          line: i,
+          value:
+            '<a href="' +
+            form222RefNoViewUrl +
+            '">' +
+            itemsRequested[i].form222RefNo +
+            "</a>",
+        });
+      }
+    }
+  }
+
   return {
     createSublist: createSublist,
     getFileId,
     SOFORM222SUBLIST,
     ADDCREDITMEMOSUBLIST,
+    addC2ItemsReqSublist,
   };
 });

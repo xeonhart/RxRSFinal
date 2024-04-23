@@ -203,7 +203,7 @@ define(["N/currentRecord", "N/search", "N/url", "N/https", "N/ui/message"], /**
       invoiceId: curRec.getValue("custpage_invoice_id"),
       cmLinesCount: curRec.getValue("custpage_num_of_lines"),
       cmLinesCountWithPayment: curRec.getValue(
-        "custpage_num_of_lines_with_amt"
+        "custpage_num_of_lines_with_amt",
       ),
       paymentAmount: curRec.getValue("custpage_amount"),
       cmId: curRec.getValue("custpage_credit_memo"),
@@ -242,11 +242,60 @@ define(["N/currentRecord", "N/search", "N/url", "N/https", "N/ui/message"], /**
     }, 2000);
   }
 
-  function handleButtonClick() {
+  /**
+   * Call the Suitelet to create the Return Packages Per Return Request
+   * @param mrrId
+   */
+
+  function createReturnPackages(mrrId) {
+    try {
+      const curRec = currentRecord.get();
+      const category = curRec.getValue("custpage_product_group");
+      const numberOfLabels = curRec.getValue("custpage_num_of_labels");
+      let params = {
+        category: category,
+        mrrId: mrrId,
+        requestedDate: curRec.getValue("custpage_estimated_ship_date"),
+        customer: curRec.getValue("custpage_entity"),
+      };
+      let returnPackageParams = {
+        returnPackageDetails: JSON.stringify(params),
+        action: "createReturnPackages",
+        numberOfLabels: numberOfLabels,
+        isReload: true,
+      };
+      console.table(returnPackageParams);
+      handleButtonClick();
+      let stSuiteletUrl = url.resolveScript({
+        scriptId: "customscript_rxrs_sl_generate_label",
+        deploymentId: "customdeploy_rxrs_sl_generate_label",
+        params: returnPackageParams,
+      });
+
+      postURL({ URL: stSuiteletUrl });
+      setTimeout(function () {
+        let suiteletURL = url.resolveScript({
+          scriptId: "customscript_rxrs_sl_generate_label",
+          deploymentId: "customdeploy_rxrs_sl_generate_label",
+          returnExternalUrl: false,
+          params: {
+            isReload: true,
+            mrrId: mrrId,
+          },
+        });
+        window.ischanged = false;
+        window.open(`${suiteletURL}`, "_self");
+      }, 2000);
+    } catch (e) {
+      console.error("createReturnPackages", e.message);
+    }
+  }
+
+  function handleButtonClick(str) {
     try {
       jQuery("body").loadingModal({
         position: "auto",
-        text: "Creating Payment. Please wait...",
+        text: "Processing. Please wait...",
         color: "#fff",
         opacity: "0.7",
         backgroundColor: "rgb(220,220,220)",
@@ -301,5 +350,6 @@ define(["N/currentRecord", "N/search", "N/url", "N/https", "N/ui/message"], /**
     pageInit: pageInit,
     addPayment: addPayment,
     fieldChanged: fieldChanged,
+    createReturnPackages: createReturnPackages,
   };
 });

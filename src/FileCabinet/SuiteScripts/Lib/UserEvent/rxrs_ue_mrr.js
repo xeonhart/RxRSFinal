@@ -2,9 +2,11 @@
  * @NApiVersion 2.1
  * @NScriptType UserEventScript
  */
-define(["N/ui/serverWidget"] /**
- * @param{serverWidget} serverWidget
- */, (serverWidget) => {
+define(["N/file", "N/record", "N/search", "../rxrs_util"] /**
+ * @param{file} file
+ * @param{record} record
+ * @param{search} search
+ */, (file, record, search, util) => {
   /**
    * Defines the function definition that is executed before record is loaded.
    * @param {Object} scriptContext
@@ -14,28 +16,7 @@ define(["N/ui/serverWidget"] /**
    * @param {ServletRequest} scriptContext.request - HTTP request information sent from the browser for a client action only.
    * @since 2015.2
    */
-  const beforeLoad = (scriptContext) => {
-    if (scriptContext.type === "view" || scriptContext.type === "edit") {
-      const curRec = scriptContext.newRecord;
-      const status = curRec.getText("custrecord_kod_mr_status");
-      const name = curRec.getText("name");
-      let color = "#d5e0ec";
-      log.debug("status", status);
-      if (status) {
-        scriptContext.form.addField({
-          id: "custpage_nsi_status",
-          label: "Custom State",
-          type: "inlinehtml",
-        }).defaultValue = `<script>jQuery(function($){
-                    require([], function() {
-                           $(".uir-page-title-secondline").append('<div class="uir-record-status" id="pri-amz-status" style="background-color: ${color}">${status}</div>');
-
-   
-                    });
-                })</script>`;
-      }
-    }
-  };
+  const beforeLoad = (scriptContext) => {};
 
   /**
    * Defines the function definition that is executed before record is submitted.
@@ -55,7 +36,24 @@ define(["N/ui/serverWidget"] /**
    * @param {string} scriptContext.type - Trigger type; use values from the context.UserEventType enum
    * @since 2015.2
    */
-  const afterSubmit = (scriptContext) => {};
+  const afterSubmit = (scriptContext) => {
+    let { newRecord, type } = scriptContext;
+    try {
+      const PARENTFOLDERNAME = "222Form";
+      const parentFolderId = util.getFolderId(PARENTFOLDERNAME);
+      const mrrText = newRecord.getText("name");
+      log.audit("values", { PARENTFOLDERNAME, parentFolderId, mrrText });
+      log.audit(
+        "Creating Folder",
+        util.createFolder({
+          name: mrrText,
+          parent: parentFolderId,
+        }),
+      );
+    } catch (e) {
+      log.error("afterSubmit", e.message);
+    }
+  };
 
-  return { beforeLoad, beforeSubmit, afterSubmit };
+  return { afterSubmit };
 });

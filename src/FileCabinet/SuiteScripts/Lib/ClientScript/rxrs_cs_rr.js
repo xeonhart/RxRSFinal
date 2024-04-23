@@ -147,8 +147,18 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
   function createTransaction(options) {
     console.table(options);
     const curRec = currentRecord.get();
-    let { mrrId, rrId, entity, rclId, action, billId, poId, returnableFee } =
-      options;
+    let {
+      mrrId,
+      rrId,
+      entity,
+      rclId,
+      action,
+      billId,
+      poId,
+      returnableFee,
+      planSelectionType,
+      form222List,
+    } = options;
     try {
       let params;
       handleButtonClick();
@@ -158,6 +168,7 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
             rrId: rrId,
             mrrId: mrrId,
             entity: entity,
+            planSelectionType: planSelectionType,
             action: action,
           };
           break;
@@ -192,6 +203,34 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
     }
   }
 
+  function generate222Form(ids) {
+    ids.forEach((id) => {
+      let SLURL = url.resolveScript({
+        scriptId: "customscript_kd_sl_generate_2frn_form222",
+        deploymentId: "customdeploy_kd_sl_generate_2frn_form222",
+        returnExternalUrl: false,
+        params: {
+          custscript_kd_2frn_id: id,
+        },
+      });
+      let response = https.post({
+        url: SLURL,
+      });
+      if (response) {
+        let m = message.create({
+          type: message.Type.CONFIRMATION,
+          title: "SUCCESS",
+          message: response.body,
+        });
+        m.show(10000);
+        setTimeout(function () {
+          location.reload();
+        }, 10000);
+      }
+      postURL({ URL: SLURL });
+    });
+  }
+
   /**
    * Show loading animation
    */
@@ -219,6 +258,7 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
     let { url, action } = options;
     console.log(url);
     console.log(action);
+    action = action ? action : "default";
     switch (action) {
       case "verifyItems":
         window.open(
@@ -241,8 +281,15 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
           "width=1500,height=1200,left=100,top=1000",
         );
         break;
+      case "default":
+        window.open(url, "default", "width=1500,height=1200,left=100,top=1000");
+        break;
       default:
-        window.open(url, "_blank");
+        window.open(
+          url,
+          "splitPayment",
+          "width=1500,height=1200,left=100,top=1000",
+        );
     }
   }
 
@@ -290,5 +337,6 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
     createTransaction: createTransaction,
     pageInit: pageInit,
     openSuitelet: openSuitelet,
+    generate222Form: generate222Form,
   };
 });

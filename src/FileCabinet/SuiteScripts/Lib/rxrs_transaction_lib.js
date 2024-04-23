@@ -21,6 +21,8 @@ define([
   const SUBSIDIARY = 2; //Rx Return Services
   const ACCOUNT = 212; //50000 Cost of Goods Sold
   const LOCATION = 1; //Clearwater
+  const TOPCO_PLAN = 10;
+  const TOPCO_VENDOR = 1591;
 
   /**
    * Create Inventory Adjustment for verified Item Return Scan
@@ -32,7 +34,7 @@ define([
       let { rrId, mrrId } = options;
       log.error(
         "isRR Verified",
-        rxrsUtil_vl.checkIfRRIsVerified({ rrId: rrId })
+        rxrsUtil_vl.checkIfRRIsVerified({ rrId: rrId }),
       );
       if (rxrsUtil_vl.checkIfRRIsVerified({ rrId: rrId }) != true) return;
       log.audit("createInventoryAdjustment", options);
@@ -201,7 +203,7 @@ define([
           name: "mainline",
           operator: "is",
           values: mainLine,
-        })
+        }),
       );
       mrrId &&
         transactionSearchObj.filters.push(
@@ -209,7 +211,7 @@ define([
             name: "custbody_kd_master_return_id",
             operator: "anyof",
             values: mrrId,
-          })
+          }),
         );
       creditMemoId &&
         transactionSearchObj.filters.push(
@@ -217,7 +219,7 @@ define([
             name: "custbody_credit_memos",
             operator: "anyof",
             values: creditMemoId,
-          })
+          }),
         );
       status &&
         transactionSearchObj.filters.push(
@@ -225,7 +227,7 @@ define([
             name: "status",
             operator: "anyof",
             values: status,
-          })
+          }),
         );
       if (finalPaymentSchedule) {
         transactionSearchObj.filters.push(
@@ -233,7 +235,7 @@ define([
             name: "custbody_kodpaymentsched",
             operator: "anyof",
             values: finalPaymentSchedule,
-          })
+          }),
         );
       }
 
@@ -300,15 +302,109 @@ define([
   }
 
   /**
+   * Check if all of the return request is already approved
+   * @param options - MRR ID
+   * @returns {boolean}
+   */
+  function checkIfReturnRequuestIsApproved(options) {
+    log.audit("checkIfReturnRequuestIsApproved", options);
+    let allApproved = false;
+    try {
+      const transactionSearchObj = search.create({
+        type: "transaction",
+        settings: [{ name: "consolidationtype", value: "ACCTTYPE" }],
+        filters: [
+          ["type", "anyof", "CuTrSale102", "CuTrPrch106"],
+          "AND",
+          ["custbody_kd_master_return_id", "anyof", options],
+        ],
+        columns: [
+          search.createColumn({
+            name: "statusref",
+            summary: "GROUP",
+            label: "Status",
+          }),
+        ],
+      });
+      const searchResultCount = transactionSearchObj.runPaged().count;
+      log.audit("searchResultCount", searchResultCount);
+      if (searchResultCount > 1) return;
+      transactionSearchObj.run().each(function (result) {
+        let rrStatus = result.getValue({
+          name: "statusref",
+          summary: "GROUP",
+        });
+
+        log.audit(
+          "checkIfReturnRequuestIsApproved rrStatus",
+          rrStatus.split(":")[1],
+        );
+        if (rrStatus.split(":")[1] == rxrs_util.rrStatus.Approved) {
+          log.audit("UPDATING MRR STATUS TO REVIEW PRICES");
+          record.submitFields({
+            type: "customrecord_kod_masterreturn",
+            id: options,
+            values: {
+              custrecord_kod_mr_status: rxrs_util.mrrStatus.WaitingForApproval,
+            },
+          });
+        }
+      });
+    } catch (e) {
+      log.error("checkIfReturnRequuestIsApproved", e.message);
+    }
+  }
+
+  /**
+   * Get the return request id per category
+   * @param {string}options.mrrId - Master Return
+   * @param {string}options.category
+   * @return the Internal Id of the Return Request
+   */
+  function getReturnRequestPerCategory(options) {
+    log.audit("getReturnRequestPerCategory", options);
+    let { mrrId, category } = options;
+    let rrId;
+    try {
+      const transactionSearchObj = search.create({
+        type: "transaction",
+        filters: [
+          ["type", "anyof", "CuTrSale102", "CuTrPrch106"],
+          "AND",
+          ["custbody_kd_master_return_id", "anyof", mrrId],
+        ],
+      });
+      category &&
+        transactionSearchObj.filters.push(
+          search.createFilter({
+            name: "custbody_kd_rr_category",
+            operator: "anyof",
+            values: category,
+          }),
+        );
+
+      transactionSearchObj.run().each(function (result) {
+        rrId = result.id;
+        return true;
+      });
+      return rrId;
+    } catch (e) {
+      log.error("getReturnRequestPerCategory", e.message);
+    }
+  }
+
+  /**
    * Create PO if the type of the Return Request is RRPO
    * @param {number}options.mrrId
    * @param {number}options.rrId
    * @param {number}options.entity
+   * @param {string} options.planSelectionType
    */
   function createPO(options) {
-    let { mrrId, rrId, entity } = options;
+    let { mrrId, rrId, entity, planSelectionType } = options;
     let poLinesInfo = [];
     try {
+      let forBillCreation = false;
       log.debug("createPO", options);
       let poId = checkIfTransAlreadyExist({
         mrrId: mrrId,
@@ -327,10 +423,27 @@ define([
           isDynamic: true,
         });
       }
-      poRec.setValue({
-        fieldId: "entity",
-        value: entity,
-      });
+      if (planSelectionType == TOPCO_PLAN) {
+        poRec.setValue({
+          fieldId: "entity",
+          value: TOPCO_VENDOR,
+        });
+        poRec.setValue({
+          fieldId: "custbody_rxrs_non_returnable_rate",
+          value: 10,
+        });
+        poRec.setValue({
+          fieldId: "custbody_pharma_account",
+          value: entity,
+        });
+        forBillCreation = true;
+      } else {
+        poRec.setValue({
+          fieldId: "entity",
+          value: entity,
+        });
+      }
+
       poRec.setValue({
         fieldId: "custbody_kd_master_return_id",
         value: +mrrId,
@@ -459,7 +572,13 @@ define([
         // log.audit("PO Id", POID);
         resMessage = `Successfully Created PO: ${POID}`;
         if (IRId) {
-          resMessage += ` And Successfully Created PO: ${IRId}`;
+          resMessage += `  Successfully Item Receipt: ${IRId}`;
+          if (forBillCreation == true) {
+            createBill({
+              poId: POID,
+              planSelectionType: TOPCO_PLAN,
+            });
+          }
         }
         return {
           resMessage: resMessage,
@@ -714,7 +833,7 @@ define([
             name: "custrecord_cs_ret_req_scan_rrid",
             operator: "anyof",
             values: rrId,
-          })
+          }),
         );
       }
       if (finalyPaymentSchedule) {
@@ -723,7 +842,7 @@ define([
             name: "custrecord_final_payment_schedule",
             operator: "anyof",
             values: finalyPaymentSchedule,
-          })
+          }),
         );
       }
 
@@ -733,7 +852,7 @@ define([
             name: "custrecord_irs_master_return_request",
             operator: "anyof",
             values: mrrId,
-          })
+          }),
         );
       }
       if (irsId) {
@@ -742,7 +861,7 @@ define([
             name: "internalid",
             operator: "anyof",
             values: irsId,
-          })
+          }),
         );
       }
       customrecord_cs_item_ret_scanSearchObj.run().each(function (result) {
@@ -1217,7 +1336,7 @@ define([
         objRecord.getCurrentSublistValue({
           sublistId: "apply",
           fieldId: "apply",
-        })
+        }),
       );
       if (invIndex !== 0) {
         log.audit("Invoice index", invIndex);
@@ -1235,7 +1354,7 @@ define([
           objRecord.getCurrentSublistValue({
             sublistId: "apply",
             fieldId: "apply",
-          })
+          }),
         );
         objRecord.commitLine({
           sublistId: "apply",
@@ -1622,7 +1741,7 @@ define([
             name: "custbody_credit_memos",
             operator: "anyof",
             values: cmId,
-          })
+          }),
         );
       }
 
@@ -1642,47 +1761,70 @@ define([
    * Create PO if the type of the Return Request is RRPO
    * @param {number}options.poId - Purchase Order Id
    * @param {number}options.finalPaymentSchedule - Final Payment Schedule
+   * @param {string} options.planSelectionType
    */
   function createBill(options) {
     log.audit("createBill", options);
     let { finalPaymentSchedule, poId } = options;
     try {
-      if (finalPaymentSchedule == undefined) return;
-      let vbId;
+      // if (finalPaymentSchedule == undefined) return;
+      let vbId, vbRec2, vbRec, dueDate;
       vbId = transformRecord({
         fromType: record.Type.PURCHASE_ORDER,
         toType: record.Type.VENDOR_BILL,
         fromId: poId,
         isDynamic: false,
       });
-      let vbRec = record.load({
+      vbRec = record.load({
         type: record.Type.VENDOR_BILL,
         id: vbId,
         isDynamic: false,
       });
+      const vendorId = vbRec.getValue("entity");
       let mrrId = vbRec.getValue("custbody_kd_master_return_id");
-
-      vbRec.setValue({
-        fieldId: "tranid",
-        value: mrrId + "_" + options.finalPaymentSchedule,
-      });
-      vbRec.setValue({
-        fieldId: "custbody_kodpaymentsched",
-        value: options.finalPaymentSchedule,
-      });
-      let vbRec2 = removeVBLine({
-        vbRec: vbRec,
-        updateLine: false,
-        finalPaymentSchedule: finalPaymentSchedule,
-      });
-
-      if (vbRec2 && finalPaymentSchedule === 12) {
-        vbId = addBillProcessingFee({
-          vbRecId: vbRec2.save({ ignoreMandatoryFields: true }),
+      if (vendorId == TOPCO_VENDOR) {
+        // Top CO
+        vbRec.setValue({
+          fieldId: "tranid",
+          value: poId,
         });
-        return vbId;
+        dueDate = rxrs_util.setBillDueDate(new Date());
+        vbRec.setValue({
+          fieldId: "duedate",
+          value: dueDate,
+        });
+        const monthShort = dueDate.toLocaleString("en-US", { month: "short" });
+        const year = dueDate.getFullYear();
+        let postingPeriod = rxrs_util.getPeriodId(monthShort + " " + year);
+
+        let vbId = vbRec.save({ ignoreMandatoryFields: true });
+        return record.submitFields({
+          type: record.Type.VENDOR_BILL,
+          id: vbId,
+          values: { postingperiod: postingPeriod },
+        });
       } else {
-        return vbRec2.save({ ignoreMandatoryFields: true });
+        vbRec.setValue({
+          fieldId: "tranid",
+          value: mrrId + "_" + options.finalPaymentSchedule,
+        });
+        vbRec.setValue({
+          fieldId: "custbody_kodpaymentsched",
+          value: options.finalPaymentSchedule,
+        });
+        vbRec2 = removeVBLine({
+          vbRec: vbRec,
+          updateLine: false,
+          finalPaymentSchedule: finalPaymentSchedule,
+        });
+        if (vbRec2 && finalPaymentSchedule === 12) {
+          vbId = addBillProcessingFee({
+            vbRecId: vbRec2.save({ ignoreMandatoryFields: true }),
+          });
+          return vbId;
+        } else {
+          return vbRec2.save({ ignoreMandatoryFields: true });
+        }
       }
     } catch (e) {
       log.error("createBill", e.message);
@@ -2953,7 +3095,7 @@ define([
           name: "custrecord_cs__mfgprocessing",
           operator: "anyof",
           values: mfgProcessing,
-        })
+        }),
       );
     }
 
@@ -3171,5 +3313,7 @@ define([
     removeCMFromInvoiceLine: removeCMFromInvoiceLine,
     checkExistingPaymentInfo: checkExistingPaymentInfo,
     setERVDiscountPrice: setERVDiscountPrice,
+    getReturnRequestPerCategory: getReturnRequestPerCategory,
+    checkIfReturnRequuestIsApproved: checkIfReturnRequuestIsApproved,
   };
 });

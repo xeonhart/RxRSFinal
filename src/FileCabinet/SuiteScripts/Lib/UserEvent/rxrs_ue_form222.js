@@ -1,5 +1,5 @@
 /**
- *@NApiVersion 2.x
+ *@NApiVersion 2.1
  *@NScriptType UserEventScript
  */
 define([
@@ -9,7 +9,8 @@ define([
   "N/ui/serverWidget",
   "N/url",
   "N/ui/message",
-], function (record, search, runtime, serverWidget, url, message) {
+  "../rxrs_custom_rec_lib",
+], function (record, search, runtime, serverWidget, url, message, customrec) {
   var SEA_RETURN_ITEM_RQSTD = "customsearch_kd_return_item_requested";
   var REC_FORM_222_REF_NUM = "customrecord_kd_222formrefnum";
   var REC_RETURN_ITEM_REQUESTED = "customrecord_kod_mr_item_request";
@@ -357,15 +358,15 @@ define([
         value: '<a href="' + lineUrl + '">EDIT</a>',
       });
       /*contacts.setSublistValue({
-                                id: 'edit',
-                                line: ctr,
-                                value: 'https://' + domain + editUrl
-                            });*/
+                                                                          id: 'edit',
+                                                                          line: ctr,
+                                                                          value: 'https://' + domain + editUrl
+                                                                      });*/
       /*objSublist.setSublistValue({
-                                id: 'custpage_edit',
-                                line: i,
-                                value: 'https://' + domain + editUrl
-                            });*/
+                                                                          id: 'custpage_edit',
+                                                                          line: i,
+                                                                          value: 'https://' + domain + editUrl
+                                                                      });*/
       objSublist.setSublistValue({
         id: "custpage_col_id",
         value: itemsRequested[i].id,
@@ -419,67 +420,74 @@ define([
     if (
       context.type != context.UserEventType.CREATE &&
       context.type != context.UserEventType.COPY
-    )
+    ) {
+      const rec = context.newRecord;
+
       addItemsRequestedSublist(context);
 
-    var generate222FormLabel = "Generate Form 222";
-    if (context.newRecord.getValue("custrecord_kd_2frn_for_222_regeneration")) {
-      generate222FormLabel = "Regenerate Form 222";
-      context.form.addPageInitMessage({
-        title: "222 Form needs to be regenerated!",
-        message: "Click on Regenerate Form 222 button.",
-        type: message.Type.WARNING,
-        //duration: 1500
-      });
-    }
-
-    if (
-      context.newRecord.getValue("name") != "000000000" &&
-      context.newRecord.getLineCount("custpage_sublist_items_requested") > 0 &&
-      (context.newRecord.getValue("custrecord_kd_2frn_222_form_pdf") == "" ||
-        context.newRecord.getValue(
-          "custrecord_kd_2frn_for_222_regeneration",
-        )) &&
-      context.type != context.UserEventType.CREATE &&
-      context.type != context.UserEventType.COPY &&
-      context.type != context.UserEventType.EDIT
-    ) {
-      context.form.addButton({
-        id: "custpage_btn_form222",
-        label: generate222FormLabel,
-        functionName: "generateForm222",
-      });
-    }
-
-    var fileId = search
-      .create({
-        type: "file",
-        filters: [["name", "is", "kd_cs_form_222_ref_num.js"]],
-      })
-      .run()
-      .getRange({ start: 0, end: 1 });
-    log.debug("test", "cs file id: " + fileId[0].id);
-    context.form.clientScriptFileId = fileId[0].id;
-
-    if (
-      context.type == context.UserEventType.CREATE &&
-      runtime.executionContext == "USERINTERFACE"
-    ) {
-      // === runtime.ContextType.USERINTERFACE
-      var rrId = context.request.parameters.custscript_rrid;
-      if (rrId !== "" && rrId !== null && rrId !== undefined) {
-        var pageNo = String(
-          parseInt(get222FormCurrentPage(rrId)) + parseInt(1),
-        );
-        context.newRecord.setValue(FLD_F2RN_PAGE, pageNo);
-        context.newRecord.setValue(FLD_F2RN_RET_REQ, rrId);
+      var generate222FormLabel = "Generate Form 222";
+      if (
+        context.newRecord.getValue("custrecord_kd_2frn_for_222_regeneration")
+      ) {
+        generate222FormLabel = "Regenerate Form 222";
+        context.form.addPageInitMessage({
+          title: "222 Form needs to be regenerated!",
+          message: "Click on Regenerate Form 222 button.",
+          type: message.Type.WARNING,
+          //duration: 1500
+        });
       }
-      context.newRecord.setValue("name", "000000000");
+
+      if (
+        context.newRecord.getValue("name") != "000000000" &&
+        context.newRecord.getLineCount("custpage_sublist_items_requested") >
+          0 &&
+        (context.newRecord.getValue("custrecord_kd_2frn_222_form_pdf") == "" ||
+          context.newRecord.getValue(
+            "custrecord_kd_2frn_for_222_regeneration",
+          )) &&
+        context.type != context.UserEventType.CREATE &&
+        context.type != context.UserEventType.COPY &&
+        context.type != context.UserEventType.EDIT
+      ) {
+        context.form.addButton({
+          id: "custpage_btn_form222",
+          label: generate222FormLabel,
+          functionName: "generateForm222",
+        });
+      }
+
+      var fileId = search
+        .create({
+          type: "file",
+          filters: [["name", "is", "kd_cs_form_222_ref_num.js"]],
+        })
+        .run()
+        .getRange({ start: 0, end: 1 });
+      log.debug("test", "cs file id: " + fileId[0].id);
+      context.form.clientScriptFileId = fileId[0].id;
+
+      if (
+        context.type == context.UserEventType.CREATE &&
+        runtime.executionContext == "USERINTERFACE"
+      ) {
+        // === runtime.ContextType.USERINTERFACE
+        var rrId = context.request.parameters.custscript_rrid;
+        if (rrId !== "" && rrId !== null && rrId !== undefined) {
+          var pageNo = String(
+            parseInt(get222FormCurrentPage(rrId)) + parseInt(1),
+          );
+          context.newRecord.setValue(FLD_F2RN_PAGE, pageNo);
+          context.newRecord.setValue(FLD_F2RN_RET_REQ, rrId);
+        }
+        context.newRecord.setValue("name", "000000000");
+      }
     }
   }
 
   function afterSubmit(context) {
     var form222Rec = context.newRecord;
+
     var rrId = form222Rec.getValue("custrecord_kd_returnrequest");
     log.debug("AfterSubmit", "RRID ");
     if (rrId) {

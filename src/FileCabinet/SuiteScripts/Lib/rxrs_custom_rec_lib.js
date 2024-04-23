@@ -1,10 +1,12 @@
 /**
  * @NApiVersion 2.1
  */
-define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
+define(["N/record", "N/search", "./rxrs_transaction_lib", "./rxrs_util"], /**
  * @param{record} record
  * @param{search} search
- */ (record, search, tranlib) => {
+ * @param tranlib
+ * @param util
+ */ (record, search, tranlib, util) => {
   const PRICINGMAP = {
     6: 4, //direct package price
     8: 3, // Suggested wholesale price
@@ -706,6 +708,497 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
   }
 
   /**
+   * Create 222 Form
+   * @param {string} options.rrId - Return Request Id
+   * @param {number} options.page - Page Number
+   * @return the Internal Id of the created form 222
+   */
+  function create222Form(options) {
+    log.audit("create222Form", options);
+    let { rrId, page } = options;
+
+    try {
+      const form222Rec = record.create({
+        type: "customrecord_kd_222formrefnum",
+      });
+      form222Rec.setValue({
+        fieldId: "name",
+        value: "000000000",
+      });
+      form222Rec.setValue({
+        fieldId: "custrecord_kd_returnrequest",
+        value: rrId,
+      });
+      form222Rec.setValue({
+        fieldId: "custrecord_kd_form222_page",
+        value: page,
+      });
+      return form222Rec.save({
+        ignoreMandatoryFields: true,
+      });
+    } catch (e) {
+      log.error("create222Form", e.message);
+    }
+  }
+
+  /**
+   * Get the item request based on mrrId
+   * @param options - MRR ID
+   */
+  function getC2ItemRequested(options) {
+    try {
+      let totalItemRequested = [];
+      const customrecord_kod_mr_item_requestSearchObj = search.create({
+        type: "customrecord_kod_mr_item_request",
+        filters: [
+          ["custrecord_kd_rir_masterid", "anyof", options],
+          "AND",
+          ["custrecord_kd_rir_form222_ref", "anyof", "@NONE@"],
+          "AND",
+          ["custrecord_kd_rir_category", "anyof", "3"],
+        ],
+        columns: [
+          search.createColumn({ name: "id", label: "ID" }),
+          search.createColumn({ name: "scriptid", label: "Script ID" }),
+        ],
+      });
+      let searchResultCount =
+        customrecord_kod_mr_item_requestSearchObj.runPaged().count;
+      customrecord_kod_mr_item_requestSearchObj.run().each(function (result) {
+        totalItemRequested.push(result.id);
+        return true;
+      });
+      return totalItemRequested;
+    } catch (e) {
+      log.error("getC2ItemRequested", e.message);
+    }
+  }
+
+  /**
+   * Get the item request based on mrrId
+   * @param {string} options.mrrId - MRR ID
+   * @param {string} options.category - Return Request Category
+   * @return the internal id of the return item request
+   */
+  function getItemRequestedPerCategory(options) {
+    log.audit("getItemRequestedPerCategory", options);
+    let { category, mrrId } = options;
+    try {
+      let totalItemRequested = [];
+      const customrecord_kod_mr_item_requestSearchObj = search.create({
+        type: "customrecord_kod_mr_item_request",
+        filters: [
+          ["custrecord_kd_rir_category", "anyof", category],
+          "AND",
+          ["custrecord_kd_rir_masterid", "anyof", mrrId],
+        ],
+        columns: [
+          search.createColumn({ name: "id", label: "ID" }),
+          search.createColumn({ name: "scriptid", label: "Script ID" }),
+        ],
+      });
+      let searchResultCount =
+        customrecord_kod_mr_item_requestSearchObj.runPaged().count;
+      log.audit(
+        "searchResultCount getItemRequestedPerCategory",
+        searchResultCount,
+      );
+      customrecord_kod_mr_item_requestSearchObj.run().each(function (result) {
+        totalItemRequested.push(result.id);
+        return true;
+      });
+      return totalItemRequested;
+    } catch (e) {
+      log.error("getItemRequestedPerCategory", e.message);
+    }
+  }
+
+  function getReturnRequestItemRequested(options) {
+    log.audit("getReturnRequestItemRequested", options);
+    try {
+      const objSearch = search.create({
+        type: "customrecord_kod_mr_item_request",
+        filters: [["custrecord_kd_rir_return_request", "anyof", options]],
+        columns: [
+          search.createColumn({ name: "id", label: "ID" }),
+          search.createColumn({
+            name: "custrecord_kd_rir_item",
+            label: "Item ",
+          }),
+          search.createColumn({
+            name: "displayname",
+            join: "CUSTRECORD_KD_RIR_ITEM",
+            label: "Display Name",
+          }),
+          search.createColumn({
+            name: "custitem_ndc10",
+            join: "CUSTRECORD_KD_RIR_ITEM",
+            label: "NDC10",
+          }),
+          search.createColumn({
+            name: "custrecord_kd_rir_quantity",
+            label: "Quantity",
+          }),
+          search.createColumn({
+            name: "custrecord_kd_rir_fulpar",
+            label: "FULL/PARTIAL PACKAGE",
+          }),
+          search.createColumn({
+            name: "custrecord_kd_rir_masterid",
+            label: "Master Return ID",
+          }),
+          search.createColumn({
+            name: "custrecord_kd_rir_form_222_no",
+            label: "Form 222 No.",
+          }),
+          search.createColumn({
+            name: "custrecord_kd_rir_form222_ref",
+            label: "Form 222 Ref Num",
+          }),
+        ],
+      });
+      let searchRs = objSearch.run().getRange({ start: 0, end: 1000 });
+      let itemsRequested = [];
+      let rirId,
+        item,
+        displayName,
+        itemNdc,
+        qty,
+        fulPar,
+        form222No,
+        form222RefNo,
+        form222RefNoId;
+      log.debug("getItemsRequested", "searchRs: " + JSON.stringify(searchRs));
+      for (let i = 0; i < searchRs.length; i++) {
+        rirId = searchRs[i].getValue({
+          name: "id",
+        });
+        item = searchRs[i].getValue({
+          name: "custrecord_kd_rir_item",
+        });
+        displayName = searchRs[i].getValue({
+          name: "displayname",
+          join: "custrecord_kd_rir_item",
+        });
+        if (displayName == "") {
+          displayName = searchRs[i].getText({
+            name: "custrecord_kd_rir_item",
+          });
+        }
+        itemNdc = searchRs[i].getValue({
+          name: "custitem_kod_item_ndc",
+          join: "custrecord_kd_rir_item",
+        });
+        qty = searchRs[i].getValue({
+          name: "custrecord_kd_rir_quantity",
+        });
+        fulPar = searchRs[i].getValue({
+          name: "custrecord_kd_rir_fulpar",
+        });
+        form222No = searchRs[i].getValue({
+          name: "custrecord_kd_rir_form_222_no",
+        });
+        form222RefNo = searchRs[i].getText({
+          name: "custrecord_kd_rir_form222_ref",
+        });
+        form222RefNoId = searchRs[i].getValue({
+          name: "custrecord_kd_rir_form222_ref",
+        });
+
+        itemsRequested.push({
+          id: rirId,
+          item: item,
+          displayname: displayName,
+          ndc: itemNdc,
+          qty: qty,
+          fulpar: fulPar,
+          form222No: form222No,
+          form222RefNo: form222RefNo,
+          form222RefNoId: form222RefNoId,
+        });
+      }
+      return itemsRequested;
+    } catch (e) {
+      log.error("getReturnRequestItemRequested", e.message);
+    }
+  }
+
+  /**
+   * Get the category of the return item requested of the master return request
+   * @param options mrrId
+   * @return array of the category
+   */
+  function getItemRequested(options) {
+    let category = [];
+    log.audit("getItemRequested", options);
+    try {
+      const customrecord_kod_mr_item_requestSearchObj = search.create({
+        type: "customrecord_kod_mr_item_request",
+        filters: [["custrecord_kd_rir_masterid", "anyof", options]],
+        columns: [
+          search.createColumn({
+            name: "custrecord_kd_rir_category",
+            summary: "GROUP",
+            label: "Category",
+          }),
+        ],
+      });
+
+      customrecord_kod_mr_item_requestSearchObj.run().each(function (result) {
+        let res = result.getValue({
+          name: "custrecord_kd_rir_category",
+          summary: "GROUP",
+        });
+
+        switch (+res) {
+          case 3:
+            category.push({ value: 3, text: "C2" });
+
+            break;
+          case 1:
+            category.push({ value: 1, text: "RxOTC" });
+            break;
+          case 4:
+            category.push({ value: 4, text: "C3To5" });
+            break;
+        }
+        return true;
+      });
+      log.audit("getItemRequested", category);
+      return category;
+    } catch (e) {
+      log.error("getItemRequested", e.message);
+    }
+  }
+
+  /**
+   * Assign the return request in the Return item requested per category
+   * @param options main object
+   * @param options.category - Return Request Category,
+   * @param options.mrrId - Master Return Id
+   */
+  function assignReturnItemRequested(options) {
+    log.audit("assignReturnItemRequested", options);
+    let { category, mrrId } = options;
+    const rrId = tranlib.getReturnRequestPerCategory({
+      mrrId: mrrId,
+      category: category,
+    });
+    try {
+      const customrecord_kod_mr_item_requestSearchObj = search.create({
+        type: "customrecord_kod_mr_item_request",
+        filters: [
+          ["custrecord_kd_rir_masterid", "anyof", mrrId],
+          "AND",
+          ["custrecord_kd_rir_category", "anyof", category],
+        ],
+        columns: [
+          search.createColumn({
+            name: "custrecord_kd_rir_category",
+            label: "Category",
+          }),
+        ],
+      });
+
+      customrecord_kod_mr_item_requestSearchObj.run().each(function (result) {
+        record.submitFields({
+          type: "customrecord_kod_mr_item_request",
+          id: result.id,
+          values: {
+            custrecord_kd_rir_return_request: rrId,
+          },
+        });
+        return true;
+      });
+    } catch (e) {
+      log.error("assignReturnItemRequested", e.message);
+    }
+  }
+
+  /**
+   * Create inbound packages
+   * @param {number} options.mrrId master return request number
+   * @param {number} options.rrId return request Id
+   * @param {string} options.requestedDate  requested date
+   * @param {number} options.category Return request category
+   * @param {boolean} options.isC2 Check if the category is C2
+   * @param {number} options.customer Customer indicated in the Master Return Request
+   * @return the internal id of the return package
+   */
+  const createReturnPackages = (options) => {
+    let { mrrId, rrId, requestedDate, category, customer, isC2 } = options;
+    try {
+      log.audit("createReturnPackages", options);
+      const rpIds = search
+        .load("customsearch_kd_package_return_search_2")
+        .run()
+        .getRange({ start: 0, end: 1 });
+      const rpName =
+        "RP" +
+        (parseInt(
+          rpIds[0].getValue({
+            name: "internalid",
+            summary: search.Summary.MAX,
+          }),
+        ) +
+          parseInt(1));
+
+      const packageRec = record.create({
+        type: "customrecord_kod_mr_packages",
+        isDynamic: true,
+      });
+      isC2 &&
+        packageRec.setValue({
+          fieldId: "custrecord_kd_is_222_kit",
+          value: isC2,
+        });
+      packageRec.setValue({
+        fieldId: "name",
+        value: rpName,
+      });
+      mrrId &&
+        packageRec.setValue({
+          fieldId: "custrecord_kod_rtnpack_mr",
+          value: mrrId,
+        });
+      rrId &&
+        packageRec.setValue({
+          fieldId: "custrecord_kod_packrtn_rtnrequest",
+          value: rrId,
+        });
+      category &&
+        packageRec.setValue({
+          fieldId: "custrecord_kod_packrtn_control",
+          value: category,
+        });
+      requestedDate &&
+        packageRec.setValue({
+          fieldId: "custrecord_kd_inbound_estimated_delivery",
+          value: new Date(requestedDate),
+        });
+      customer &&
+        packageRec.setValue({
+          fieldId: "custrecord_kd_rp_customer",
+          value: customer,
+        });
+      let id = packageRec.save({ ignoreMandatoryFields: true });
+      log.debug("Package Return Id" + id);
+      return id;
+    } catch (e) {
+      log.error("createReturnPackages", {
+        errorMessage: e.message,
+        parameters: options,
+      });
+    }
+  };
+
+  /**
+   * Get the 222 Form For Reprinting
+   * @param options - Return Request
+   * @return the array of the internal id of the 222 form
+   */
+  function getReturnRequestForReprinting222Form(options) {
+    let ids = [];
+    try {
+      const customrecord_kd_222formrefnumSearchObj = search.create({
+        type: "customrecord_kd_222formrefnum",
+        filters: [
+          ["custrecord_kd_returnrequest", "anyof", options],
+          "AND",
+          ["name", "isnot", "000000000"],
+          "AND",
+          [
+            ["custrecord_kd_2frn_for_222_regeneration", "is", "T"],
+            "OR",
+            ["formulatext: {custrecord_kd_2frn_222_form_pdf}", "isempty", ""],
+          ],
+        ],
+        columns: [
+          search.createColumn({
+            name: "custrecord_kd_returnrequest",
+            label: "Return Request",
+          }),
+        ],
+      });
+
+      customrecord_kd_222formrefnumSearchObj.run().each(function (result) {
+        ids.push(result.id);
+        return true;
+      });
+      return ids;
+    } catch (e) {
+      log.error("getReturnRequestForReprinting222Form", e.message);
+    }
+  }
+
+  /**
+   * Get the Return Package Details
+   * @param {boolean}options.outbound - Set true for outbound
+   * @param {boolean}options.getCount - Set true if you want to return count
+   * @param {string}options.rrId - Return Request Id
+   */
+  function getReturnPackageInfo(options) {
+    let { outbound, getCount, rrId } = options;
+    try {
+      const customrecord_kod_mr_packagesSearchObj = search.create({
+        type: "customrecord_kod_mr_packages",
+        filters: [["custrecord_kod_packrtn_rtnrequest", "anyof", rrId]],
+        columns: [
+          search.createColumn({ name: "name", label: "ID" }),
+          search.createColumn({
+            name: "custrecord_kod_packrtn_control",
+            label: "Package Control",
+          }),
+          search.createColumn({
+            name: "custrecord_kod_packrtn_rtnrequest",
+            label: "Return Request",
+          }),
+          search.createColumn({
+            name: "custrecord_kd_inbound_tracking_status",
+            label: "Tracking Status ",
+          }),
+          search.createColumn({
+            name: "custrecord_kod_packrtn_trackingnum",
+            label: "Tracking Number",
+          }),
+          search.createColumn({
+            name: "custrecord_kd_inbound_estimated_delivery",
+            label: " Estimated Delivery",
+          }),
+          search.createColumn({
+            name: "custrecord_kd_rp_customer",
+            label: "Customer",
+          }),
+        ],
+      });
+
+      outbound &&
+        customrecord_kod_mr_packagesSearchObj.filters.push(
+          search.createFilter({
+            name: "custrecord_kd_is_222_kit",
+            operator: "is",
+            values: outbound,
+          }),
+        );
+      const searchResultCount =
+        customrecord_kod_mr_packagesSearchObj.runPaged().count;
+      log.debug(
+        "customrecord_kod_mr_packagesSearchObj result count",
+        searchResultCount,
+      );
+      if (getCount == true) {
+        return searchResultCount;
+      }
+      customrecord_kod_mr_packagesSearchObj.run().each(function (result) {
+        // .run().each has a limit of 4,000 results
+        return true;
+      });
+    } catch (e) {
+      log.error("getOutBoundPackages", e.message);
+    }
+  }
+
+  /**
    * Reload CM
    * @param cmId
    */
@@ -726,6 +1219,39 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
     }
   }
 
+  /**
+   * Check if for 222 Regeneration
+   * @param options
+   * @returns {boolean}
+   */
+  function checkIfFor222Regeneration(options) {
+    try {
+      const customrecord_kd_222formrefnumSearchObj = search.create({
+        type: "customrecord_kd_222formrefnum",
+        filters: [
+          ["custrecord_kd_returnrequest", "anyof", options],
+          "AND",
+          ["custrecord_kd_2frn_for_222_regeneration", "is", "T"],
+        ],
+        columns: [
+          search.createColumn({ name: "name", label: "Name" }),
+          search.createColumn({ name: "id", label: "ID" }),
+          search.createColumn({ name: "scriptid", label: "Script ID" }),
+          search.createColumn({
+            name: "custrecord_kd_returnrequest",
+            label: "Return Request",
+          }),
+        ],
+      });
+      const searchResultCount =
+        customrecord_kd_222formrefnumSearchObj.runPaged().count;
+      log.error("aaaa", searchResultCount);
+      return searchResultCount > 0;
+    } catch (e) {
+      log.error("checkIfFor222Regeneration", e.message);
+    }
+  }
+
   return {
     lookForExistingCreditMemoRec,
     createCreditMemoRec,
@@ -737,5 +1263,15 @@ define(["N/record", "N/search", "./rxrs_transaction_lib"], /**
     getALlCMTotalAmount,
     createPriceHistory,
     deletePriceHistory,
+    getItemRequested,
+    createReturnPackages,
+    getC2ItemRequested,
+    getReturnPackageInfo,
+    create222Form,
+    checkIfFor222Regeneration,
+    getReturnRequestForReprinting222Form,
+    getReturnRequestItemRequested,
+    assignReturnItemRequested,
+    getItemRequestedPerCategory,
   };
 });

@@ -3,17 +3,17 @@
  * @NModuleScope Public
  */
 
-define(["N/file", "N/xml", "N/render"]
-/**
+define(["N/file", "N/xml", "N/render"], /**
  * @param{file} file
  * @param{xml} xml
  * @param render
- */, function (file, xml, render) {
+ */ function (file, xml, render) {
   /**
    * Build XMLDoc file from template with content Data
    * @param {number} options.templateID - Template Id
    * @param {[]} options.content - Content of the PDF
    * @param {string} options.fileName - FileName
+   * @param {record} options.record
    * @param {number} options.outputFolder - Folder where to save the PDF
    * @returns PDF
    */
@@ -22,12 +22,15 @@ define(["N/file", "N/xml", "N/render"]
       const objRender = render.create();
       const xmlTmpFile = file.load(options.templateID);
       objRender.templateContent = xmlTmpFile.getContents();
-
-      objRender.addCustomDataSource({
-        format: render.DataSource.OBJECT,
-        alias: "record",
-        data: options.content,
-      });
+      if (options.record) {
+        objRender.addRecord("record", options.record);
+      } else {
+        objRender.addCustomDataSource({
+          format: render.DataSource.OBJECT,
+          alias: "record",
+          data: options.content,
+        });
+      }
 
       const PDF = objRender.renderAsPdf();
 

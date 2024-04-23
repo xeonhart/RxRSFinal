@@ -97,8 +97,8 @@ font-family: NotoSans, sans-serif;
         </style>
         </head>
 <body header="nlheader" header-height="12%" footer="nlfooter" footer-height="20pt" padding="0.5in 0.5in 0.5in 0.5in" size="Letter-LANDSCAPE">
-<br /><br /><#if record.item?has_content>
-<table align="right" border="0" cellpadding="1" cellspacing="1" style="width:230px;"><tr>
+<br /><br /><br /><#if record.item?has_content>
+<table align="right" margin-top="10px" border="0" cellpadding="1" cellspacing="1" style="width:230px;"><tr>
     <td style="text-align: right;">Inventory Status:</td>
     <td>${record.inventoryStatus}</td>
 </tr></table>
@@ -109,8 +109,8 @@ font-family: NotoSans, sans-serif;
             <th align="center" colspan="4" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">NDC</span></th>
             <th align="center" colspan="5" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Description</span></th>
             <th align="center" colspan="3" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Manufacturer</span></th>
-            <th align="center" colspan="3" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Ctrl</span></th>
-            <th align="center" colspan="2" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Form 222</span></th>
+            <th align="center" colspan="2" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Ctrl</span></th>
+            <th align="center" colspan="3" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Form 222</span></th>
             <th align="center" colspan="2" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Lot</span></th>
             <th align="center" colspan="3" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Exp. Date</span></th>
             <th align="center" colspan="2" style="padding: 10px 6px; background-color: rgb(0, 0, 0);"><span style="color:#ffffff;">Pk Size</span></th>
@@ -122,8 +122,8 @@ font-family: NotoSans, sans-serif;
     <td align="center" colspan="4" >${item.ndc}</td>
     <td align="center" colspan="5" >${item.description}</td>
     <td align="center" colspan="3" >${item.manufacturer}</td>
-    <td align="center" colspan="3" >${item.ctrl}</td>
-    <td align="center" colspan="2" >${item.form222}</td>
+    <td align="center" colspan="2" >${item.ctrl}</td>
+    <td align="center" colspan="3" >${item.form222}</td>
     <td align="center" colspan="2" >${item.lotNumber}</td>
     <td align="center" colspan="3" >${item.expDate}</td>
     <td align="center" colspan="2" >${item.pkSize}</td>

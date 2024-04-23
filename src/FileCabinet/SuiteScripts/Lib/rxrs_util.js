@@ -85,16 +85,19 @@ define([
    */
   function getFolderId(FolderName) {
     log.audit("getFolderId", FolderName);
+    let folderId;
     try {
-      const fileSearch = search
-        .create({
-          type: "folder",
-          filters: [["name", "is", FolderName]],
-        })
-        .run()
-        .getRange({ start: 0, end: 1 });
-      log.debug("getFolderId", fileSearch);
-      return fileSearch[0].id;
+      var folderSearchObj = search.create({
+        type: "folder",
+        filters: [["name", "is", FolderName]],
+      });
+
+      folderSearchObj.run().each(function (result) {
+        folderId = result.id;
+        return true;
+      });
+
+      return folderId;
     } catch (e) {
       log.error("getFolderId", e.message);
     }
@@ -121,6 +124,7 @@ define([
     PriceLocked: 12,
     Archived: 13,
     InProgress: 14,
+    reviewPrices: 15,
   });
   const QUICKCASH = 4;
 
@@ -149,17 +153,22 @@ define([
       let recordType = "";
       let location = 1;
       let rrpoName;
-
-      if (options.planSelectionType == QUICKCASH) {
+      let rrRec;
+      if (getEntityType(options.customer) == "vendor") {
         recordType = "custompurchase_returnrequestpo";
         rrpoName = generateRRPODocumentNumber();
       } else {
         recordType = "customsale_kod_returnrequest";
       }
+
       log.audit("createReturnRequest", { options, recordType });
-      const rrRec = record.create({
+      rrRec = record.create({
         type: recordType,
         isDynamic: false,
+      });
+      rrRec.setValue({
+        fieldId: "entity",
+        value: options.customer,
       });
       if (
         options.category === RRCATEGORY.C2 &&
@@ -181,20 +190,6 @@ define([
           fieldId: "tranid",
           value: rrpoName,
         });
-
-      try {
-        rrRec.setValue({
-          fieldId: "entity",
-          value: options.customer,
-        });
-        rrRec.setValue({
-          fieldId: "custbody_rrentity",
-          value: options.customer,
-        });
-      } catch (e) {
-        log.error("setting Entity", e.message);
-      }
-
       rrRec.setValue({
         fieldId: "custbody_kd_master_return_id",
         value: options.masterRecId,
@@ -293,15 +288,6 @@ define([
           customer: customer,
           isC2: isC2,
         });
-        return {
-          rrId: RRId,
-          numOfLabels: numOfLabels,
-          mrrId: masterRecId,
-          requestedDate: requestedDate,
-          category: cat,
-          customer: customer,
-          isC2: isC2,
-        };
       }
     } catch (e) {
       log.error("createReturnRequest", e.message);
@@ -618,6 +604,11 @@ define([
     return type;
   }
 
+  /**
+   * Get the entity Type
+   * @param internalId
+   * @returns {string}
+   */
   function getEntityType(internalId) {
     try {
       let type;
@@ -707,6 +698,63 @@ define([
     }
   }
 
+  function addMonths(date, months) {
+    date.setMonth(date.getMonth() + months);
+    return new Date(date.getFullYear(), date.getMonth(), 1);
+  }
+
+  function getDaysBetween(StartDate, EndDate) {
+    // The number of milliseconds in all UTC days (no DST)
+    const oneDay = 1000 * 60 * 60 * 24;
+
+    // A day in UTC always lasts 24 hours (unlike in other time formats)
+    const start = Date.UTC(
+      EndDate.getFullYear(),
+      EndDate.getMonth(),
+      EndDate.getDate(),
+    );
+    const end = Date.UTC(
+      StartDate.getFullYear(),
+      StartDate.getMonth(),
+      StartDate.getDate(),
+    );
+
+    // so it's safe to divide by 24 hours
+    return (start - end) / oneDay;
+  }
+
+  /**
+   * Get Accounting Period Id
+   * @param {string} name
+   * */
+  function getPeriodId(name) {
+    let periodId;
+    try {
+      const accountingperiodSearchObj = search.create({
+        type: "accountingperiod",
+        filters: [["periodname", "is", name]],
+        columns: [search.createColumn({ name: "periodname", label: "Name" })],
+      });
+
+      accountingperiodSearchObj.run().each(function (result) {
+        periodId = result.id;
+      });
+      return periodId;
+    } catch (e) {
+      log.error("getPeriodId", e.message);
+    }
+  }
+
+  function setBillDueDate(date) {
+    let tempDate = addMonths(date, 3);
+    const daysDifference = getDaysBetween(tempDate, new Date());
+    if (daysDifference >= 90) {
+      return tempDate;
+    } else {
+      return addMonths(new Date(), 4);
+    }
+  }
+
   /**
    * Return formatted date M/D/YYYY
    * @param date
@@ -725,6 +773,37 @@ define([
     let day = +date[0] < 10 ? 0 + date[0] : date[0];
     let month = +date[1] < 10 ? 0 + date[1] : date[1];
     return day + "/" + month + "/" + date[2];
+  }
+
+  /**
+   * Crerate
+   * @param options.name
+   * @param options.parent
+   */
+  function createFolder(options) {
+    log.audit("create folder", options);
+    let { name, parent } = options;
+    try {
+      const objRecord = record.create({
+        type: record.Type.FOLDER,
+        isDynamic: true,
+      });
+
+      objRecord.setValue({
+        fieldId: "name",
+        value: name,
+      });
+      parent &&
+        objRecord.setValue({
+          fieldId: "parent",
+          value: parent,
+        });
+      return objRecord.save({
+        ignoreMandatoryFields: true,
+      });
+    } catch (e) {
+      log.error("createFolder", e.message);
+    }
   }
 
   return {
@@ -749,5 +828,8 @@ define([
     getFolderId,
     formatDate,
     moveFolderToDone,
+    createFolder,
+    setBillDueDate,
+    getPeriodId,
   };
 });

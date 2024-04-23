@@ -27,7 +27,7 @@ define([
   serverWidget,
   file,
   tranlib,
-  rxrs_cust_rec_lib
+  rxrs_cust_rec_lib,
 ) => {
   /**
    * Defines the function definition that is executed before record is loaded.
@@ -64,6 +64,7 @@ define([
 
             const rrMrrId = rec.getValue("custbody_kd_master_return_id");
             const DEA222Fees = rec.getValue("custbody_kd_total_222_form_fee");
+            const rrSaleStatus = rec.getValue("transtatus");
             let forVerificationSLUrl = url.resolveScript({
               scriptId: "customscript_sl_returnable_page",
               deploymentId: "customdeploy_sl_returnable_page",
@@ -80,17 +81,93 @@ define([
               url: forVerificationSLUrl,
               action: "verifyItems",
             };
-            context.form.addButton({
-              id: "custpage_verify",
-              label: "Verify Items",
-              functionName: `openSuitelet(${JSON.stringify(paramsRR)})`,
-            });
+            if (rrSaleStatus == rxrs_util.rrStatus.PendingVerification) {
+              context.form.addButton({
+                id: "custpage_verify",
+                label: "Verify Items",
+                functionName: `openSuitelet(${JSON.stringify(paramsRR)})`,
+              });
+            }
+            if (rrSaleStatus == rxrs_util.rrStatus.C2Kittobemailed) {
+              let generateLabelURL = url.resolveScript({
+                scriptId: "customscript_rxrs_sl_generate_label",
+                deploymentId: "customdeploy_rxrs_sl_generate_label",
+                returnExternalUrl: false,
+                params: {
+                  rrId: rrId,
+                  action: "createLabelC2",
+                  customerId: rec.getValue("entity"),
+                  mrrId: rec.getValue("custbody_kd_master_return_id"),
+                },
+              });
+              let mmrParamsGenerateLabel = {
+                url: generateLabelURL,
+              };
+
+              //Customer Submitted
+              context.form.addButton({
+                id: "custpage_generate_label",
+                label: "Add Label",
+                functionName: `openSuitelet(${JSON.stringify(
+                  mmrParamsGenerateLabel,
+                )})`,
+              });
+              const form222ForReprinting =
+                rxrs_cust_rec_lib.getReturnRequestForReprinting222Form(rec.id);
+              log.audit("form222ForReprinting", form222ForReprinting);
+              if (form222ForReprinting.length > 0) {
+                context.form.addButton({
+                  id: "custpage_reprint_222_form",
+                  label: "Generate 222 Form PDF",
+                  functionName: `generate222Form(${JSON.stringify(form222ForReprinting)})`,
+                });
+              }
+            }
             break;
           case "custompurchase_returnrequestpo":
             const rrpoId = rec.id;
+            const rrPOStatus = rec.getValue("transtatus");
             const rrpoMrrId = rec.getValue("custbody_kd_master_return_id");
             const customer = rec.getValue("entity");
             const DEA222Feespo = rec.getValue("custbody_kd_total_222_form_fee");
+            if (rrPOStatus == rxrs_util.rrStatus.C2Kittobemailed) {
+              let generateLabelURL = url.resolveScript({
+                scriptId: "customscript_rxrs_sl_generate_label",
+                deploymentId: "customdeploy_rxrs_sl_generate_label",
+                returnExternalUrl: false,
+                params: {
+                  rrId: rrpoId,
+                  action: "createLabelC2",
+                  customerId: rec.getValue("entity"),
+                  mrrId: rec.getValue("custbody_kd_master_return_id"),
+                },
+              });
+              let mmrParamsGenerateLabel = {
+                url: generateLabelURL,
+              };
+
+              //Customer Submitted
+              context.form.addButton({
+                id: "custpage_generate_label",
+                label: "Add Label",
+                functionName: `openSuitelet(${JSON.stringify(
+                  mmrParamsGenerateLabel,
+                )})`,
+              });
+              /**
+               * Print 222 Form
+               */
+              const form222ForReprinting =
+                rxrs_cust_rec_lib.getReturnRequestForReprinting222Form(rec.id);
+              log.audit("form222ForReprinting", form222ForReprinting);
+              if (form222ForReprinting.length > 0) {
+                context.form.addButton({
+                  id: "custpage_reprint_222_form",
+                  label: "Generate 222 Form PDF",
+                  functionName: `generate222Form(${JSON.stringify(form222ForReprinting)})`,
+                });
+              }
+            }
             let forVerificationSLUrlPO = url.resolveScript({
               scriptId: "customscript_sl_returnable_page",
               deploymentId: "customdeploy_sl_returnable_page",
@@ -107,15 +184,19 @@ define([
               url: forVerificationSLUrlPO,
               action: "verifyItems",
             };
-            context.form.addButton({
-              id: "custpage_verify",
-              label: "Verify Items",
-              functionName: `openSuitelet(${JSON.stringify(paramsRRPO)})`,
-            });
+            if (rrPOStatus == rxrs_util.rrStatus.PendingVerification) {
+              context.form.addButton({
+                id: "custpage_verify",
+                label: "Verify Items",
+                functionName: `openSuitelet(${JSON.stringify(paramsRRPO)})`,
+              });
+            }
+
             let approveParams = {
               mrrId: rrpoMrrId,
               rrId: rrpoId,
               entity: customer,
+              planSelectionType: rec.getValue("custbody_plan_type"),
               action: "createPO",
             };
 
@@ -132,29 +213,32 @@ define([
                 isDynamic: true,
               });
               let returnRequestValues = poRec.getValue(
-                "custbody_kd_return_request2"
+                "custbody_kd_return_request2",
               );
               log.debug(
                 "poId",
-                returnRequestValues.indexOf(JSON.stringify(rrpoId))
+                returnRequestValues.indexOf(JSON.stringify(rrpoId)),
               );
               if (returnRequestValues.indexOf(JSON.stringify(rrpoId)) === -1) {
                 context.form.addButton({
                   id: "custpage_approve",
                   label: "Approve",
                   functionName: `createTransaction(${JSON.stringify(
-                    approveParams
+                    approveParams,
                   )})`,
                 });
               }
             } else {
-              context.form.addButton({
-                id: "custpage_approve",
-                label: "Approve",
-                functionName: `createTransaction(${JSON.stringify(
-                  approveParams
-                )})`,
-              });
+              log.audit("RRPO else");
+              if (rrPOStatus == rxrs_util.rrStatus.PendingVerification) {
+                context.form.addButton({
+                  id: "custpage_approve",
+                  label: "Approve",
+                  functionName: `createTransaction(${JSON.stringify(
+                    approveParams,
+                  )})`,
+                });
+              }
             }
 
             break;
@@ -278,97 +362,6 @@ define([
               label: "Add Item 222 reference",
               functionName: `openSuitelet(${JSON.stringify(soParams)})`,
             });
-
-            break;
-          case "customrecord_return_cover_letter":
-            if (context.type === "create") return;
-            let mrrId = rec.getValue("custrecord_rcl_master_return");
-            let tranId = rec.getText("custrecord_rcl_master_return");
-            let entity = rec.getValue("custrecord_rcl_customer");
-
-            let nonReturnableFeeAmount = 0;
-            let returnableFeePercent = 0;
-            nonReturnableFeeAmount = rec.getValue(
-              "custrecord_rcl_non_returnable_fee_amt"
-            );
-            returnableFeePercent = rec.getValue(
-              "custrecord_rcl_returnable_fee"
-            );
-            let returnableFee = 100 - parseFloat(returnableFeePercent);
-            let rclSuiteletURL = url.resolveScript({
-              scriptId: "customscript_sl_return_cover_letter",
-              deploymentId: "customdeploy_sl_return_cover_letter",
-              returnExternalUrl: false,
-              params: {
-                finalPaymentSched: false,
-                mrrId: mrrId,
-                tranId: tranId,
-                isVerifyStaging: false,
-                initialSplitpaymentPage: false,
-                returnableFee: returnableFee,
-                nonReturnableFeeAmount: nonReturnableFeeAmount,
-                title: "In-Dated Inventory",
-              },
-            });
-            let paramSplitPayment = {
-              url: rclSuiteletURL,
-              action: "splitPayment",
-            };
-            context.form.addButton({
-              id: "custpage_split_payment",
-              label: "Split Payment",
-              functionName: `openSuitelet(${JSON.stringify(
-                paramSplitPayment
-              )})`,
-            });
-
-            let printReturnSummaryURL = url.resolveScript({
-              scriptId: "customscript_sl_print_return_summary",
-              deploymentId: "customdeploy_sl_print_return_summary",
-              returnExternalUrl: false,
-              params: {
-                rclId: rec.id,
-              },
-            });
-            let paramPrintReturnSummary = {
-              url: printReturnSummaryURL,
-            };
-            context.form.addButton({
-              id: "custpage_print_return_summary",
-              label: "Print Return Summary",
-              functionName: `openSuitelet(${JSON.stringify(
-                paramPrintReturnSummary
-              )})`,
-            });
-
-            /**
-             * Create Print Return Cover Letter Button
-             */
-
-            let printReturnCoverLetterURL = url.resolveScript({
-              scriptId: "customscript_sl_print_return_cover_lette",
-              deploymentId: "customdeploy_sl_print_return_cover_lette",
-              returnExternalUrl: false,
-              params: {
-                rclId: rec.id,
-              },
-            });
-            let paramprintReturnCoverLetter = {
-              url: printReturnCoverLetterURL,
-            };
-            context.form.addButton({
-              id: "custpage_print_cover_letter",
-              label: "Print Return Cover Letter",
-              functionName: `openSuitelet(${JSON.stringify(
-                paramprintReturnCoverLetter
-              )})`,
-            });
-
-            /**
-             * Create Bill Button
-             */
-
-            //Check if the purchase order is fully billed/Closed
             let isBilled = tranlib.checkIfTransAlreadyExist({
               mrrId: mrrId,
               searchType: "PurchOrd",
@@ -378,25 +371,181 @@ define([
               mrrId: mrrId,
               searchType: "PurchOrd",
             });
-            log.debug("create Bill Button", { isPOExist, isBilled });
 
-            if (isPOExist && !isBilled) {
-              let createBillParams = {
-                mrrId: mrrId,
-                rclId: rec.id,
-                poId: isPOExist,
-                returnableFee: returnableFee,
-                action: "createBill",
+            break;
+          case "customrecord_return_cover_letter":
+            const TOPCO = 10;
+            if (context.type === "create") return;
+            let mrrId = rec.getValue("custrecord_rcl_master_return");
+            let tranId = rec.getText("custrecord_rcl_master_return");
+            let entity = rec.getValue("custrecord_rcl_customer");
+            const planSelectionType = rec.getValue(
+              "custrecord_rcl_plan_selection_type",
+            );
+            let nonReturnableFeeAmount = 0;
+            let returnableFeePercent = 0;
+            nonReturnableFeeAmount = rec.getValue(
+              "custrecord_rcl_non_returnable_fee_amt",
+            );
+            returnableFeePercent = rec.getValue(
+              "custrecord_rcl_returnable_fee",
+            );
+            let returnableFee = 100 - parseFloat(returnableFeePercent);
+            log.debug("planSelection Type", planSelectionType);
+            if (planSelectionType != TOPCO) {
+              let rclSuiteletURL = url.resolveScript({
+                scriptId: "customscript_sl_return_cover_letter",
+                deploymentId: "customdeploy_sl_return_cover_letter",
+                returnExternalUrl: false,
+                params: {
+                  finalPaymentSched: false,
+                  mrrId: mrrId,
+                  tranId: tranId,
+                  isVerifyStaging: false,
+                  initialSplitpaymentPage: false,
+                  returnableFee: returnableFee,
+                  nonReturnableFeeAmount: nonReturnableFeeAmount,
+                  title: "In-Dated Inventory",
+                },
+              });
+              let paramSplitPayment = {
+                url: rclSuiteletURL,
+                action: "splitPayment",
+              };
+
+              context.form.addButton({
+                id: "custpage_split_payment",
+                label: "Split Payment",
+                functionName: `openSuitelet(${JSON.stringify(
+                  paramSplitPayment,
+                )})`,
+              });
+
+              let printReturnSummaryURL = url.resolveScript({
+                scriptId: "customscript_sl_print_return_summary",
+                deploymentId: "customdeploy_sl_print_return_summary",
+                returnExternalUrl: false,
+                params: {
+                  rclId: rec.id,
+                },
+              });
+
+              let paramPrintReturnSummary = {
+                url: printReturnSummaryURL,
               };
               context.form.addButton({
-                id: "custpage_create_bill",
-                label: "Bill All Remaining",
-                functionName: `createTransaction(${JSON.stringify(
-                  createBillParams
+                id: "custpage_print_return_summary",
+                label: "Print Return Summary",
+                functionName: `openSuitelet(${JSON.stringify(
+                  paramPrintReturnSummary,
+                )})`,
+              });
+
+              /**
+               * Create Print Return Cover Letter Button
+               */
+
+              let printReturnCoverLetterURL = url.resolveScript({
+                scriptId: "customscript_sl_print_return_cover_lette",
+                deploymentId: "customdeploy_sl_print_return_cover_lette",
+                returnExternalUrl: false,
+                params: {
+                  rclId: rec.id,
+                },
+              });
+              let paramprintReturnCoverLetter = {
+                url: printReturnCoverLetterURL,
+              };
+              context.form.addButton({
+                id: "custpage_print_cover_letter",
+                label: "Print Return Cover Letter",
+                functionName: `openSuitelet(${JSON.stringify(
+                  paramprintReturnCoverLetter,
+                )})`,
+              });
+
+              /**
+               * Create Bill Button
+               */
+
+              //Check if the purchase order is fully billed/Closed
+              // let isBilled = tranlib.checkIfTransAlreadyExist({
+              //   mrrId: mrrId,
+              //   searchType: "PurchOrd",
+              //   status: "PurchOrd:G",
+              // });
+              // let isPOExist = tranlib.checkIfTransAlreadyExist({
+              //   mrrId: mrrId,
+              //   searchType: "PurchOrd",
+              // });
+              log.debug("create Bill Button", { isPOExist, isBilled });
+
+              if (isPOExist && !isBilled) {
+                let createBillParams = {
+                  mrrId: mrrId,
+                  rclId: rec.id,
+                  poId: isPOExist,
+                  returnableFee: returnableFee,
+                  action: "createBill",
+                };
+                context.form.addButton({
+                  id: "custpage_create_bill",
+                  label: "Bill All Remaining",
+                  functionName: `createTransaction(${JSON.stringify(
+                    createBillParams,
+                  )})`,
+                });
+              }
+            } else {
+              if (isPOExist && !isBilled) {
+                let createBillParams = {
+                  mrrId: mrrId,
+                  rclId: rec.id,
+                  poId: null,
+                  returnableFee: returnableFee,
+                  action: "createBill",
+                };
+                context.form.addButton({
+                  id: "custpage_create_bill",
+                  label: "Create Bill",
+                  functionName: `createTransaction(${JSON.stringify(
+                    createBillParams,
+                  )})`,
+                });
+              }
+            }
+            break;
+          /**
+           * Master Return Request
+           */
+          case "customrecord_kod_masterreturn":
+            const mrrRec = context.newRecord;
+            let generateLabelURL = url.resolveScript({
+              scriptId: "customscript_rxrs_sl_generate_label",
+              deploymentId: "customdeploy_rxrs_sl_generate_label",
+              returnExternalUrl: false,
+              params: {
+                mrrId: mrrRec.id,
+                action: "createLabel",
+                customerId: mrrRec.getValue("custrecord_mrrentity"),
+              },
+            });
+            let mmrParamsGenerateLabel = {
+              url: generateLabelURL,
+            };
+            if (
+              mrrRec.getValue("custrecord_kod_mr_status") ==
+              rxrs_util.mrrStatus.CustomerSubmitted
+            ) {
+              //Customer Submitted
+              context.form.addButton({
+                id: "custpage_generate_label",
+                label: "Add Label",
+                functionName: `openSuitelet(${JSON.stringify(
+                  mmrParamsGenerateLabel,
                 )})`,
               });
             }
-
             break;
         }
       }

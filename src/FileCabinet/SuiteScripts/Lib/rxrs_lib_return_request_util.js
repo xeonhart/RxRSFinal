@@ -26,10 +26,8 @@ define([
   const rxrsItem = Object.freeze({
     RxOTC: 897,
     C3To5: 896,
-    C2: 895
-  })
-
-
+    C2: 895,
+  });
 
   /**
    * Create Return Request and Return Packages
@@ -60,20 +58,34 @@ define([
         type: recordType,
         isDynamic: false,
       });
-      if (
-        options.category === RRCATEGORY.C2 &&
-        options.isLicenseExpired === false &&
-        options.isStateLicenseExpired === false
-      ) {
-        rrRec.setValue({
-          fieldId: "transtatus",
-          value: "J",
-        });
+      if (options.category == RRCATEGORY.C2) {
+        if (
+          options.isLicenseExpired == false &&
+          options.isStateLicenseExpired == false
+        ) {
+          rrRec.setValue({
+            fieldId: "transtatus",
+            value: util.RRSTATUS.C2Kittobemailed,
+          });
+        } else {
+          rrRec.setValue({
+            fieldId: "transtatus",
+            value: util.RRSTATUS.PendingReview,
+          });
+        }
       } else {
-        rrRec.setValue({
-          fieldId: "transtatus",
-          value: "A",
-        });
+        log.audit("Not C2");
+        if (options.isLicenseExpired == false) {
+          rrRec.setValue({
+            fieldId: "transtatus",
+            value: util.RRSTATUS.PendingReview,
+          });
+        } else {
+          rrRec.setValue({
+            fieldId: "transtatus",
+            value: util.RRSTATUS.PendingReview,
+          });
+        }
       }
 
       rrRec.setValue({
@@ -158,7 +170,7 @@ define([
           0,
           options.customer,
           rrRecSave.getValue("transtatus"),
-          rrRecSave.getValue("tranid")
+          rrRecSave.getValue("tranid"),
         );
 
         const numOfLabels = options.numOfLabels;
@@ -185,7 +197,7 @@ define([
    * @param {int} options.entity
    * @param {int} options.tranid
    */
-  const sendEmail = (options) => {
+  function sendEmail(options) {
     try {
       log.debug("sendEmail", options);
       let strSubject = "";
@@ -225,10 +237,11 @@ define([
         parameters: options,
       });
     }
-  };
+  }
+
   const createTask = (exId, rrId) => {
     try {
-      var taskRec = record.create({
+      const taskRec = record.create({
         type: record.Type.TASK,
       });
       taskRec.setValue({
@@ -274,7 +287,7 @@ define([
           rpIds[0].getValue({
             name: "internalid",
             summary: search.Summary.MAX,
-          })
+          }),
         ) +
           parseInt(1));
 
@@ -373,6 +386,6 @@ define([
     sendEmail,
     scriptInstanceChecker,
     rxrsItem,
-    RRCATEGORY
+    RRCATEGORY,
   };
 });

@@ -9,19 +9,18 @@ define([
   "N/search",
   "N/ui/message",
   "./Lib/rxrs_util",
-], /**
+] /**
  * @param{currentRecord} currentRecord
  * @param{message} message
  * @param record
  * @param search
  * @param rxrsUtil
- */
-function (currentRecord, message, record, search, rxrsUtil) {
+ */, function (currentRecord, message, record, search, rxrsUtil) {
   var FLD_RET_REQ_IT_PROCESSING = "custcol_kod_rqstprocesing";
   var PROCESSING_DESTRUCTION = 1;
   var PROCESSING_RETURN_FOR_CREDIT = 2;
   var totalItemWeight = 0;
-  const PENDINGVERIFICATION = "K";
+  var PENDINGVERIFICATION = "K";
 
   /**
    * Function to be executed after page is initialized.
@@ -118,13 +117,13 @@ function (currentRecord, message, record, search, rxrsUtil) {
             value: NONRETURNABLE,
           });
         } else {
-          var filters = new Array();
+          var filters = [];
           filters[0] = search.createFilter({
             name: "internalID",
             operator: search.Operator.IS,
             values: itemId,
           });
-          var columns = new Array();
+          var columns = [];
           columns[0] = search.createColumn({
             name: "custitem_kodella_pricingorder",
           });
@@ -192,7 +191,7 @@ function (currentRecord, message, record, search, rxrsUtil) {
               " pharmaPrice1PriceLevel2: " +
               pharmaPricePriceLevel2 +
               " pharmaPrice1PriceLevel3: " +
-              pharmaPricePriceLevel3
+              pharmaPricePriceLevel3,
           );
 
           log.debug("PharmaProcessing Order " + PHARMAPRICINGORDER);
@@ -379,16 +378,6 @@ function (currentRecord, message, record, search, rxrsUtil) {
         }
       }
       console.log("returnableItemCount: " + returnableItemCount);
-      if (
-        returnableItemCount == true &&
-        curRec.getValue("custbody_kd_total_item_weight") == ""
-      ) {
-        alert("Please enter TOTAL ITEM WEIGHT");
-
-        return false;
-      } else {
-        return true;
-      }
     }
 
     return true;
@@ -398,6 +387,6 @@ function (currentRecord, message, record, search, rxrsUtil) {
     pageInit: pageInit,
     lineInit: lineInit,
     //postSourcing: postSourcing,
-    saveRecord: saveRecord,
+    // saveRecord: saveRecord,
   };
 });

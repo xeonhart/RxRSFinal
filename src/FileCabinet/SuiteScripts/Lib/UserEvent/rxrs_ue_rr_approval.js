@@ -1,5 +1,5 @@
 /**
- *@NApiVersion 2.x
+ *@NApiVersion 2.1
  *@NScriptType UserEventScript
  */
 define([
@@ -10,7 +10,21 @@ define([
   "N/search",
   "N/runtime",
   "N/task",
-], function (record, url, redirect, serverWidget, search, runtime, task) {
+  "N/ui/message",
+  "../rxrs_util",
+  "../rxrs_custom_rec_lib",
+], function (
+  record,
+  url,
+  redirect,
+  serverWidget,
+  search,
+  runtime,
+  task,
+  message,
+  util,
+  customrec,
+) {
   var SEA_RETURN_ITEM_RQSTD = "customsearch_kd_return_item_requested";
   var SEA_RET_REQ_ITEMS = "customsearch_kd_rr_items";
   var SCR_ID_GENERATE_FORM_222 = 626;
@@ -733,9 +747,9 @@ define([
         },
       });
       /*invcRec.setValue({
-                                      fieldId: 'custbody_kd_for_so_batch',
-                                      value: true
-                                  });*/
+                                                                                                                                                                                                                                      fieldId: 'custbody_kd_for_so_batch',
+                                                                                                                                                                                                                                      value: true
+                                                                                                                                                                                                                                  });*/
       log.debug("TEST", "tagged RR for so batch");
     }
     if (hasItemLine) {
@@ -1123,16 +1137,16 @@ define([
 
   function getItemsRequested(mrrId) {
     /*var searchRs = search.load({
-                            id: SEA_RETURN_ITEM_RQSTD,
-                            filters: search.createFilter({
-                                name: 'custrecord_kd_rir_masterid',
-                                operator: search.Operator.ANYOF,
-                                values: mrrId
-                            })
-                        }).run().getRange({ start: 0, end: 1000 });
-                        var itemsRequested = [];
-                        var rirId, item, itemDesc, itemNdc, qty, fulPar;
-                        log.debug('test', JSON.stringify(searchRs));*/
+                                                                                                                                                            id: SEA_RETURN_ITEM_RQSTD,
+                                                                                                                                                            filters: search.createFilter({
+                                                                                                                                                                name: 'custrecord_kd_rir_masterid',
+                                                                                                                                                                operator: search.Operator.ANYOF,
+                                                                                                                                                                values: mrrId
+                                                                                                                                                            })
+                                                                                                                                                        }).run().getRange({ start: 0, end: 1000 });
+                                                                                                                                                        var itemsRequested = [];
+                                                                                                                                                        var rirId, item, itemDesc, itemNdc, qty, fulPar;
+                                                                                                                                                        log.debug('test', JSON.stringify(searchRs));*/
 
     var objSearch = search.load({
       id: SEA_RETURN_ITEM_RQSTD,
@@ -1158,34 +1172,34 @@ define([
     log.debug("getItemsRequested", "searchRs: " + JSON.stringify(searchRs));
 
     /*var objSearch = search.create({
-                            type: search.Type.SALES_ORDER,
-                            title: 'My Second SalesOrder Search',
-                            id: 'customsearch_my_second_so_search',
-                            columns: [{
-                                name: 'id'
-                            }, {
-                                name: 'custrecord_kd_rir_item'
-                            }, {
-                                name: 'displayname',
-                                join: 'CUSTRECORD_KD_RIR_ITEM'
-                            }, {
-                                name: 'custitem_kod_item_ndc',
-                                join: 'CUSTRECORD_KD_RIR_ITEM'
-                            }, {
-                                name: 'custrecord_kd_rir_fulpar'
-                            }, {
-                                name: 'custrecord_kd_rir_masterid'
-                            }],
-                            filters: [{
-                                name: 'custrecord_kd_rir_masterid',
-                                operator: 'anyof',
-                                values: [mrrId]
-                            }]
-                        });
-                        var searchRs = objSearch.run().getRange({ start: 0, end: 1000 });
-                        var itemsRequested = [];
-                        var rirId, item, itemDesc, itemNdc, qty, fulPar;
-                        log.debug('test', JSON.stringify(searchRs));*/
+                                                                                                                                                            type: search.Type.SALES_ORDER,
+                                                                                                                                                            title: 'My Second SalesOrder Search',
+                                                                                                                                                            id: 'customsearch_my_second_so_search',
+                                                                                                                                                            columns: [{
+                                                                                                                                                                name: 'id'
+                                                                                                                                                            }, {
+                                                                                                                                                                name: 'custrecord_kd_rir_item'
+                                                                                                                                                            }, {
+                                                                                                                                                                name: 'displayname',
+                                                                                                                                                                join: 'CUSTRECORD_KD_RIR_ITEM'
+                                                                                                                                                            }, {
+                                                                                                                                                                name: 'custitem_kod_item_ndc',
+                                                                                                                                                                join: 'CUSTRECORD_KD_RIR_ITEM'
+                                                                                                                                                            }, {
+                                                                                                                                                                name: 'custrecord_kd_rir_fulpar'
+                                                                                                                                                            }, {
+                                                                                                                                                                name: 'custrecord_kd_rir_masterid'
+                                                                                                                                                            }],
+                                                                                                                                                            filters: [{
+                                                                                                                                                                name: 'custrecord_kd_rir_masterid',
+                                                                                                                                                                operator: 'anyof',
+                                                                                                                                                                values: [mrrId]
+                                                                                                                                                            }]
+                                                                                                                                                        });
+                                                                                                                                                        var searchRs = objSearch.run().getRange({ start: 0, end: 1000 });
+                                                                                                                                                        var itemsRequested = [];
+                                                                                                                                                        var rirId, item, itemDesc, itemNdc, qty, fulPar;
+                                                                                                                                                        log.debug('test', JSON.stringify(searchRs));*/
 
     for (var i = 0; i < searchRs.length; i++) {
       rirId = searchRs[i].getValue({
@@ -1261,18 +1275,6 @@ define([
       type: serverWidget.FieldType.TEXT,
       label: "Edit",
     });
-    /*var editField = objSublist.addField({
-                            id : 'custpage_edit',
-                            type : serverWidget.FieldType.URL,
-                            label : 'Edit'
-                        });
-                        editField.linkText = 'EDIT';*/
-    /*objSublist.addField({
-                            id: 'custpage_edit',
-                            label: 'Edit',
-                            type: serverWidget.FieldType.URL,
-                            source: null
-                        }).linkText = 'EDIT';*/
     objSublist
       .addField({
         id: "custpage_col_id",
@@ -1345,12 +1347,12 @@ define([
       label: "Form 222 Ref No.",
     });
     /*objSublist.addField({
-                            id: 'custpage_col_item_form_222_ref_no',
-                            label: 'Form 222 Ref No.',
-                            type: serverWidget.FieldType.TEXT
-                        }).updateDisplayType({
-                            displayType: serverWidget.FieldDisplayType.INLINE
-                        });*/
+                                                                                                                                                            id: 'custpage_col_item_form_222_ref_no',
+                                                                                                                                                            label: 'Form 222 Ref No.',
+                                                                                                                                                            type: serverWidget.FieldType.TEXT
+                                                                                                                                                        }).updateDisplayType({
+                                                                                                                                                            displayType: serverWidget.FieldDisplayType.INLINE
+                                                                                                                                                        });*/
     var itemsRequested = getItemsRequested(
       context.newRecord.getValue(FLD_RETREQ_MRR),
     );
@@ -1381,15 +1383,15 @@ define([
         value: '<a href="' + lineUrl + '">EDIT</a>',
       });
       /*contacts.setSublistValue({
-                                      id: 'edit',
-                                      line: ctr,
-                                      value: 'https://' + domain + editUrl
-                                  });*/
+                                                                                                                                                                                                                                      id: 'edit',
+                                                                                                                                                                                                                                      line: ctr,
+                                                                                                                                                                                                                                      value: 'https://' + domain + editUrl
+                                                                                                                                                                                                                                  });*/
       /*objSublist.setSublistValue({
-                                      id: 'custpage_edit',
-                                      line: i,
-                                      value: 'https://' + domain + editUrl
-                                  });*/
+                                                                                                                                                                                                                                      id: 'custpage_edit',
+                                                                                                                                                                                                                                      line: i,
+                                                                                                                                                                                                                                      value: 'https://' + domain + editUrl
+                                                                                                                                                                                                                                  });*/
       objSublist.setSublistValue({
         id: "custpage_col_id",
         value: itemsRequested[i].id,
@@ -1474,10 +1476,10 @@ define([
           values: "Unidentified",
         },
         /*{
-                                name: 'custcol_kd_baglabel_link',
-                                operator: 'anyof',
-                                values: ['@NONE@']
-                            },*/ {
+                                                                                                                                                                                                                                                                                                name: 'custcol_kd_baglabel_link',
+                                                                                                                                                                                                                                                                                                operator: 'anyof',
+                                                                                                                                                                                                                                                                                                values: ['@NONE@']
+                                                                                                                                                                                                                                                                                            },*/ {
           name: "internalid",
           operator: "anyof",
           values: [recReturnRequest.id],
@@ -1519,27 +1521,27 @@ define([
     if (!haveUnidentifiedItem && haveItemWithoutBag) return true;
     return false;
     /*var rrItemsSearch = search.load({
-                            id: SEA_RET_REQ_ITEMS
-                        });
-                        rrItemsSearch.filters.push(search.createFilter({
-                            name: 'name',
-                            join: 'item',
-                            operator: search.Operator.STARTSWITH,
-                            values: 'Unidentified'
-                        }));
-                        rrItemsSearch.filters.push(search.createFilter({
-                            name: 'internalid',
-                            operator: search.Operator.ANYOF,
-                            values: recReturnRequest.id
-                        }));
-            
-                        var searchRs = rrItemsSearch.run().getRange({start: 0, end: 1000});
-            
-                        if (searchRs.length > 0) {
-                            return false;
-                        }
-            
-                        return true;*/
+                                                                                                                                                            id: SEA_RET_REQ_ITEMS
+                                                                                                                                                        });
+                                                                                                                                                        rrItemsSearch.filters.push(search.createFilter({
+                                                                                                                                                            name: 'name',
+                                                                                                                                                            join: 'item',
+                                                                                                                                                            operator: search.Operator.STARTSWITH,
+                                                                                                                                                            values: 'Unidentified'
+                                                                                                                                                        }));
+                                                                                                                                                        rrItemsSearch.filters.push(search.createFilter({
+                                                                                                                                                            name: 'internalid',
+                                                                                                                                                            operator: search.Operator.ANYOF,
+                                                                                                                                                            values: recReturnRequest.id
+                                                                                                                                                        }));
+                                                                                                                                    
+                                                                                                                                                        var searchRs = rrItemsSearch.run().getRange({start: 0, end: 1000});
+                                                                                                                                    
+                                                                                                                                                        if (searchRs.length > 0) {
+                                                                                                                                                            return false;
+                                                                                                                                                        }
+                                                                                                                                    
+                                                                                                                                                        return true;*/
   }
 
   function rrHasReturnItemRequested(rrId) {
@@ -1577,45 +1579,29 @@ define([
   }
 
   function beforeLoad(context) {
-    var returnRequestRec = context.newRecord;
+    var rec = context.newRecord;
     if (context.type == "view") {
-      const tranId = rec.getValue("tranid");
-      const customer = rec.getValue("entity");
-      const mrrId = rec.getValue("custbody_kd_master_return_id");
-      const DEA222Fees = rec.getValue("custbody_kd_total_222_form_fee");
-      let forVerificationSLUrl = url.resolveScript({
-        scriptId: "customscript_sl_returnable_page",
-        deploymentId: "customdeploy_sl_returnable_page",
-        returnExternalUrl: false,
-        params: {
-          selectionType: "Returnable",
-          rrId: id,
-          tranId: tranId,
-          mrrId: mrrId,
-          rrType: rec.type,
-        },
-      });
-      context.form.addButton({
-        id: "custpage_verify",
-        label: "Verify Items",
-        functionName:
-          'window.open("' +
-          forVerificationSLUrl +
-          ' ","_blank","width=1900,height=1200")',
-      });
+      if (customrec.checkIfFor222Regeneration(rec.id) == true) {
+        context.form.addPageInitMessage({
+          title: "222 Form needs to be regenerated!",
+          message: "Click on Regenerate Form 222 button.",
+          type: message.Type.WARNING,
+          //duration: 1500
+        });
+      }
     }
     if (context.type == "create") return;
     try {
       var rrRec = record.load({
         type: RRTYPE.rrSalesType,
-        id: returnRequestRec.id,
+        id: rec.id,
         isDynamic: true,
       });
       recType = RRTYPE.rrSalesType;
     } catch (e) {
       var rrRec = record.load({
         type: RRTYPE.rrPoType,
-        id: returnRequestRec.id,
+        id: rec.id,
         isDynamic: true,
       });
       recType = RRTYPE.rrPoType;
@@ -1623,15 +1609,9 @@ define([
     if (
       parseInt(context.newRecord.getValue(FLD_RETREQ_CATEGORY)) == CATEGORY_C2
     ) {
-      if (returnRequestRec.getValue(FLD_RETREQ_MRR))
-        addC2ItemsReqSublist(context);
+      if (rec.getValue(FLD_RETREQ_MRR)) addC2ItemsReqSublist(context);
 
-      if (
-        returnRequestRec.getValue("transtatus") != "A" &&
-        returnRequestRec.getValue("transtatus") != "B" &&
-        returnRequestRec.getValue("transtatus") != "I" &&
-        returnRequestRec.getValue("transtatus") != "K"
-      ) {
+      if (rec.getValue("transtatus") == util.rrStatus.C2Kittobemailed) {
         //authorized - C
 
         context.form.addButton({
@@ -1639,7 +1619,7 @@ define([
           label: "Create 222 Reference",
           functionName: "create222Reference",
         });
-        if (!returnRequestRec.getValue("custbody_kd_for_222_form_assignment")) {
+        if (!rec.getValue("custbody_kd_for_222_form_assignment")) {
           context.form.addButton({
             id: "custpage_btn_assign222form",
             label: "Assign 222 Reference",
@@ -1658,28 +1638,27 @@ define([
       }
 
       if (
-        returnRequestRec.getText("transtatus").toUpperCase() ==
-          "PENDING REVIEW" &&
+        rec.getText("transtatus").toUpperCase() == "PENDING REVIEW" &&
         context.type == "view"
       ) {
         /*var updateNoC2FormsUrl = url.resolveScript({
-                                                scriptId: 'customscript_kd_sl_update_no_c2_forms',
-                                                deploymentId: 'customdeploy_kd_sl_update_no_c2_forms'
-                                            });
-                        
-                                            updateNoC2FormsUrl += '&custscript_id=' + context.newRecord.id;
-                                            log.debug('test', 'updateNoC2FormsUrl ' + updateNoC2FormsUrl);
-                                            context.form.addButton({
-                                                id : 'custpage_update_no_c2_forms',
-                                                label : 'Update No. of C2 Forms',
-                                                functionName: "window.open('" + updateNoC2FormsUrl + "');"
-                                            });*/
+                                                                                                                                                                                                                                                                                                                scriptId: 'customscript_kd_sl_update_no_c2_forms',
+                                                                                                                                                                                                                                                                                                                deploymentId: 'customdeploy_kd_sl_update_no_c2_forms'
+                                                                                                                                                                                                                                                                                                            });
+                                                                                                                                                                                                                                                                        
+                                                                                                                                                                                                                                                                                                            updateNoC2FormsUrl += '&custscript_id=' + context.newRecord.id;
+                                                                                                                                                                                                                                                                                                            log.debug('test', 'updateNoC2FormsUrl ' + updateNoC2FormsUrl);
+                                                                                                                                                                                                                                                                                                            context.form.addButton({
+                                                                                                                                                                                                                                                                                                                id : 'custpage_update_no_c2_forms',
+                                                                                                                                                                                                                                                                                                                label : 'Update No. of C2 Forms',
+                                                                                                                                                                                                                                                                                                                functionName: "window.open('" + updateNoC2FormsUrl + "');"
+                                                                                                                                                                                                                                                                                                            });*/
 
         /*var btnUpdateNoC2Forms = context.form.addButton({
-                                                id: 'custpage_update_no_c2_forms',
-                                                label: 'Update No. of C2 Forms',
-                                                functionName: 'updateNoC2Forms("' + context.newRecord.id + '")'
-                                            });*/
+                                                                                                                                                                                                                                                                                                                id: 'custpage_update_no_c2_forms',
+                                                                                                                                                                                                                                                                                                                label: 'Update No. of C2 Forms',
+                                                                                                                                                                                                                                                                                                                functionName: 'updateNoC2Forms("' + context.newRecord.id + '")'
+                                                                                                                                                                                                                                                                                                            });*/
 
         var fileId = search
           .create({
@@ -1708,30 +1687,30 @@ define([
           //{custbody_kd_rr_category.id}=3 and {userrole.id} in (3,1028) and {custbody_kd_c2_no_of_labels} is not null
           //check on rir if more than 2
           /*if (returnRequestRec.getLineCount('custpage_sublist_items_requested') > 1) {
-                                                          context.form.addButton({
-                                                              id: 'custpage_btn_update_no_form_222',
-                                                              label: 'Update No. of Form 222',
-                                                              functionName: 'updateNoForm222("' + context.newRecord.id + '")'
-                                                          });
-                                                      }*/
+                                                                                                                                                                                                                                                                                                                                                                                          context.form.addButton({
+                                                                                                                                                                                                                                                                                                                                                                                              id: 'custpage_btn_update_no_form_222',
+                                                                                                                                                                                                                                                                                                                                                                                              label: 'Update No. of Form 222',
+                                                                                                                                                                                                                                                                                                                                                                                              functionName: 'updateNoForm222("' + context.newRecord.id + '")'
+                                                                                                                                                                                                                                                                                                                                                                                          });
+                                                                                                                                                                                                                                                                                                                                                                                      }*/
 
           /*context.form.addButton({
-                                                          id: 'custpage_btn_auto_assign_form_222',
-                                                          label: 'Auto Assign Form 222',
-                                                          functionName: 'autoAssignForm222("' + context.newRecord.id + ',' + returnRequestRec.getValue(FLD_RETREQ_MRR) + '")'
-                                                      });*/
+                                                                                                                                                                                                                                                                                                                                                                                          id: 'custpage_btn_auto_assign_form_222',
+                                                                                                                                                                                                                                                                                                                                                                                          label: 'Auto Assign Form 222',
+                                                                                                                                                                                                                                                                                                                                                                                          functionName: 'autoAssignForm222("' + context.newRecord.id + ',' + returnRequestRec.getValue(FLD_RETREQ_MRR) + '")'
+                                                                                                                                                                                                                                                                                                                                                                                      });*/
 
           /*context.form.addButton({
-                                                          id: 'custpage_btn_form222',
-                                                          label: 'Generate Form 222',
-                                                          functionName: "createForm222"
-                                                      });*/
+                                                                                                                                                                                                                                                                                                                                                                                          id: 'custpage_btn_form222',
+                                                                                                                                                                                                                                                                                                                                                                                          label: 'Generate Form 222',
+                                                                                                                                                                                                                                                                                                                                                                                          functionName: "createForm222"
+                                                                                                                                                                                                                                                                                                                                                                                      });*/
 
           /*context.form.addButton({
-                                                          id: 'custpage_btn_authorize',
-                                                          label: 'Authorize',
-                                                          functionName: "authorize"
-                                                      });*/
+                                                                                                                                                                                                                                                                                                                                                                                          id: 'custpage_btn_authorize',
+                                                                                                                                                                                                                                                                                                                                                                                          label: 'Authorize',
+                                                                                                                                                                                                                                                                                                                                                                                          functionName: "authorize"
+                                                                                                                                                                                                                                                                                                                                                                                      });*/
           var fileId = search
             .create({
               type: "file",
@@ -1744,12 +1723,12 @@ define([
         }
       }
       //C2 Kit to be Mailed
-      if (returnRequestRec.getValue("transtatus") == "J") {
-        context.form.addButton({
-          id: "custpage_btn_generate_outbound_label",
-          label: "Generate Outbound Label",
-          functionName: "generateOutboundLabel",
-        });
+      if (rec.getValue("transtatus") == "J") {
+        // context.form.addButton({
+        //   id: "custpage_btn_generate_outbound_label",
+        //   label: "Generate Outbound Label",
+        //   functionName: "generateOutboundLabel",
+        // });
         var fileId = search
           .create({
             type: "file",
@@ -1763,40 +1742,30 @@ define([
     }
     //Status is Authorized (C)
     if (
-      (returnRequestRec.getValue("transtatus") == "C" ||
-        returnRequestRec.getValue("transtatus") == "D" ||
-        returnRequestRec.getValue("transtatus") == "E" ||
-        returnRequestRec.getValue("transtatus") == "F" ||
-        returnRequestRec.getValue("transtatus") == "G" ||
-        returnRequestRec.getValue("transtatus") == "J" ||
-        returnRequestRec.getValue("transtatus") == "K") &&
+      (rec.getValue("transtatus") == "C" ||
+        rec.getValue("transtatus") == "D" ||
+        rec.getValue("transtatus") == "E" ||
+        rec.getValue("transtatus") == "F" ||
+        rec.getValue("transtatus") == "G" ||
+        rec.getValue("transtatus") == "J" ||
+        rec.getValue("transtatus") == "K") &&
       context.type == "view" &&
-      rrHasReturnItemRequested(returnRequestRec.id)
+      rrHasReturnItemRequested(rec.id)
     ) {
       /*context.form.addButton({
-                                      id : 'custpage_btn_form222',
-                                      label : 'Generate Form 222',
-                                      functionName: "createForm222"
-                                  });*/
+                                                                                                                                                                                                                                      id : 'custpage_btn_form222',                                                                                                                                                                                                functionName: "createForm222"
+                                                                                                                                                                                                                                  });*/
       /*var fileId = search.create({
-                                      type: 'file',
-                                      filters: [
-                                          ['name', 'is', SCR_FILE_NAME_CS_RR]
-                                      ]
-                                  }).run().getRange({ start: 0, end: 1 });
-                                  log.debug('test', 'cs file id: ' + fileId[0].id);
-                                  context.form.clientScriptFileId = fileId[0].id;*/
+                                                                                                                                                                                                                      log.debug('test', 'cs file id: ' + fileId[0].id);
+                                                                                                                                                                                                                                  context.form.clientScriptFileId = fileId[0].id;*/
     }
     //if((returnRequestRec.getText('transtatus').toUpperCase() == 'PROCESSING' || returnRequestRec.getText('transtatus').toUpperCase() == 'PROCESSED/PENDING APPROVAL') && context.type == 'view'){
-    if (
-      returnRequestRec.getValue("transtatus") == "F" &&
-      context.type == "view"
-    ) {
+    if (rec.getValue("transtatus") == "F" && context.type == "view") {
       /*var btnApplyReturnPolicy = context.form.addButton({
-                                      id: 'custpage_apply_return_policy',
-                                      label: 'Apply Return Policy',
-                                      functionName: 'applyReturnPolicy'
-                                  });*/
+                                                                                                                                                                                                                                      id: 'custpage_apply_return_policy',
+                                                                                                                                                                                                                                      label: 'Apply Return Policy',
+                                                                                                                                                                                                                                      functionName: 'applyReturnPolicy'
+                                                                                                                                                                                                                                  });*/
       var fileId = search
         .create({
           type: "file",
@@ -1806,15 +1775,9 @@ define([
         .getRange({ start: 0, end: 1 });
       log.debug("test", "cs file id: " + fileId[0].id);
       context.form.clientScriptFileId = fileId[0].id;
-    } else if (
-      returnRequestRec.getValue("transtatus") == "K" &&
-      context.type == "view"
-    ) {
-      log.emergency(
-        "haveitemforBagLable",
-        haveItemForBagLabel(returnRequestRec),
-      );
-      if (haveItemForBagLabel(returnRequestRec)) {
+    } else if (rec.getValue("transtatus") == "K" && context.type == "view") {
+      log.emergency("haveitemforBagLable", haveItemForBagLabel(rec));
+      if (haveItemForBagLabel(rec)) {
         // context.form.addButton({
         //   id: "custpage_create_tag_label",
         //   label: "Create Tag Label",
@@ -2067,16 +2030,16 @@ define([
           }
         }
         /*}else if(pharmaProcessing == PROCESSING_NONRETURNABLE){
-                                                try{
-                                                    rrRec.setCurrentSublistValue({
-                                                        sublistId: 'item',
-                                                        fieldId: 'price',
-                                                        value: 7
-                                                    });
-                                                }catch(ex){
-                                                    log.debug('NONRETURNABLE_SET_PRICE_LEVEL', 'Non-Returnable Price Level is not available for the item.')
-                                                }
-                                            }*/
+                                                                                                                                                                                                                                                                                                                try{
+                                                                                                                                                                                                                                                                                                                    rrRec.setCurrentSublistValue({
+                                                                                                                                                                                                                                                                                                                        sublistId: 'item',
+                                                                                                                                                                                                                                                                                                                        fieldId: 'price',
+                                                                                                                                                                                                                                                                                                                        value: 7
+                                                                                                                                                                                                                                                                                                                    });
+                                                                                                                                                                                                                                                                                                                }catch(ex){
+                                                                                                                                                                                                                                                                                                                    log.debug('NONRETURNABLE_SET_PRICE_LEVEL', 'Non-Returnable Price Level is not available for the item.')
+                                                                                                                                                                                                                                                                                                                }
+                                                                                                                                                                                                                                                                                                            }*/
       }
       rrRec.commitLine("item");
     }
@@ -2084,280 +2047,289 @@ define([
   }
 
   function afterSubmit(context) {
-    log.debug(
-      "afterSubmit",
-      context.newRecord.getValue(FLD_RETREQ_CATEGORY) +
-        " : " +
-        context.newRecord.getText("transtatus").toUpperCase(),
-    );
-    log.debug("afterSubmit", context.type);
-
-    if (context.type == context.UserEventType.CREATE) return;
-    var returnRequestOldRec = context.oldRecord;
-    var returnRequestRec = context.newRecord;
     try {
-      var rrRec = record.load({
-        type: RRTYPE.rrSalesType,
-        id: returnRequestRec.id,
-        isDynamic: true,
-      });
-      recType = RRTYPE.rrSalesType;
-    } catch (e) {
-      var rrRec = record.load({
-        type: RRTYPE.rrPoType,
-        id: returnRequestRec.id,
-        isDynamic: true,
-      });
-      recType = RRTYPE.rrPoType;
-    }
-    log.debug(
-      "afterSubmit",
-      returnRequestRec.getValue(FLD_RETREQ_CATEGORY) +
-        " : " +
-        returnRequestRec.getText("transtatus").toUpperCase(),
-    );
-    log.debug("afterSubmit", JSON.stringify(returnRequestOldRec));
-    log.debug(
-      "afterSubmit TEST",
-      returnRequestRec.getValue("transtatus") +
-        " : " +
-        returnRequestRec.getValue("custbody_kd_rr_for_tag_label_gen"),
-    );
-    if (
-      (returnRequestRec.getValue("transtatus") == "F" ||
-        returnRequestRec.getValue("transtatus") == "K") &&
-      context.type == context.UserEventType.EDIT
-    ) {
-      //if ((returnRequestRec.getValue('transtatus') == 'K') && context.type == context.UserEventType.EDIT){
-      try {
-        updatePriceLevel(returnRequestRec);
-      } catch (e) {
-        log.error(e.message);
-      }
-    }
-    var rrCategory = returnRequestRec.getValue(FLD_RETREQ_CATEGORY)
-      ? returnRequestRec.getValue(FLD_RETREQ_CATEGORY)
-      : returnRequestOldRec.getValue(FLD_RETREQ_CATEGORY);
-    var rrStatus = returnRequestRec.getValue("transtatus")
-      ? returnRequestRec.getValue("transtatus")
-      : returnRequestOldRec.getValue("transtatus");
-    log.debug(
-      "TEST HERE",
-      rrCategory +
-        " == " +
-        CATEGORY_C2 +
-        " && " +
-        rrStatus +
-        " == C &&" +
-        returnRequestRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT) +
-        " &&(" +
-        returnRequestRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT) +
-        " != " +
-        returnRequestOldRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT) +
-        ")",
-    );
-    //if(parseInt(rrCategory) == CATEGORY_C2 && rrStatus == 'C' && returnRequestRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT) && (returnRequestRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT) != returnRequestOldRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT))){
-    if (
-      parseInt(rrCategory) == CATEGORY_C2 &&
-      returnRequestRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT) &&
-      returnRequestRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT) !=
-        returnRequestOldRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT)
-    ) {
-      log.debug("TEST HERE", "TO SCHEDULE");
-      try {
-        var mrTask = task.create({
-          taskType: task.TaskType.MAP_REDUCE,
-          scriptId: "customscript_kd_mr_assign_222_form",
-          deploymentId: "customdeploy_kd_mr_assign_222_form" /*,
-            params: {
-                custscript_mrr_id: mrrRec.id
-            }*/,
-        });
-        var mrTaskId = mrTask.submit();
-        /*var mrTaskStatus = task.checkStatus({
-                                                taskId: mrTaskId
-                                            });*/
-        log.debug("test", "scheduled for tag creation");
-        //if(mrTaskStatus == FAILED)
-      } catch (ex) {
-        log.error({ title: "map/reduce task creation", details: ex });
-      }
-    }
-    if (
-      returnRequestRec.getValue("transtatus") !=
-        returnRequestOldRec.getValue("transtatus") &&
-      returnRequestRec.getText("transtatus").toUpperCase() == "APPROVED"
-    ) {
-      var rmaId = createRma(returnRequestRec);
-      receiveRma(rmaId, returnRequestRec);
-      //createCreditMemo(rmaId, returnRequestRec);
-      //get items for manuf and for wholesale SO
-      getItemsByManufAndWhslr(returnRequestRec);
-      createManufAndWhslSalesOrder(returnRequestRec);
-      createPharmacyInvoice(returnRequestRec);
-      applyPaymentDueDate(returnRequestRec);
-    } else if (
-      returnRequestRec.getValue("transtatus") !=
-        returnRequestOldRec.getValue("transtatus") &&
-      returnRequestRec.getValue("transtatus") == "H"
-    ) {
-      //}else if(returnRequestRec.getValue('transtatus') == 'H'){
-      //var trxnToDeleteSearch = search.load('');
-      var objSearch = search.load({
-        id: "customsearch_kd_rr_trxn_delete_on_reject",
-      });
-      objSearch.filters.push(
-        search.createFilter({
-          name: "custbody_kd_return_request",
-          operator: search.Operator.ANYOF,
-          values: returnRequestRec.id,
-        }),
+      log.debug(
+        "afterSubmit",
+        context.newRecord.getValue(FLD_RETREQ_CATEGORY) +
+          " : " +
+          context.newRecord.getText("transtatus").toUpperCase(),
       );
-      var searchRs = objSearch.run().getRange({ start: 0, end: 1000 });
-      var trxnType, trxnId;
-      log.debug("getTransactionsToDelete", JSON.stringify(searchRs));
+      log.debug("afterSubmit", context.type);
 
-      for (var i = 0; i < searchRs.length; i++) {
-        trxnType = searchRs[i].recordType;
-        trxnId = searchRs[i].id;
-
-        try {
-          record.delete({
-            type: trxnType,
-            id: trxnId,
-          });
-        } catch (ex) {
-          log.error("ERR", "Failed to delete " + trxnType + " " + trxnId);
-        }
-      }
-      //}else if(parseInt(returnRequestRec.getValue(FLD_RETREQ_CATEGORY)) == parseInt(3) && returnRequestRec.getValue('transtatus') != returnRequestOldRec.getValue('transtatus') && returnRequestRec.getText('transtatus').toUpperCase() == 'AUTHORIZED'){
-      //}else if(returnRequestRec.getText('transtatus').toUpperCase() == 'PENDING REVIEW'){
-    } else if (
-      parseInt(returnRequestRec.getValue(FLD_RETREQ_CATEGORY)) == parseInt(3) &&
-      returnRequestRec.getValue("transtatus") == "A"
-    ) {
-      var generatePdfUrl = url.resolveScript({
-        scriptId: SCR_ID_GENERATE_FORM_222,
-        deploymentId: DPLYMNT_GENERATE_FORM_222,
-      });
-      log.debug("afterSubmit", generatePdfUrl + " >> " + returnRequestRec.id);
-      /*redirect.redirect({
-                                      url: generatePdfUrl+'&id='+context.newRecord.id
-                                  });*/
-      redirect.toSuitelet({
-        scriptId: SCR_ID_GENERATE_FORM_222,
-        deploymentId: DPLYMNT_GENERATE_FORM_222,
-        parameters: {
-          custscript_kd_rr_id: returnRequestRec.id,
-        },
-      });
-      // move the status to next stage after generation of the form 222 pdf
-      /*var rrId = record.submitFields({
-                                      type: 'customsale_kod_returnrequest',
-                                      id: context.newRecord.id,
-                                      values: {
-                                          'transtatus': 'D'
-                                      }
-                                  });*/
-      //added transition from C2 Kit to be mail to pending package receipt
-    } else if (
-      returnRequestRec.getValue("transtatus") == "J" &&
-      returnRequestRec.getValue("custbody_kd_labels_generated") == true &&
-      returnRequestRec.getValue("custbody_kd_c2kit_mailed") == true
-    ) {
-      var id = record.submitFields({
-        type: recType,
-        id: returnRequestRec.id,
-        values: { transtatus: "D" },
-        options: {
-          enableSourcing: false,
-          ignoreMandatoryFields: true,
-        },
-      });
-    } else if (
-      (returnRequestRec.getValue("transtatus") == "K" ||
-        returnRequestOldRec.getValue("transtatus") == "K") &&
-      returnRequestRec.getValue("custbody_kd_rr_for_tag_label_gen")
-    ) {
-      log.debug("test", "entered here");
-      var mrTask = task.create({
-        taskType: task.TaskType.MAP_REDUCE,
-        scriptId: "customscript_kd_mr_create_tag_labels",
-        deploymentId: "customdeploy_kd_mr_create_tag_labels" /*,
-        params: {
-            custscript_mrr_id: mrrRec.id
-        }*/,
-      });
-      var mrTaskId = mrTask.submit();
-      var mrTaskStatus = task.checkStatus({
-        taskId: mrTaskId,
-      });
-      log.debug("test", "scheduled for tag creation");
-      //if(mrTaskStatus == FAILED)
-    }
-    var rrAmountUpdated = false;
-    if (returnRequestRec.getText("transtatus").toUpperCase() != "APPROVED") {
-      applyPaymentSchedule(returnRequestRec);
-    } else {
-      if (
-        returnRequestRec.getValue("custbody_kd_rr_mrr_status") != 12 &&
-        returnRequestRec.getValue("custbody_kd_rr_mrr_status") != 10
-      ) {
+      if (context.type == context.UserEventType.CREATE) return;
+      var returnRequestOldRec = context.oldRecord;
+      var returnRequestRec = context.newRecord;
+      try {
         var rrRec = record.load({
-          type: recType,
+          type: RRTYPE.rrSalesType,
           id: returnRequestRec.id,
           isDynamic: true,
         });
-        var itPackageSize, partialCount, qty, rate, amount;
-        for (var indx = 0; indx < rrRec.getLineCount("item"); indx++) {
-          rrRec.selectLine({
-            sublistId: "item",
-            line: indx,
-          });
-          if (
-            rrRec.getCurrentSublistValue("item", "custcol_kod_fullpartial") == 2
-          ) {
-            itPackageSize = rrRec.getCurrentSublistValue(
-              "item",
-              "custcol_package_size",
-            );
-            itPackageSize =
-              itPackageSize == null || itPackageSize == "" ? 0 : itPackageSize;
-            partialCount = rrRec.getCurrentSublistValue(
-              "item",
-              "custcol_kd_partialcount",
-            );
-            qty = rrRec.getCurrentSublistValue("item", "quantity");
-            rate = rrRec.getCurrentSublistValue("item", "rate");
-            log.debug(
-              "test",
-              "qty: " +
-                qty +
-                "; partialCount: " +
-                partialCount +
-                "; itPackageSize: " +
-                itPackageSize +
-                "; rate: " +
-                rate,
-            );
-            if (partialCount > 0) {
-              amount = qty * (partialCount / itPackageSize) * rate;
-              rrRec.setCurrentSublistValue({
-                sublistId: "item",
-                fieldId: "amount",
-                value: amount,
-                ignoreFieldChange: true,
-              });
-            }
-          }
-
-          rrRec.commitLine("item");
-        }
-        rrRec.save({
-          enableSourcing: true,
-          ignoreMandatoryFields: true,
+        recType = RRTYPE.rrSalesType;
+      } catch (e) {
+        var rrRec = record.load({
+          type: RRTYPE.rrPoType,
+          id: returnRequestRec.id,
+          isDynamic: true,
         });
+        recType = RRTYPE.rrPoType;
       }
+      log.debug(
+        "afterSubmit",
+        returnRequestRec.getValue(FLD_RETREQ_CATEGORY) +
+          " : " +
+          returnRequestRec.getText("transtatus").toUpperCase(),
+      );
+      log.debug("afterSubmit", JSON.stringify(returnRequestOldRec));
+      log.debug(
+        "afterSubmit TEST",
+        returnRequestRec.getValue("transtatus") +
+          " : " +
+          returnRequestRec.getValue("custbody_kd_rr_for_tag_label_gen"),
+      );
+      if (
+        (returnRequestRec.getValue("transtatus") == "F" ||
+          returnRequestRec.getValue("transtatus") == "K") &&
+        context.type == context.UserEventType.EDIT
+      ) {
+        //if ((returnRequestRec.getValue('transtatus') == 'K') && context.type == context.UserEventType.EDIT){
+        try {
+          updatePriceLevel(returnRequestRec);
+        } catch (e) {
+          log.error(e.message);
+        }
+      }
+      var rrCategory = returnRequestRec.getValue(FLD_RETREQ_CATEGORY)
+        ? returnRequestRec.getValue(FLD_RETREQ_CATEGORY)
+        : returnRequestOldRec.getValue(FLD_RETREQ_CATEGORY);
+      var rrStatus = returnRequestRec.getValue("transtatus")
+        ? returnRequestRec.getValue("transtatus")
+        : returnRequestOldRec.getValue("transtatus");
+      log.debug(
+        "TEST HERE",
+        rrCategory +
+          " == " +
+          CATEGORY_C2 +
+          " && " +
+          rrStatus +
+          " == C &&" +
+          returnRequestRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT) +
+          " &&(" +
+          returnRequestRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT) +
+          " != " +
+          returnRequestOldRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT) +
+          ")",
+      );
+      //if(parseInt(rrCategory) == CATEGORY_C2 && rrStatus == 'C' && returnRequestRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT) && (returnRequestRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT) != returnRequestOldRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT))){
+      if (
+        parseInt(rrCategory) == CATEGORY_C2 &&
+        returnRequestRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT) &&
+        returnRequestRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT) !=
+          returnRequestOldRec.getValue(FLD_RETREQ_FOR_222_FORM_ASSIGNMENT)
+      ) {
+        log.debug("TEST HERE", "TO SCHEDULE");
+        try {
+          var mrTask = task.create({
+            taskType: task.TaskType.MAP_REDUCE,
+            scriptId: "customscript_kd_mr_assign_222_form",
+            deploymentId: "customdeploy_kd_mr_assign_222_form",
+            /*,
+                                                                                                                                                                                                                                        params: {
+                                                                                                                                                                                                                                            custscript_mrr_id: mrrRec.id
+                                                                                                                                                                                                                                        }*/
+          });
+          var mrTaskId = mrTask.submit();
+          /*var mrTaskStatus = task.checkStatus({
+                                                                                                                                                                                                                                                                                                                        taskId: mrTaskId
+                                                                                                                                                                                                                                                                                                                    });*/
+          log.debug("test", "scheduled for tag creation" + mrTaskId);
+          //if(mrTaskStatus == FAILED)
+        } catch (ex) {
+          log.error({ title: "map/reduce task creation", details: ex });
+        }
+      }
+      if (
+        returnRequestRec.getValue("transtatus") !=
+          returnRequestOldRec.getValue("transtatus") &&
+        returnRequestRec.getText("transtatus").toUpperCase() == "APPROVED"
+      ) {
+        // var rmaId = createRma(returnRequestRec);
+        // receiveRma(rmaId, returnRequestRec);
+        // //createCreditMemo(rmaId, returnRequestRec);
+        // //get items for manuf and for wholesale SO
+        // getItemsByManufAndWhslr(returnRequestRec);
+        // createManufAndWhslSalesOrder(returnRequestRec);
+        // createPharmacyInvoice(returnRequestRec);
+        // applyPaymentDueDate(returnRequestRec);
+      } else if (
+        returnRequestRec.getValue("transtatus") !=
+          returnRequestOldRec.getValue("transtatus") &&
+        returnRequestRec.getValue("transtatus") == "H"
+      ) {
+        //}else if(returnRequestRec.getValue('transtatus') == 'H'){
+        //var trxnToDeleteSearch = search.load('');
+        // var objSearch = search.load({
+        //   id: "customsearch_kd_rr_trxn_delete_on_reject",
+        // });
+        // objSearch.filters.push(
+        //   search.createFilter({
+        //     name: "custbody_kd_return_request",
+        //     operator: search.Operator.ANYOF,
+        //     values: returnRequestRec.id,
+        //   }),
+        // );
+        // var searchRs = objSearch.run().getRange({ start: 0, end: 1000 });
+        // var trxnType, trxnId;
+        // log.debug("getTransactionsToDelete", JSON.stringify(searchRs));
+        //
+        // for (var i = 0; i < searchRs.length; i++) {
+        //   trxnType = searchRs[i].recordType;
+        //   trxnId = searchRs[i].id;
+        //
+        //   try {
+        //     record.delete({
+        //       type: trxnType,
+        //       id: trxnId,
+        //     });
+        //   } catch (ex) {
+        //     log.error("ERR", "Failed to delete " + trxnType + " " + trxnId);
+        //   }
+        // }
+        //}else if(parseInt(returnRequestRec.getValue(FLD_RETREQ_CATEGORY)) == parseInt(3) && returnRequestRec.getValue('transtatus') != returnRequestOldRec.getValue('transtatus') && returnRequestRec.getText('transtatus').toUpperCase() == 'AUTHORIZED'){
+        //}else if(returnRequestRec.getText('transtatus').toUpperCase() == 'PENDING REVIEW'){
+      } else if (
+        parseInt(returnRequestRec.getValue(FLD_RETREQ_CATEGORY)) ==
+          parseInt(3) &&
+        returnRequestRec.getValue("transtatus") == "A"
+      ) {
+        var generatePdfUrl = url.resolveScript({
+          scriptId: SCR_ID_GENERATE_FORM_222,
+          deploymentId: DPLYMNT_GENERATE_FORM_222,
+        });
+        log.debug("afterSubmit", generatePdfUrl + " >> " + returnRequestRec.id);
+        /*redirect.redirect({
+                                                                                                                                                                                                                                                url: generatePdfUrl+'&id='+context.newRecord.id
+                                                                                                                                                                                                                                            });*/
+        redirect.toSuitelet({
+          scriptId: SCR_ID_GENERATE_FORM_222,
+          deploymentId: DPLYMNT_GENERATE_FORM_222,
+          parameters: {
+            custscript_kd_rr_id: returnRequestRec.id,
+          },
+        });
+        // move the status to next stage after generation of the form 222 pdf
+        /*var rrId = record.submitFields({
+                                                                                                                                                                                                                                                type: 'customsale_kod_returnrequest',
+                                                                                                                                                                                                                                                id: context.newRecord.id,
+                                                                                                                                                                                                                                                values: {
+                                                                                                                                                                                                                                                    'transtatus': 'D'
+                                                                                                                                                                                                                                                }
+                                                                                                                                                                                                                                            });*/
+        //added transition from C2 Kit to be mail to pending package receipt
+      } else if (
+        returnRequestRec.getValue("transtatus") == "J" &&
+        returnRequestRec.getValue("custbody_kd_labels_generated") == true &&
+        returnRequestRec.getValue("custbody_kd_c2kit_mailed") == true
+      ) {
+        var id = record.submitFields({
+          type: recType,
+          id: returnRequestRec.id,
+          values: { transtatus: "D" },
+          options: {
+            enableSourcing: false,
+            ignoreMandatoryFields: true,
+          },
+        });
+      } else if (
+        (returnRequestRec.getValue("transtatus") == "K" ||
+          returnRequestOldRec.getValue("transtatus") == "K") &&
+        returnRequestRec.getValue("custbody_kd_rr_for_tag_label_gen")
+      ) {
+        log.debug("test", "entered here");
+        // var mrTask = task.create({
+        //   taskType: task.TaskType.MAP_REDUCE,
+        //   scriptId: "customscript_kd_mr_create_tag_labels",
+        //   deploymentId: "customdeploy_kd_mr_create_tag_labels" /*,
+        //   params: {
+        //       custscript_mrr_id: mrrRec.id
+        //   }*/,
+        // });
+        // var mrTaskId = mrTask.submit();
+        // var mrTaskStatus = task.checkStatus({
+        //   taskId: mrTaskId,
+        // });
+        // log.debug("test", "scheduled for tag creation");
+        // //if(mrTaskStatus == FAILED)
+      }
+      var rrAmountUpdated = false;
+      if (returnRequestRec.getText("transtatus").toUpperCase() != "APPROVED") {
+        // applyPaymentSchedule(returnRequestRec);
+      } else {
+        if (
+          returnRequestRec.getValue("custbody_kd_rr_mrr_status") != 12 &&
+          returnRequestRec.getValue("custbody_kd_rr_mrr_status") != 10
+        ) {
+          var rrRec = record.load({
+            type: recType,
+            id: returnRequestRec.id,
+            isDynamic: true,
+          });
+          var itPackageSize, partialCount, qty, rate, amount;
+          for (var indx = 0; indx < rrRec.getLineCount("item"); indx++) {
+            rrRec.selectLine({
+              sublistId: "item",
+              line: indx,
+            });
+            if (
+              rrRec.getCurrentSublistValue("item", "custcol_kod_fullpartial") ==
+              2
+            ) {
+              itPackageSize = rrRec.getCurrentSublistValue(
+                "item",
+                "custcol_package_size",
+              );
+              itPackageSize =
+                itPackageSize == null || itPackageSize == ""
+                  ? 0
+                  : itPackageSize;
+              partialCount = rrRec.getCurrentSublistValue(
+                "item",
+                "custcol_kd_partialcount",
+              );
+              qty = rrRec.getCurrentSublistValue("item", "quantity");
+              rate = rrRec.getCurrentSublistValue("item", "rate");
+              log.debug(
+                "test",
+                "qty: " +
+                  qty +
+                  "; partialCount: " +
+                  partialCount +
+                  "; itPackageSize: " +
+                  itPackageSize +
+                  "; rate: " +
+                  rate,
+              );
+              if (partialCount > 0) {
+                amount = qty * (partialCount / itPackageSize) * rate;
+                rrRec.setCurrentSublistValue({
+                  sublistId: "item",
+                  fieldId: "amount",
+                  value: amount,
+                  ignoreFieldChange: true,
+                });
+              }
+            }
+
+            rrRec.commitLine("item");
+          }
+          rrRec.save({
+            enableSourcing: true,
+            ignoreMandatoryFields: true,
+          });
+        }
+      }
+    } catch (e) {
+      log.error("afterSubmit", e.message);
     }
   }
 
