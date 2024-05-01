@@ -130,7 +130,18 @@ define([
             const rrpoMrrId = rec.getValue("custbody_kd_master_return_id");
             const customer = rec.getValue("entity");
             const DEA222Feespo = rec.getValue("custbody_kd_total_222_form_fee");
+            const rrpoCategory = rec.getValue("custbody_kd_rr_category");
             if (rrPOStatus == rxrs_util.rrStatus.C2Kittobemailed) {
+              const returnItemRequestedURL = `https://6816904.app.netsuite.com/app/common/custom/custrecordentry.nl?rectype=393&whence=&mrrId=${rrpoMrrId}&rrId=${rrpoId}`;
+
+              context.form.addButton({
+                id: "custpage_create_rir",
+                label: "Create Item Requested",
+                functionName: `openSuitelet(${JSON.stringify({
+                  url: returnItemRequestedURL,
+                })})`,
+              });
+
               let generateLabelURL = url.resolveScript({
                 scriptId: "customscript_rxrs_sl_generate_label",
                 deploymentId: "customdeploy_rxrs_sl_generate_label",
@@ -528,6 +539,7 @@ define([
                 mrrId: mrrRec.id,
                 action: "createLabel",
                 customerId: mrrRec.getValue("custrecord_mrrentity"),
+                mailIn: mrrRec.getValue("custrecord_kd_mail_in_option"),
               },
             });
             let mmrParamsGenerateLabel = {

@@ -12,6 +12,7 @@ define([
   "N/file",
   "N/record",
   "N/redirect",
+  "N/search",
 ], /**
  * @param{serverWidget} serverWidget
  * @param rxrs_sl_module
@@ -33,6 +34,7 @@ define([
   file,
   record,
   redirect,
+  search,
 ) => {
   /**
    * Defines the Suitelet script trigger point.
@@ -54,14 +56,22 @@ define([
       }
     } else {
       log.audit("params post", params);
-      let { numberOfLabels, returnPackageDetails, rrId, customerId, action } =
-        params;
+      let {
+        numberOfLabels,
+        returnPackageDetails,
+        rrId,
+        mailIn,
+        mrrId,
+        action,
+      } = params;
       const returnPackageObj = JSON.parse(returnPackageDetails);
 
-      returnPackageObj.rrId = rxrs_tran_lib.getReturnRequestPerCategory({
-        mrrId: returnPackageObj.mrrId,
-        category: returnPackageObj.category,
-      });
+      returnPackageObj.rrId = rrId
+        ? rrId
+        : rxrs_tran_lib.getReturnRequestPerCategory({
+            mrrId: returnPackageObj.mrrId,
+            category: returnPackageObj.category,
+          });
       log.audit("returnPackageObj", returnPackageObj);
       for (let i = 0; i < +numberOfLabels; i++) {
         rxrs_custom_rec.createReturnPackages(returnPackageObj);
@@ -137,7 +147,7 @@ define([
   const createHeaderFields = (options) => {
     let form = options.form;
 
-    let { mrrId, generateLabel, scheduledPickUp, customerId, rrId } =
+    let { mrrId, generateLabel, scheduledPickUp, customerId, rrId, mailIn } =
       options.params;
     generateLabel = true;
     log.debug("createHeaderFields", options.params);
@@ -169,6 +179,30 @@ define([
       if (customerId) {
         customerField.defaultValue = customerId;
       }
+      if (mailIn == "true") {
+        let returnRequestList =
+          rxrs_tran_lib.getMasterReturnReturnRequest(mrrId);
+        log.audit("returnRequestList", returnRequestList);
+        const returnRequestField = form.addField({
+          id: "custpage_returnrequest",
+          label: "Return Request",
+          type: serverWidget.FieldType.SELECT,
+        });
+        if (returnRequestList.length > 0) {
+          returnRequestField.addSelectOption({
+            value: " ",
+            text: " ",
+          });
+          for (let i = 0; i < returnRequestList.length; i++) {
+            returnRequestField.addSelectOption({
+              value: returnRequestList[i].value,
+              text: returnRequestList[i].text,
+              isSelected: true,
+            });
+          }
+        }
+      }
+
       if (generateLabel == true) {
         let category = [];
         if (rrId) {

@@ -251,6 +251,7 @@ define(["N/currentRecord", "N/search", "N/url", "N/https", "N/ui/message"], /**
     try {
       const curRec = currentRecord.get();
       const category = curRec.getValue("custpage_product_group");
+      const rrId = curRec.getValue("custpage_returnrequest");
       const numberOfLabels = curRec.getValue("custpage_num_of_labels");
       let params = {
         category: category,
@@ -258,6 +259,9 @@ define(["N/currentRecord", "N/search", "N/url", "N/https", "N/ui/message"], /**
         requestedDate: curRec.getValue("custpage_estimated_ship_date"),
         customer: curRec.getValue("custpage_entity"),
       };
+      if (rrId) {
+        params.rrId = rrId;
+      }
       let returnPackageParams = {
         returnPackageDetails: JSON.stringify(params),
         action: "createReturnPackages",

@@ -41,6 +41,7 @@ define([
     //   });
     // });
     category = customrec.getItemRequested(mrrId);
+
     category.forEach((val) => {
       let rrId = tranlib.getReturnRequestPerCategory({
         mrrId: mrrId,

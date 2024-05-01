@@ -35,7 +35,7 @@ define([
       let nonReturnableFeeAmount = 0;
       let returnableFeePercent = 0;
       nonReturnableFeeAmount = rec.getValue(
-        "custrecord_rcl_non_returnable_fee_amt"
+        "custrecord_rcl_non_returnable_fee_amt",
       );
       returnableFeePercent = rec.getValue("custrecord_rcl_returnable_fee");
       let returnableFee = 100 - parseFloat(returnableFeePercent);
@@ -84,7 +84,7 @@ define([
     try {
       let mrrId = rec.getValue("custrecord_rcl_master_return");
       let nonReturnableFeePercent = rec.getValue(
-        "custrecord_rcl_non_returnable_fee"
+        "custrecord_rcl_non_returnable_fee",
       );
       let nonReturnableAmount = +rxrs_vs_util.getMrrIRSTotalAmount({
         mrrId: mrrId,
@@ -100,7 +100,16 @@ define([
         nonReturnableAmount,
         nonReturnableFeePercent,
       });
-      nonReturnableFeeAmount = nonReturnableAmount * nonReturnableFeePercent;
+      const processingWeight = rec.getValue("custrecord_processing_weight");
+      const chargePerLBS = rec.getValue("custrecord_charge_per_lbs");
+      const isForDisposal = rec.getValue("custrecord_for_disposal");
+      if (isForDisposal == true) {
+        nonReturnableFeeAmount = (+processingWeight - 20) * chargePerLBS;
+        log.audit("Non returnable fee amt weight", nonReturnableFeeAmount);
+      } else {
+        nonReturnableFeeAmount = nonReturnableAmount * nonReturnableFeePercent;
+      }
+
       rec.setValue({
         fieldId: "custrecord_rcl_returnable_amount",
         value: returnableAmount,

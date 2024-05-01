@@ -394,6 +394,49 @@ define([
   }
 
   /**
+   * Get the return request id per master return
+   * @param {string}options - Master Return
+   * @return the Internal Id of the Return Request
+   */
+  function getMasterReturnReturnRequest(options) {
+    log.audit("getMasterReturnReturnRequest", options);
+    let rrId = [];
+    try {
+      const transactionSearchObj = search.create({
+        type: "transaction",
+        filters: [
+          ["type", "anyof", "CuTrSale102", "CuTrPrch106"],
+          "AND",
+          ["custbody_kd_master_return_id", "anyof", options],
+          "AND",
+          ["mainline", "is", "T"],
+        ],
+        columns: [
+          search.createColumn({ name: "tranid", label: "Document Number" }),
+          search.createColumn({
+            name: "custbody_kd_rr_category",
+            label: "Category",
+          }),
+        ],
+      });
+
+      transactionSearchObj.run().each(function (result) {
+        rrId.push({
+          value: result.id,
+          text:
+            result.getValue({ name: "tranid" }) +
+            " | " +
+            result.getText({ name: "custbody_kd_rr_category" }),
+        });
+        return true;
+      });
+      return rrId;
+    } catch (e) {
+      log.error("getMasterReturnReturnRequest", e.message);
+    }
+  }
+
+  /**
    * Create PO if the type of the Return Request is RRPO
    * @param {number}options.mrrId
    * @param {number}options.rrId
@@ -3284,36 +3327,37 @@ define([
   }
 
   return {
-    createInventoryAdjustment: createInventoryAdjustment,
-    createPO: createPO,
-    checkIfTransAlreadyExist: checkIfTransAlreadyExist,
-    createBill: createBill,
-    deleteTransaction: deleteTransaction,
-    addBillProcessingFee: addBillProcessingFee,
-    removeVBLine: removeVBLine,
-    getCertainField: getCertainField,
-    updateProcessing: updateProcessing,
-    getBillId: getBillId,
-    getAllBills: getAllBills,
-    getInvoiceLineCountWithCmPayment: getInvoiceLineCountWithCmPayment,
-    setAdjustmentFee: setAdjustmentFee,
     addAccruedPurchaseItem: addAccruedPurchaseItem,
-    createAllServiceFees: createAllServiceFees,
     addAcrruedAmountBasedonTransaction: addAcrruedAmountBasedonTransaction,
-    getItemTransactionLine: getItemTransactionLine,
-    updateSO222Form: updateSO222Form,
-    setPartialAmount: setPartialAmount,
-    getSalesTransactionLine: getSalesTransactionLine,
-    updateTranLineCM: updateTranLineCM,
-    createPayment: createPayment,
+    addBillProcessingFee: addBillProcessingFee,
     checkExistingPayment: checkExistingPayment,
-    getPaymentSum: getPaymentSum,
-    createCreditMemoFromInv: createCreditMemoFromInv,
-    getInvoiceLineAmount: getInvoiceLineAmount,
-    removeCMFromInvoiceLine: removeCMFromInvoiceLine,
     checkExistingPaymentInfo: checkExistingPaymentInfo,
-    setERVDiscountPrice: setERVDiscountPrice,
-    getReturnRequestPerCategory: getReturnRequestPerCategory,
     checkIfReturnRequuestIsApproved: checkIfReturnRequuestIsApproved,
+    checkIfTransAlreadyExist: checkIfTransAlreadyExist,
+    createAllServiceFees: createAllServiceFees,
+    createBill: createBill,
+    createCreditMemoFromInv: createCreditMemoFromInv,
+    createInventoryAdjustment: createInventoryAdjustment,
+    createPayment: createPayment,
+    createPO: createPO,
+    deleteTransaction: deleteTransaction,
+    getAllBills: getAllBills,
+    getBillId: getBillId,
+    getCertainField: getCertainField,
+    getInvoiceLineAmount: getInvoiceLineAmount,
+    getInvoiceLineCountWithCmPayment: getInvoiceLineCountWithCmPayment,
+    getItemTransactionLine: getItemTransactionLine,
+    getMasterReturnReturnRequest: getMasterReturnReturnRequest,
+    getPaymentSum: getPaymentSum,
+    getReturnRequestPerCategory: getReturnRequestPerCategory,
+    getSalesTransactionLine: getSalesTransactionLine,
+    removeCMFromInvoiceLine: removeCMFromInvoiceLine,
+    removeVBLine: removeVBLine,
+    setAdjustmentFee: setAdjustmentFee,
+    setERVDiscountPrice: setERVDiscountPrice,
+    setPartialAmount: setPartialAmount,
+    updateProcessing: updateProcessing,
+    updateSO222Form: updateSO222Form,
+    updateTranLineCM: updateTranLineCM,
   };
 });

@@ -42,8 +42,25 @@ define([
       const isStateLicenseExpired = masterRec.getValue(
         "custrecord_kd_state_license_expired",
       );
+      let category = [];
+      const mailInOptions = masterRec.getValue("custrecord_kd_mail_in_option");
+      if (mailInOptions == true) {
+        const c2 = masterRec.getValue("custrecord_kd_c2");
+        const c3to5 = masterRec.getValue("custrecord_kd_c3to5");
+        const rxOtc = masterRec.getValue("custrecord_kd_rxotc");
+        if (c2 == true) {
+          category.push({ value: 3, text: "C2" });
+        }
+        if (c3to5 == true) {
+          category.push({ value: 4, text: "C3To5" });
+        }
+        if (rxOtc == true) {
+          category.push({ value: 1, text: "RxOTC" });
+        }
+      } else {
+        category = customRec.getItemRequested(masterRec.id);
+      }
 
-      const category = customRec.getItemRequested(masterRec.id);
       let rrId;
       log.audit("Category", category);
       let rrCategory = [];
