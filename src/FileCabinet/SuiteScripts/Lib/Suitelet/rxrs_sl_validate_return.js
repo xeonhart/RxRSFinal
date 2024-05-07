@@ -35,8 +35,13 @@ define([
         log.debug("amount", { curAmount, maximumAmount });
         let numberOfBags;
         if (params.returnType != "Destruction") {
-          numberOfBags =
-            +maximumAmount > +curAmount ? 1 : +curAmount / +maximumAmount;
+          if (maximumAmount == 0) {
+            numberOfBags = 1;
+          } else {
+            numberOfBags =
+              +maximumAmount > +curAmount ? 1 : +curAmount / +maximumAmount;
+          }
+
           log.debug("numberOfBags", numberOfBags);
         } else {
           numberOfBags = 1;
@@ -45,6 +50,12 @@ define([
           numberOfBags = 1;
         }
 
+        if (!numberOfBags) {
+          log.emergency("numberofbags", numberOfBags);
+          numberOfBags = 1;
+        }
+        log.emergency("numberOfBags", typeof numberOfBags);
+        log.emergency("numberOfBags", typeof numberOfBags == null);
         let bags = [];
         /**
          * Create Bags label depending on the maximum amount
@@ -57,7 +68,7 @@ define([
               entity: entity,
               manufId: params.manufId,
               rrId: params.rrId,
-            })
+            }),
           );
         }
 
