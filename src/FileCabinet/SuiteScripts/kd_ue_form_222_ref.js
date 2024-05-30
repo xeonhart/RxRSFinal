@@ -357,15 +357,15 @@ define([
         value: '<a href="' + lineUrl + '">EDIT</a>',
       });
       /*contacts.setSublistValue({
-                                id: 'edit',
-                                line: ctr,
-                                value: 'https://' + domain + editUrl
-                            });*/
+                                            id: 'edit',
+                                            line: ctr,
+                                            value: 'https://' + domain + editUrl
+                                        });*/
       /*objSublist.setSublistValue({
-                                id: 'custpage_edit',
-                                line: i,
-                                value: 'https://' + domain + editUrl
-                            });*/
+                                            id: 'custpage_edit',
+                                            line: i,
+                                            value: 'https://' + domain + editUrl
+                                        });*/
       objSublist.setSublistValue({
         id: "custpage_col_id",
         value: itemsRequested[i].id,

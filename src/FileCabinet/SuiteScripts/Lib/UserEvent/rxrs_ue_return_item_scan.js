@@ -169,7 +169,33 @@ define([
     newPharmaProcessing = rec.getValue("custrecord_cs__rqstprocesing");
     const oldMFGProcessing = oldRec.getValue("custrecord_cs__mfgprocessing");
     const newMFGProcessing = rec.getValue("custrecord_cs__mfgprocessing");
+    /**
+     *  Update PO, Bill and IR processing
+     */
+    if (
+      oldPharmaProcessing != newPharmaProcessing ||
+      newMFGProcessing != newMFGProcessing
+    ) {
+      log.audit("updating related tran line processing");
+      let params = {
+        mfgProcessing: newMFGProcessing,
+        pharmaProcessing: newPharmaProcessing,
+        irsId: rec.id,
+        amount: rec.getValue("custrecord_irc_total_amount"),
+        action: "updateTranLineProcessing",
+      };
+      log.audit("updating related tran line processing", params);
 
+      let functionSLURL = url.resolveScript({
+        scriptId: "customscript_sl_cs_custom_function",
+        deploymentId: "customdeploy_sl_cs_custom_function",
+        returnExternalUrl: true,
+        params: params,
+      });
+      let response = https.post({
+        url: functionSLURL,
+      });
+    }
     log.emergency("Pharma Processing", {
       oldPharmaProcessing,
       newPharmaProcessing,
@@ -202,12 +228,12 @@ define([
             for (let i = 0; i < vbRec.getLineCount("item"); i++) {
               const mfgProcessing = vbRec.getSublistValue({
                 sublistId: "item",
-                fieldId: "custcol_rxrs_mfg_processing",
+                fieldId: "custcol_kod_mfgprocessing",
                 line: i,
               });
               const pharmaProcessing = vbRec.getSublistValue({
                 sublistId: "item",
-                fieldId: "custcol_rxrs_pharma_processing",
+                fieldId: "custcol_kod_rqstprocesing",
                 line: i,
               });
 

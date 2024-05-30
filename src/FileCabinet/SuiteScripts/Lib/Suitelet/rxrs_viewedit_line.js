@@ -13,7 +13,6 @@ define([
   "N/file",
   "N/record",
   "N/redirect",
-  "../rxrs_view_edit_line_lib",
 ], /**
  * @param{serverWidget} serverWidget
  * @param rxrs_rcl_util
@@ -34,7 +33,6 @@ define([
   file,
   record,
   redirect,
-  veLib,
 ) => {
   /**
    * Defines the Suitelet script trigger point.
@@ -116,65 +114,11 @@ define([
       isMFGProcessing,
       edit,
       nonReturnableFeeAmount,
-      viewEditLine,
     } = options.params;
-
     try {
       /**
        * Removes the final payment type
        */
-      if (remove == true || remove == "true") {
-        try {
-          let itemsReturnScan = rxrs_vs_util.getReturnableItemScan({
-            mrrId: mrrId,
-            paymentSchedId: paymentId,
-            isVerifyStaging: true,
-            finalPaymentSched: finalPaymentSched,
-          });
-          updateFinalPayment({
-            itemsReturnScan: itemsReturnScan,
-            paymentId: 12,
-            isUpdated: false,
-          });
-          /**
-           * delete payment schedule assigned and set back to default payment type
-           */
-          log.debug("payment to delete", paymentId);
-          rxrs_ps_util.deletePaymentSched(paymentId);
-        } catch (e) {
-          log.error("Removing Final Payment", e.message);
-        }
-
-        redirect.toRecord({
-          id: rclId,
-          type: "customrecord_return_cover_letter",
-          isEditMode: false,
-        });
-      }
-      if (action) {
-        switch (action) {
-          case "createBill":
-            rxrs_tran_util.createBill({
-              mrrId: mrrId,
-              finalPaymentSchedule: +finalPaymentSched,
-              poId: tranId,
-            });
-
-            break;
-          case "deleteTran":
-            rxrs_tran_util.deleteTransaction({
-              id: tranId,
-              type: tranType,
-            });
-
-            break;
-        }
-        redirect.toRecord({
-          id: rclId,
-          type: "customrecord_return_cover_letter",
-          isEditMode: false,
-        });
-      }
 
       /**
        * If user clicks a specific payment type
@@ -184,109 +128,6 @@ define([
          * Hide unnecessary column
          */
         if (edit == true || edit == "true") {
-          let htmlFileId = rxrs_util.getFileId("SL_loading_html.html"); // HTML file for loading animation
-          if (htmlFileId) {
-            const dialogHtmlField = form.addField({
-              id: "custpage_jqueryui_loading_dialog",
-              type: serverWidget.FieldType.INLINEHTML,
-              label: "Dialog HTML Field",
-            });
-            dialogHtmlField.defaultValue = file
-              .load({
-                id: htmlFileId,
-              })
-              .getContents();
-          }
-
-          form.addButton({
-            id: "custpage_create_update",
-            label: "Save Changes",
-            functionName: `updateIRS()`,
-          });
-
-          let sublistFields = veLib.viewEditLineSUBLIST;
-
-          let itemsReturnScan = veLib.getMRRIRSLine(mrrId);
-          rxrs_vs_util.createReturnableSublist({
-            form: form,
-            rrTranId: mrrId,
-            rrName: tranId,
-            sublistFields: sublistFields,
-            value: itemsReturnScan,
-            isMainInDated: false,
-            inDate: true,
-            returnList: itemsReturnScan,
-            title: paymentSchedText,
-          });
-
-          let result = veLib.getMRRSummary(mrrId);
-          log.audit("result", result);
-          let tableStr = "";
-
-          tableStr += `<p style="font-size: 20px"><b><h>Value Summary:</h></b></p>`;
-
-          tableStr += `<table style="height:10%;border-style: solid; border-collapse: collapse;padding: 5px;  background-color: #fefefa">
-                      
-                      <tr>
-                        <th style="border-style: solid; padding-left: 10px;font-size: 20px;border-color:"#EEEEEE"><h5><b>Returnable</b></h5></th>
-                        <th style="border-style: solid;padding-left: 10px;font-size: 20px"><h5>Value</h5></th>
-                       
-                      </tr>`;
-          result.forEach(function (data) {
-            tableStr += `<tr>
-                     <td style="border-bottom: 1px;padding-right: 30px;font-size: 15px;padding: 5px">${data.paymentName}</td>
-
-                     <td style="font-size: 15px;padding: 5px">$${+data.amount}</td>
-                   </tr>`;
-          });
-
-          let res2 = veLib.getPharmaProcessingGroupTotal(mrrId);
-          res2.forEach(function (data) {
-            tableStr += `<tr>
-                     <td style="font-size: 15px;padding: 5px"><b>${data.name}</b></td>
-
-                     <td style="font-size: 15px;padding: 5px">$${+data.value}</td>
-                   </tr>`;
-          });
-          tableStr += `</table>`;
-          let tableField = form.addField({
-            id: "custpage_table",
-            label: "Value Summary",
-            type: serverWidget.FieldType.INLINEHTML,
-          });
-          tableField.defaultValue = tableStr;
-          // let sublistFields = rxrs_vs_util.SUBLISTFIELDS.returnableManufacturer;
-          // sublistFields = rxrs_rcl_util.hideSublist({
-          //   sublistToHide: rxrs_rcl_util.SUBLIST_TO_HIDE_IN_RCL,
-          //   sublist: sublistFields,
-          //   showSelect: customize == "true",
-          // });
-          //
-          // sublistFields = rxrs_rcl_util.setSublistToEntry({
-          //   sublistToEntry: rxrs_rcl_util.SUBLIST_TO_ENTRY,
-          //   sublist: sublistFields,
-          //   showSelect: false,
-          // });
-          // let itemsReturnScan = rxrs_vs_util.getReturnableItemScan({
-          //   mrrId: mrrId,
-          //   paymentSchedId: paymentSchedId,
-          //   isVerifyStaging: true,
-          //   finalPaymentSched: finalPaymentSched,
-          //   returnableFee: returnableFee,
-          //   isMFGProcessing: true,
-          // });
-          //
-          // rxrs_vs_util.createReturnableSublist({
-          //   form: form,
-          //   rrTranId: mrrId,
-          //   rrName: tranId,
-          //   sublistFields: sublistFields,
-          //   value: itemsReturnScan,
-          //   isMainInDated: false,
-          //   inDate: true,
-          //   returnList: itemsReturnScan,
-          //   title: paymentSchedText,
-          // });
         } else {
           let sublistFields = rxrs_vs_util.SUBLISTFIELDS.returnableManufacturer;
           sublistFields = rxrs_rcl_util.hideSublist({

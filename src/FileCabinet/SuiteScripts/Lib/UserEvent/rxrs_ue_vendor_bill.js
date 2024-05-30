@@ -4,7 +4,7 @@
  */
 define(["../rxrs_transaction_lib", "../rxrs_verify_staging_lib"], (
   rxrs_tran_lib,
-  rxrs_vs_lib
+  rxrs_vs_lib,
 ) => {
   /**
    * Defines the function definition that is executed before record is loaded.
@@ -67,12 +67,12 @@ define(["../rxrs_transaction_lib", "../rxrs_verify_staging_lib"], (
       for (let i = 0; i < rec.getLineCount("item"); i++) {
         const mfgProcessing = rec.getSublistValue({
           sublistId: "item",
-          fieldId: "custcol_rxrs_mfg_processing",
+          fieldId: "custcol_kod_mfgprocessing",
           line: i,
         });
         const pharmaProcessing = rec.getSublistValue({
           sublistId: "item",
-          fieldId: "custcol_rxrs_pharma_processing",
+          fieldId: "custcol_kod_rqstprocesing",
           line: i,
         });
         let quantity = rec.getSublistValue({

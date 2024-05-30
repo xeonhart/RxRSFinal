@@ -164,6 +164,76 @@ define([
       updateDisplayType: "INLINE",
     },
   ];
+  const VIEWEDITLINESEARCHCOLUMN = [
+    search.createColumn({
+      name: "custrecord_cs_item_ndc",
+      label: "Item Details Display - NDC",
+    }),
+    search.createColumn({
+      name: "salesdescription",
+      join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+      label: "Description",
+    }),
+    search.createColumn({
+      name: "custrecord_cs_item_manufacturer",
+      label: "Item manufacturer",
+    }),
+    search.createColumn({ name: "created", label: "Scanned on" }),
+    search.createColumn({
+      name: "custrecord_cs_lotnum",
+      label: "Serial/Lot Number",
+    }),
+    search.createColumn({
+      name: "custrecord_cs_full_partial_package",
+      label: "Full/Partial Package",
+    }),
+    search.createColumn({
+      name: "custrecord_cs_expiration_date",
+      label: "Expiration Date",
+    }),
+    search.createColumn({
+      name: "custrecord_cs__mfgprocessing",
+      label: "Mfg Processing",
+    }),
+    search.createColumn({
+      name: "custrecord_cs__rqstprocesing",
+      label: "Pharmacy Processing",
+    }),
+    search.createColumn({
+      name: "internalid",
+      join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
+      label: "Internal ID",
+    }),
+
+    search.createColumn({ name: "custrecord_scanrate", label: "Rate" }),
+    search.createColumn({
+      name: "custrecord_isc_overriderate",
+      label: "Override Rate",
+    }),
+    search.createColumn({ name: "custrecord_cs_qty", label: "Qty" }),
+    search.createColumn({
+      name: "custrecord_scanbagtaglabel",
+      label: "Bag Tag Label",
+    }),
+    search.createColumn({
+      name: "custrecord_isc_inputrate",
+      label: "Input Rate",
+    }),
+    search.createColumn({
+      name: "custrecord_scanindate",
+      label: "In Date",
+    }),
+    search.createColumn({
+      name: "custrecord_irc_total_amount",
+      sort: search.Sort.ASC,
+      label: "Amount",
+    }),
+    search.createColumn({
+      name: "custrecord_cs_return_req_scan_item",
+      sort: search.Sort.ASC,
+      label: "item id",
+    }),
+  ];
   /**
    * It creates a billable expense sublist on the form and populates it with the items that are passed in
    * @param {object}options.form - The form object that we are adding the sublist to.
@@ -248,7 +318,8 @@ define([
             if (isEmpty(fieldName[i])) continue;
             if (
               fieldName[i] == "custpage_select" ||
-              fieldName[i] == "custpage_form222_ref"
+              fieldName[i] == "custpage_form222_ref" ||
+              fieldName[i] == "custpage_nonreturnable_reason"
             ) {
             } else {
               log.debug("else");

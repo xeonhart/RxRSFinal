@@ -39,7 +39,14 @@ define([
       const fileObj = file.load({
         id: util.getFileId(params.fileName),
       });
-      return csv_lib.getPricing(fileObj);
+      switch (params.action) {
+        case "UPSERT_PRICING":
+          return csv_lib.getPricing(fileObj);
+          break;
+        case "UPSERT_ITEM":
+          return csv_lib.getItemDetails(fileObj.getContents());
+          break;
+      }
     } catch (e) {
       log.error("getInputData", e.message);
     }
@@ -81,37 +88,47 @@ define([
    */
   const reduce = (reduceContext) => {
     const functionName = "reduce";
-    const itemPricingData = JSON.parse(reduceContext.values);
-    let { updateCode, NDC, priceType, date, price } = itemPricingData;
-    const itemId = item_lib.getItemId(parseFloat(NDC));
-    if (itemId) {
-      if (updateCode == "A") {
-        log.audit("itemPricingData", itemPricingData);
-        const updatedItem = item_lib.updateItemPricing({
-          itemId: itemId,
-          newWacAmount: parseFloat(price),
-        });
-        if (updatedItem) {
-          let priceHistoryId = custom_rec.createPriceHistory({
-            itemId: itemId,
-            date: date,
-            priceType: priceType,
-            newPrice: parseFloat(price),
-          });
-          log.audit("Created Price History Id ", { priceHistoryId, NDC });
-        }
-      } else {
-        custom_rec.deletePriceHistory({
-          itemId: itemId,
-          date: date,
-          priceType: priceType,
-        });
-      }
-    }
+    const data = JSON.parse(reduceContext.values);
 
-    try {
-    } catch (e) {
-      log.error(functionName, e.message);
+    switch (getParameters().action) {
+      case "UPSERT_PRICING":
+        try {
+          let { updateCode, NDC, priceType, date, price } = data;
+          const itemId = item_lib.getItemId(parseFloat(NDC));
+          if (itemId) {
+            if (updateCode == "A") {
+              log.audit("data", data);
+              const updatedItem = item_lib.updateItemPricing({
+                itemId: itemId,
+                newWacAmount: parseFloat(price),
+              });
+              if (updatedItem) {
+                let priceHistoryId = custom_rec.createPriceHistory({
+                  itemId: itemId,
+                  date: date,
+                  priceType: priceType,
+                  newPrice: parseFloat(price),
+                });
+                log.audit("Created Price History Id ", { priceHistoryId, NDC });
+              }
+            } else {
+              custom_rec.deletePriceHistory({
+                itemId: itemId,
+                date: date,
+                priceType: priceType,
+              });
+            }
+          }
+        } catch (e) {
+          log.error("UPSERT_PRICING", e.message);
+        }
+        break;
+      case "UPSERT_ITEM":
+        try {
+        } catch (e) {
+          log.error("UPSERT_ITEM", e.message);
+        }
+        break;
     }
   };
 
@@ -164,6 +181,9 @@ define([
       }),
       pendingFolderId: objScript.getParameter({
         name: "custscript_folder_id",
+      }),
+      action: objScript.getParameter({
+        name: "custscript_rxrs_fileimportaction",
       }),
     };
 

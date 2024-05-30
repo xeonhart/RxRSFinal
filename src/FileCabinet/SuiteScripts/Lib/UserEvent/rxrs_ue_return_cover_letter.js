@@ -26,10 +26,14 @@ define([
    */
   const beforeLoad = (scriptContext) => {
     try {
+      const TOPCO = 10;
       if (scriptContext.type == "create") return;
       let rec = scriptContext.newRecord;
       let id = rec.id;
-      let mrrId = rec.getValue("custrecord_rcl_master_return");
+      const planSelectionType = rec.getValue(
+        "custrecord_rcl_plan_selection_type",
+      );
+      const mrrId = rec.getValue("custrecord_rcl_master_return");
       let form = scriptContext.form;
       let tranName = rec.getText("custrecord_rcl_master_return");
       let nonReturnableFeeAmount = 0;
@@ -37,30 +41,32 @@ define([
       nonReturnableFeeAmount = rec.getValue(
         "custrecord_rcl_non_returnable_fee_amt",
       );
-      returnableFeePercent = rec.getValue("custrecord_rcl_returnable_fee");
       let returnableFee = 100 - parseFloat(returnableFeePercent);
-      let itemsReturnScan = rxrs_vs_util.getReturnableItemScan({
-        finalPaymentSched: true,
-        mrrId: mrrId,
-        rclId: rec.id,
-        isVerifyStaging: false,
-        mrrName: tranName,
-        returnableFee: returnableFee,
-        nonReturnableFeeAmount: nonReturnableFeeAmount,
-        initialSplitpaymentPage: true,
-        customize: true,
-      });
-      rxrs_vs_util.createReturnableSublist({
-        form: form,
-        rrTranId: mrrId,
-        rrName: tranName,
-        sublistFields: rxrs_vs_util.SUBLISTFIELDS.returnCoverLetterFields,
-        value: itemsReturnScan,
-        isMainInDated: false,
-        inDate: true,
-        returnList: itemsReturnScan,
-        title: `Payments`,
-      });
+      returnableFeePercent = rec.getValue("custrecord_rcl_returnable_fee");
+      if (planSelectionType != TOPCO) {
+        let itemsReturnScan = rxrs_vs_util.getReturnableItemScan({
+          finalPaymentSched: true,
+          mrrId: mrrId,
+          rclId: rec.id,
+          isVerifyStaging: false,
+          mrrName: tranName,
+          returnableFee: returnableFee,
+          nonReturnableFeeAmount: nonReturnableFeeAmount,
+          initialSplitpaymentPage: true,
+          customize: true,
+        });
+        rxrs_vs_util.createReturnableSublist({
+          form: form,
+          rrTranId: mrrId,
+          rrName: tranName,
+          sublistFields: rxrs_vs_util.SUBLISTFIELDS.returnCoverLetterFields,
+          value: itemsReturnScan,
+          isMainInDated: false,
+          inDate: true,
+          returnList: itemsReturnScan,
+          title: `Payments`,
+        });
+      }
     } catch (e) {
       log.error("beforeLoad", e.message);
     }

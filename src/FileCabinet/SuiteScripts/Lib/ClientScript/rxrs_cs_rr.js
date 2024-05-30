@@ -260,6 +260,9 @@ define(["N/currentRecord", "N/url", "N/https", "N/ui/message"], /**
     console.log(action);
     action = action ? action : "default";
     switch (action) {
+      case "fullWindow":
+        window.open(url);
+        break;
       case "verifyItems":
         window.open(
           url,

@@ -538,6 +538,7 @@ define([
               params: {
                 mrrId: mrrRec.id,
                 action: "createLabel",
+
                 customerId: mrrRec.getValue("custrecord_mrrentity"),
                 mailIn: mrrRec.getValue("custrecord_kd_mail_in_option"),
               },
@@ -558,6 +559,29 @@ define([
                 )})`,
               });
             }
+            //  let saveSearchURL = `/app/common/search/searchresults.nl?searchid=967&saverun=T&whence=&CUSTRECORD_IRS_MASTER_RETURN_REQUEST=${mrrRec.id}`;
+            let viewEditSuiteletUrl = url.resolveScript({
+              scriptId: "customscript_sl_return_cover_letter",
+              deploymentId: "customdeploy_sl_return_cover_letter",
+              returnExternalUrl: false,
+              params: {
+                paymentSchedText: "RO:" + mrrRec.getValue("name"),
+                mrrId: mrrRec.id,
+                edit: true,
+                paymentSchedId: 12,
+              },
+            });
+            let mrrViewEditLineURL = {
+              url: viewEditSuiteletUrl,
+              action: "fullWindow",
+            };
+            context.form.addButton({
+              id: "custpage_viewedit_line",
+              label: "View Edit Line",
+              functionName: `openSuitelet(${JSON.stringify(
+                mrrViewEditLineURL,
+              )})`,
+            });
             break;
         }
       }

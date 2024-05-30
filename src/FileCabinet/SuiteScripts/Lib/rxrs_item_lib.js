@@ -70,6 +70,34 @@ define(["N/record", "N/search"] /**
     }
   }
 
+  /**
+   * Get the dosage internal Id based on Name
+   * @param name
+   */
+  function dosageSearch(name) {
+    log.audit("dosageSearch", name);
+    try {
+      let dosageInternalId = null;
+      const customlist_dosageformSearchObj = search.create({
+        type: "customlist_dosageform",
+        filters: [["name", "is", name]],
+        columns: [
+          search.createColumn({
+            name: "name",
+            label: "Name",
+          }),
+        ],
+      });
+
+      customlist_dosageformSearchObj.run().each(function (result) {
+        dosageInternalId = result.id;
+      });
+      return dosageInternalId;
+    } catch (e) {
+      log.error("dosageSearch", e.message);
+    }
+  }
+
   return {
     updateItemPricing: updateItemPricing,
     getItemId: getItemId,

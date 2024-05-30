@@ -106,6 +106,11 @@ define([
       sort: search.Sort.ASC,
       label: "Amount",
     }),
+    search.createColumn({
+      name: "custrecord_cs_return_req_scan_item",
+      sort: search.Sort.ASC,
+      label: "item id",
+    }),
   ];
   const RETURNCOVERLETTERCOLUMNSFINALYPAYMENTSCHED = [
     search.createColumn({
@@ -235,6 +240,7 @@ define([
         label: "Verified",
         updateDisplayType: "NORMAL",
       },
+
       {
         id: "custpage_ndc",
         type: "TEXT",
@@ -325,6 +331,19 @@ define([
         label: "Manuf Id",
         updateDisplayType: "HIDDEN",
       },
+      // {
+      //   id: "custpage_settononreturnable",
+      //   type: "CHECKBOX",
+      //   label: "Change Pharma Processing",
+      //   updateDisplayType: "ENTRY",
+      // },
+      // {
+      //   id: "custpage_nonreturnable_reason",
+      //   type: "SELECT",
+      //   label: "Non-Ret. Reason",
+      //   source: "customlist_kd_non_returnable_reason",
+      //   updateDisplayType: "DISABLED",
+      // },
     ],
     returnableInDatedManufacturer: [
       {
@@ -544,6 +563,12 @@ define([
         updateDisplayType: "DISABLED",
       },
       {
+        id: "custpage_edit",
+        type: "TEXTAREA",
+        label: "View/Edit Line",
+        updateDisplayType: "INLINE",
+      },
+      {
         id: "custpage_delete",
         type: "TEXT",
         label: "Payment Sched Action",
@@ -565,7 +590,7 @@ define([
         id: "custpage_payment_id",
         type: "TEXT",
         label: "Payment Id",
-        updateDisplayType: "INLINE",
+        updateDisplayType: "HIDDEN",
       },
     ],
     INDATED_INVENTORY: [
@@ -1087,8 +1112,11 @@ define([
    * @param {number} options.returnableFee - Returnable Fee From Vendor
    * @param {array} options.returnList - List of the return item scan
    * @param {number} options.paymentSchedId - Payment ID of the Item Return Scan
+   * @param {boolean} options.edit - Check if it is edit action in the item return scan
    * @param {boolean} options.finalPaymentSched - If set to true - filter to be used is the final payment schedule else initial payment sched
    * @param {boolean} options.isVerifyStaging - Check if the suitelet is for Verify Staging else it is use for return cover letter
+   * @param {bolean} options.isMFGProcessing - Set Value to Include in the filter
+   * @oaran {bolean} options.allPaymentSched - Set to true to view all the payment schedule
    * @returns {object} returns the item scanlist
    */
   function getReturnableItemScan(options) {
@@ -1111,6 +1139,9 @@ define([
       returnableFee,
       mrrName,
       initialSplitpaymentPage,
+      isMFGProcessing,
+      allPaymentSched,
+      edit,
     } = options;
     let nonReturnableFeeAmount;
     let orginalNonReturnableFeeAmount;
@@ -1186,21 +1217,34 @@ define([
             );
         }
         if (paymentSchedId) {
+          if (allPaymentSched == true) {
+          } else {
+            filters.push(
+              search.createFilter({
+                name: paymentFields,
+                operator: "anyof",
+                values: paymentSchedId,
+              }),
+            );
+          }
+        }
+        if (isMFGProcessing) {
           filters.push(
             search.createFilter({
-              name: paymentFields,
+              name: "custrecord_cs__mfgprocessing",
               operator: "anyof",
-              values: paymentSchedId,
+              values: [2, 1],
+            }),
+          );
+        } else {
+          filters.push(
+            search.createFilter({
+              name: "custrecord_cs__mfgprocessing",
+              operator: "anyof",
+              values: 2,
             }),
           );
         }
-        filters.push(
-          search.createFilter({
-            name: "custrecord_cs__mfgprocessing",
-            operator: "anyof",
-            values: 2,
-          }),
-        );
 
         if (inDated) {
           filters.push(
@@ -1237,7 +1281,9 @@ define([
             amount = (+returnableFee / 100) * amount;
           }
           let verified = result.getValue(column[0]) == true ? "T" : "F";
-          let ndcName = result.getValue(column[1]);
+          let ndcName = result.getText({
+            name: "custrecord_cs_return_req_scan_item",
+          });
 
           let ndcLink = generateRedirectLink({
             type: "customrecord_cs_item_ret_scan",
@@ -1297,7 +1343,6 @@ define([
               finalPaymentSchedule: paymentSchedId,
             });
             log.audit("isBillExist", isBillExist);
-
             let amount;
             if (isBillExist) {
               billURL = generateRedirectLink({
@@ -1356,6 +1401,23 @@ define([
               billId: isBillExist,
             },
           });
+          let viewEditSuiteletUrl = url.resolveScript({
+            scriptId: "customscript_sl_return_cover_letter",
+            deploymentId: "customdeploy_sl_return_cover_letter",
+            returnExternalUrl: false,
+            params: {
+              edit: true,
+              paymentSchedId: paymentSchedId,
+              paymentSchedText: paymentSchedText,
+              mrrId: mrrId,
+              tranId: mrrName,
+              finalPaymentSched: finalPaymentSched,
+              customize: false,
+              billId: isBillExist,
+              isMFGProcessing: true,
+              edit: true,
+            },
+          });
 
           paymentAmount += +amount;
           if (finalPaymentSched == "true" || finalPaymentSched == true) {
@@ -1374,6 +1436,7 @@ define([
                       inDated: inDated,
                       isVerifyStaging: isVerifyStaging,
                       remove: true,
+                      isMFGProcessing: true,
                       paymentId: paymentSchedId,
                     },
                   })
@@ -1402,6 +1465,7 @@ define([
                 dateCreated: dueDate ? dueDate : " ",
                 amount: "$" + amount,
                 paymetnSchedule: `<a href="${stSuiteletUrl}" target="${target}" >${paymentSchedText} </a>`,
+                viewEditLine: `<a href="${viewEditSuiteletUrl}" target="${target}" > <img src="https://6816904.app.netsuite.com/core/media/media.nl?id=34942&c=6816904&h=jCOGlyNQnYDecfk0JZEz7Lzb6z2sPXYZZsC9qdfQlqi5GlXe" alt="Edit-Icon" border="0" height="20px"></a> </a>`,
                 delete: `<a href="${deleteURL}" target="_self" >${deleteWord}</a>`,
                 billURL: billURL
                   ? `<a href="${billURL}" target="_self">${isBillExist}</a>`
@@ -1414,6 +1478,7 @@ define([
                 dateCreated: dueDate ? dueDate : " ",
                 amount: "$" + amount,
                 paymetnSchedule: `<a href="${stSuiteletUrl}" target="${target}" >${paymentSchedText} </a>`,
+                viewEditLine: `<a href="${viewEditSuiteletUrl}" target="${target}" > <img src="https://6816904.app.netsuite.com/core/media/media.nl?id=34942&c=6816904&h=jCOGlyNQnYDecfk0JZEz7Lzb6z2sPXYZZsC9qdfQlqi5GlXe" alt="Edit-Icon" border="0" height="20px"></a> </a>`,
                 delete: `<a href="${deleteURL}" target="_self" >${deleteWord}</a>`,
                 billURL: billURL
                   ? `<a href="${billURL}" target="_self">${isBillExist}</a>`
@@ -1989,16 +2054,34 @@ define([
       }
 
       sublistFields.forEach((attri) => {
+        log.audit("attri", attri);
+
         fieldName.push(attri.id);
-        sublist
-          .addField({
+        if (attri.source) {
+          sublist.addField({
             id: attri.id,
             type: serverWidget.FieldType[attri.type],
             label: attri.label,
-          })
-          .updateDisplayType({
-            displayType: serverWidget.FieldDisplayType[attri.updateDisplayType],
+            source: attri.source,
           });
+          if (attri.updateDisplayType) {
+            sublist.updateDisplayType({
+              displayType:
+                serverWidget.FieldDisplayType[attri.updateDisplayType],
+            });
+          }
+        } else {
+          sublist
+            .addField({
+              id: attri.id,
+              type: serverWidget.FieldType[attri.type],
+              label: attri.label,
+            })
+            .updateDisplayType({
+              displayType:
+                serverWidget.FieldDisplayType[attri.updateDisplayType],
+            });
+        }
       });
       let mainLineInfo = [];
       value.forEach((val) => {
@@ -2006,6 +2089,7 @@ define([
         let fieldInfo = [];
         for (let i = 0; i < value.length; i++) {
           if (isEmpty(fieldName[i])) continue;
+
           if (inDate != true && fieldName[i] == "custpage_in_date") {
             log.debug("val", [inDate, fieldName[i]]);
           } else {
@@ -2025,7 +2109,10 @@ define([
         isIndate: inDate,
       });
     } catch (e) {
-      log.error("createReturnableSublist", e.message);
+      log.error("createReturnableSublist", {
+        error: e.message,
+        params: options,
+      });
     }
   };
   /**
@@ -2036,7 +2123,7 @@ define([
    */
   const populateSublist = (options) => {
     try {
-      // log.audit("populateSublist", options);
+      log.audit("populateSublist", options);
       let sublist = options.sublist;
       let sublistFields = options.fieldInfo;
 
@@ -2051,7 +2138,11 @@ define([
                 value: element[i].value ? element[i].value : " ",
               });
             } catch (e) {
-              log.emergency("SetSublist", e.message);
+              log.emergency("SetSublist", {
+                error: e.message,
+                data: element[i].value,
+                fieldId: element[i].fieldId,
+              });
             }
           }
 

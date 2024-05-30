@@ -2,6 +2,7 @@
  * @NApiVersion 2.1
  */
 define([
+  "N/url",
   "N/email",
   "N/file",
   "N/runtime",
@@ -15,7 +16,7 @@ define([
  * @param{search} search
  * @param record
  * @param https
- */ (email, file, runtime, search, record, https) => {
+ */ (url, email, file, runtime, search, record, https) => {
   const RRCATEGORY = Object.freeze({
     C2: 3,
     RXOTC: 1,
@@ -681,6 +682,67 @@ define([
   }
 
   /**
+   * Update record header
+   * @param options.type record Type
+   * @param options.id record id
+   * @param options.values fieldId and value together
+   * @returns {*} the internal id of the updated record
+   */
+  function updateRecordHeader(options) {
+    let { type, id, values } = options;
+    let irsId, amount;
+    try {
+      const rec = record.load({
+        type: type,
+        id: id,
+      });
+      let val = JSON.parse(values);
+      log.audit("val", val);
+      val.forEach((val) => {
+        log.audit("val", val);
+        let { fieldId, value } = val;
+        rec.setValue({
+          fieldId: fieldId,
+          value: value,
+        });
+      });
+      amount = rec.getValue("custrecord_irc_total_amount");
+      irsId = rec.save({
+        ignoreMandatoryFields: true,
+      });
+      log.audit("IRSID", irsId);
+      const newPharmaProcessing = rec.getValue("custrecord_cs__rqstprocesing");
+
+      const newMFGProcessing = rec.getValue("custrecord_cs__mfgprocessing");
+      /**
+       *  Update PO, Bill and IR processing
+       */
+
+      log.audit("updating related tran line processing");
+      let params = {
+        mfgProcessing: newMFGProcessing,
+        pharmaProcessing: newPharmaProcessing,
+        irsId: irsId,
+        amount: amount,
+        action: "updateTranLineProcessing",
+      };
+      log.audit("updating related tran line processing", params);
+
+      let functionSLURL = url.resolveScript({
+        scriptId: "customscript_sl_cs_custom_function",
+        deploymentId: "customdeploy_sl_cs_custom_function",
+        returnExternalUrl: true,
+        params: params,
+      });
+      let response = https.post({
+        url: functionSLURL,
+      });
+    } catch (e) {
+      log.error("updateRecordHeader", e.message);
+    }
+  }
+
+  /**
    * Added weeks to current Date
    * @param options.date - Date to be added
    * @param options.days - Number of days to Add
@@ -807,29 +869,30 @@ define([
   }
 
   return {
-    rxrsItem,
-    RRCATEGORY,
-    mrrStatus,
-    rrStatus,
-    priceLevel,
-    createReturnRequest,
     addDaysToDate,
-    createReturnPackages,
-    createTask,
-    sendEmail,
-    scriptInstanceChecker,
     checkInstanceInstnaceMR,
+    createFolder,
+    createReturnPackages,
+    createReturnRequest,
+    createTask,
+    formatDate,
     generateRRPODocumentNumber,
-    getReturnRequestType,
-    getEntityType,
     getDefaultTaskAssignee,
-    getItemRate,
+    getEntityType,
     getFileId,
     getFolderId,
-    formatDate,
-    moveFolderToDone,
-    createFolder,
-    setBillDueDate,
+    getItemRate,
     getPeriodId,
+    getReturnRequestType,
+    moveFolderToDone,
+    mrrStatus,
+    priceLevel,
+    RRCATEGORY,
+    rrStatus,
+    rxrsItem,
+    scriptInstanceChecker,
+    sendEmail,
+    setBillDueDate,
+    updateRecordHeader,
   };
 });

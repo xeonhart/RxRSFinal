@@ -204,6 +204,12 @@ define([
               poId: poId,
             });
             break;
+          case "updateTranLineProcessing":
+            tranLib.setIRSRelatedTranLineProcessing(params);
+            break;
+          case "updateRecordHeader":
+            util.updateRecordHeader(params);
+            break;
         }
       } catch (e) {
         context.response.writeLine("ERROR:" + e.message);

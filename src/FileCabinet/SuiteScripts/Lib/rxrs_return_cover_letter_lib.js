@@ -8,8 +8,15 @@ define(["N/record", "N/search"], /**
   const SUBLIST_TO_HIDE_IN_RCL = [
     "custpage_internalid",
     "custpage_verified",
-    "custpage_mfgprocessing",
+    //"custpage_mfgprocessing",
     "custpage_bag_tag_label",
+    "custpage_nonreturnable_reason",
+    "custpage_settononreturnable",
+  ];
+  const SUBLIST_TO_ENTRY = [
+    "custpage_nonreturnable_reason",
+    "custpage_amount",
+    "custpage_settononreturnable",
   ];
 
   /**
@@ -218,6 +225,35 @@ define(["N/record", "N/search"], /**
   }
 
   /**
+   * Set Type to Entry
+   *@param {array}options.sublistToEntry - list of sublist to e
+   *@param {array}options.sublist - orignal sublist
+   *@param {boolean}options.showSelect
+   * @return {array} return sublist with hidden fields
+   */
+  function setSublistToEntry(options) {
+    log.audit("setSublistToEntry", options);
+    try {
+      let { sublistToEntry, sublist, showSelect } = options;
+      sublistToEntry.forEach((id) => {
+        const index = sublist.findIndex((object) => {
+          return object.id === id;
+        });
+        if (index !== -1) {
+          if (showSelect === true && id == "custpage_verified") {
+            sublist[index].label = "SELECT";
+          } else {
+            sublist[index].updateDisplayType = "ENTRY";
+          }
+        }
+      });
+      return sublist;
+    } catch (e) {
+      log.error("setSublistToEntry", e.message);
+    }
+  }
+
+  /**
    * Get the payment name using
    * @param {string} paymentLink
    */
@@ -323,5 +359,7 @@ define(["N/record", "N/search"], /**
     updateReturnCoverRecord,
     getRCLRecord,
     SUBLIST_TO_HIDE_IN_RCL,
+    SUBLIST_TO_ENTRY,
+    setSublistToEntry,
   };
 });

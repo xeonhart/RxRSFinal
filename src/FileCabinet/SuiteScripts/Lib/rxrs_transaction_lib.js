@@ -543,18 +543,18 @@ define([
               fieldId: "csegmanufacturer",
               value: manufacturer,
             });
-          // mfgProcessing &&
-          //   poRec.setCurrentSublistValue({
-          //     sublistId: "item",
-          //     fieldId: "custcol_kod_mfgprocessing",
-          //     value: mfgProcessing,
-          //   });
-          // pharmaProcessing &&
-          //   poRec.setCurrentSublistValue({
-          //     sublistId: "item",
-          //     fieldId: "custcol_kod_rqstprocesing",
-          //     value: pharmaProcessing,
-          //   });
+          mfgProcessing &&
+            poRec.setCurrentSublistValue({
+              sublistId: "item",
+              fieldId: "custcol_kod_mfgprocessing",
+              value: mfgProcessing,
+            });
+          pharmaProcessing &&
+            poRec.setCurrentSublistValue({
+              sublistId: "item",
+              fieldId: "custcol_kod_rqstprocesing",
+              value: pharmaProcessing,
+            });
           quantity &&
             poRec.setCurrentSublistValue({
               sublistId: "item",
@@ -811,6 +811,111 @@ define([
       });
     } catch (e) {
       log.error("addVendorBillLine", e.message);
+    }
+  }
+
+  /**
+   * Update the transaction related to item return scan mfg and pharma processing.
+   * @param options.irsId - Item Return Scan Internal Id
+   * @param options.mfgProcessing - MFG Processing
+   * @param options.pharmaProcessing - Pharma Processing
+   */
+  function setIRSRelatedTranLineProcessing(options) {
+    log.audit("setIRSRelatedTranLineProcessing", options);
+    let { irsId, mfgProcessing, pharmaProcessing, amount } = options;
+    try {
+      const transactionSearchObj = search.create({
+        type: "transaction",
+        settings: [{ name: "consolidationtype", value: "ACCTTYPE" }],
+        filters: [
+          ["type", "noneof", "CuTrSale102", "CuTrPrch106", "ItemRcpt"],
+          "AND",
+          ["custcol_rsrs_itemscan_link", "anyof", irsId],
+        ],
+        columns: [
+          search.createColumn({ name: "line", label: "Line ID" }),
+          search.createColumn({ name: "type", label: "Type" }),
+        ],
+      });
+      const searchResultCount = transactionSearchObj.runPaged().count;
+      log.debug(
+        "getIRSRelatedTranLineProcessing result count",
+        searchResultCount,
+      );
+      transactionSearchObj.run().each(function (result) {
+        let tranId = result.id;
+        let recType = result.getValue({ name: "type" });
+        let line = result.getValue({ name: "line" });
+        try {
+          log.audit("setIRSRelatedTranLineProcessing", {
+            tranId,
+            recType,
+            line,
+            mfgProcessing,
+            pharmaProcessing,
+            amount,
+          });
+          let type;
+          switch (recType) {
+            case "PurchOrd":
+              type = record.Type.PURCHASE_ORDER;
+              break;
+            case "VendBill":
+              type = record.Type.VENDOR_BILL;
+              break;
+          }
+          let rec = record.load({
+            type: type,
+            id: tranId,
+            isDynamic: true,
+          });
+          rec.selectLine({
+            sublistId: "item",
+            line: line - 1,
+          });
+          rec.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "custcol_kod_mfgprocessing",
+            value: mfgProcessing,
+          });
+          rec.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "custcol_kod_rqstprocesing",
+            value: pharmaProcessing,
+          });
+          rec.setCurrentSublistValue({
+            sublistId: "item",
+            fieldId: "amount",
+            value: amount,
+          });
+          rec.commitLine({
+            sublistId: "item",
+          });
+          let recId = rec.save({
+            ignoreMandatoryFields: true,
+          });
+          log.audit("succesfully updated : " + recId, {
+            tranId,
+            recType,
+            line,
+          });
+        } catch (e) {
+          let error = e.message;
+          log.error(
+            "setIRSRelatedTranLineProcessing Setting new pharma processing line ",
+            {
+              error,
+              recType,
+              line,
+              mfgProcessing,
+              pharmaProcessing,
+            },
+          );
+        }
+        return true;
+      });
+    } catch (e) {
+      log.error("setIRSRelatedTranLineProcessing", e.message);
     }
   }
 
@@ -1890,12 +1995,12 @@ define([
       for (let i = 0; i < newVBRec.getLineCount("item"); i++) {
         const mfgProcessing = newVBRec.getSublistValue({
           sublistId: "item",
-          fieldId: "custcol_rxrs_mfg_processing",
+          fieldId: "custcol_kod_mfgprocessing",
           line: i,
         });
         const pharmaProcessing = newVBRec.getSublistValue({
           sublistId: "item",
-          fieldId: "custcol_rxrs_pharma_processing",
+          fieldId: "custcol_kod_rqstprocesing",
           line: i,
         });
         let quantity = newVBRec.getSublistValue({
@@ -2120,12 +2225,12 @@ define([
           for (let i = 0; i < newVBRec.getLineCount("item"); i++) {
             const mfgProcessing = newVBRec.getSublistValue({
               sublistId: "item",
-              fieldId: "custcol_rxrs_mfg_processing",
+              fieldId: "custcol_kod_mfgprocessing",
               line: i,
             });
             const pharmaProcessing = newVBRec.getSublistValue({
               sublistId: "item",
-              fieldId: "custcol_rxrs_pharma_processing",
+              fieldId: "custcol_kod_rqstprocesing",
               line: i,
             });
             let quantity = newVBRec.getSublistValue({
@@ -2355,12 +2460,12 @@ define([
         for (let i = 0; i < newVBRec.getLineCount("item"); i++) {
           const mfgProcessing = newVBRec.getSublistValue({
             sublistId: "item",
-            fieldId: "custcol_rxrs_mfg_processing",
+            fieldId: "custcol_kod_mfgprocessing",
             line: i,
           });
           const pharmaProcessing = newVBRec.getSublistValue({
             sublistId: "item",
-            fieldId: "custcol_rxrs_pharma_processing",
+            fieldId: "custcol_kod_rqstprocesing",
             line: i,
           });
           let quantity = newVBRec.getSublistValue({
@@ -2678,9 +2783,9 @@ define([
           fieldId: "custcol_kd_pymt_sched",
           line: i,
         });
-        // log.audit("VB Line info ", { i, paymentSched, finalPaymentSchedule });
+        log.audit("VB Line info ", { i, paymentSched, finalPaymentSchedule });
         if (paymentSched == finalPaymentSchedule) continue;
-        // log.audit("removing Line " + i, paymentSched);
+        log.audit("removing Line " + i, paymentSched);
         vbRec.removeLine({
           sublistId: "item",
           line: i,
@@ -2859,12 +2964,12 @@ define([
       for (let i = 0; i < rec.getLineCount("item"); i++) {
         const mfgProcessing = rec.getSublistValue({
           sublistId: "item",
-          fieldId: "custcol_rxrs_mfg_processing",
+          fieldId: "custcol_kod_mfgprocessing",
           line: i,
         });
         const pharmaProcessing = rec.getSublistValue({
           sublistId: "item",
-          fieldId: "custcol_rxrs_pharma_processing",
+          fieldId: "custcol_kod_rqstprocesing",
           line: i,
         });
         let quantity = rec.getSublistValue({
@@ -3165,12 +3270,12 @@ define([
       for (let i = 0; i < rec.getLineCount("item"); i++) {
         const mfgProcessing = rec.getSublistValue({
           sublistId: "item",
-          fieldId: "custcol_rxrs_mfg_processing",
+          fieldId: "custcol_kod_mfgprocessing",
           line: i,
         });
         const pharmaProcessing = rec.getSublistValue({
           sublistId: "item",
-          fieldId: "custcol_rxrs_pharma_processing",
+          fieldId: "custcol_kod_rqstprocesing",
           line: i,
         });
         let quantity = rec.getSublistValue({
@@ -3355,6 +3460,7 @@ define([
     removeVBLine: removeVBLine,
     setAdjustmentFee: setAdjustmentFee,
     setERVDiscountPrice: setERVDiscountPrice,
+    setIRSRelatedTranLineProcessing: setIRSRelatedTranLineProcessing,
     setPartialAmount: setPartialAmount,
     updateProcessing: updateProcessing,
     updateSO222Form: updateSO222Form,

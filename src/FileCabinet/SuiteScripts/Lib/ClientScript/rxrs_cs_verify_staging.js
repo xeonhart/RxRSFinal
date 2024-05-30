@@ -62,6 +62,84 @@ define([
     //considering there aren't any hashes in the urls already
   };
 
+  function updateIRS() {
+    alert("SavingChanges");
+    handleButtonClick("Please Wait..");
+    let count = 0;
+    try {
+      let rec = currentRecord.get();
+      let paymentSublistCount = rec.getLineCount({
+        sublistId: RETURNABLESUBLIST,
+      });
+
+      for (let i = 0; i < paymentSublistCount; i++) {
+        let setToNonReturnble = rec.getSublistValue({
+          sublistId: RETURNABLESUBLIST,
+          fieldId: "custpage_settononreturnable",
+          line: i,
+        });
+        if (setToNonReturnble == false) continue;
+        count += 1;
+        let id = rec.getSublistValue({
+          sublistId: RETURNABLESUBLIST,
+          fieldId: "custpage_internalid",
+          line: i,
+        });
+
+        let nonReturnableReason = rec.getSublistValue({
+          sublistId: RETURNABLESUBLIST,
+          fieldId: "custpage_nonreturnable_reason",
+          line: i,
+        });
+
+        const amount = rec.getSublistValue({
+          sublistId: RETURNABLESUBLIST,
+          fieldId: "custpage_amount",
+          line: i,
+        });
+        let values = [
+          {
+            fieldId: "custrecord_cs_cb_or_non_ret_reason",
+            value: true,
+          },
+          {
+            fieldId: "custrecord_scannonreturnreason",
+            value: nonReturnableReason,
+          },
+          { fieldId: "custrecord_cs__rqstprocesing", value: 1 },
+          {
+            fieldId: "custrecord_irc_total_amount",
+            value: amount,
+          },
+        ];
+        let params = {
+          action: "updateRecordHeader",
+          type: "customrecord_cs_item_ret_scan",
+          id: id,
+          values: JSON.stringify(values),
+        };
+        console.table(params);
+        let stSuiteletUrl = url.resolveScript({
+          scriptId: "customscript_sl_cs_custom_function",
+          deploymentId: "customdeploy_sl_cs_custom_function",
+          returnExternalUrl: false,
+          params: params,
+        });
+        let response = https.post({
+          url: stSuiteletUrl,
+        });
+      }
+    } catch (e) {
+      console.error("updateIRS" + e.message);
+    }
+
+    setTimeout(function () {
+      jQuery("body").loadingModal("destroy");
+      window.onbeforeunload = null;
+      location.reload();
+    }, 5000 + count);
+  }
+
   /**
    * Function to be executed when field is changed.
    *
@@ -205,7 +283,7 @@ define([
             alert(
               `Line #${
                 i + 1
-              } exceeds the maximum SO amount of the Manufacturer. This will not get verified and bag will not be created for this line.`
+              } exceeds the maximum SO amount of the Manufacturer. This will not get verified and bag will not be created for this line.`,
             );
             continue;
           }
@@ -218,6 +296,7 @@ define([
           prevBag: prevBag,
         });
       }
+      console.table("returnItemScanIds: " + returnItemScanIds);
       let m = message.create({
         type: message.Type.WARNING,
         title: "WARNING",
@@ -364,11 +443,13 @@ define([
     }
   }
 
-  function handleButtonClick() {
+  function handleButtonClick(str) {
     try {
       jQuery("body").loadingModal({
         position: "auto",
-        text: "Updating Verify Status and Creating Bag Label. Please wait...",
+        text: str
+          ? str
+          : "Updating Verify Status and Creating Bag Label. Please wait...",
         color: "#fff",
         opacity: "0.7",
         backgroundColor: "rgb(220,220,220)",
@@ -410,7 +491,7 @@ define([
       console.log("billstatus " + billStatus);
       if (billStatus == "paidInFull") {
         alert(
-          "Cannot change payment schedule, related bill record is already paid in full"
+          "Cannot change payment schedule, related bill record is already paid in full",
         );
         return;
       }
@@ -616,5 +697,6 @@ define([
     markAll: markAll,
     update222FormReference: update222FormReference,
     updateSO222FormReference: updateSO222FormReference,
+    updateIRS: updateIRS,
   };
 });
