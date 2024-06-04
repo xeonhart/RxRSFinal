@@ -4,7 +4,6 @@
  * @NModuleScope SameAccount
  */
 define(["N/search"], function (search) {
-
   const priceLevel = [
     { priceName: "Mfg ERV (SysCalc)", column: "price4" },
     { priceName: "Non-Returnable", column: "price7" },
@@ -15,19 +14,32 @@ define(["N/search"], function (search) {
     { priceName: "Unit Price (input)", column: "price2" },
     { priceName: "Online Price", column: "price5" },
     {
-      priceName: 'Wholesale Acquisition Price '+ '"WAC"' + ' (input)',
+      priceName: "Wholesale Acquisition Price " + '"WAC"' + " (input)",
       column: "baseprice",
     },
   ];
+  const priceLevel2 = [
+    { priceName: "WAC", column: "price1" },
+    { priceName: "ERV (DISCOUNTED)", column: "price15" },
+    { priceName: "ERV-CONFIGURED", column: "price14" },
+    { priceName: "M-CONFIGURED", column: "price8" },
+    { priceName: "MANUAL INPUT", column: "price12" },
+    { priceName: "Packing Slip Price", column: "price17" },
+    { priceName: "U-CONFIGURED", column: "price16" },
+    { priceName: "ONLINE PRICE", column: "price5" },
+    {
+      priceName: "Wholesale Acquisition Price " + '"WAC"' + " (input)",
+      column: "baseprice",
+    },
+  ];
+
   function fieldChanged(scriptContext) {
     try {
-
       const curRec = scriptContext.currentRecord;
       const fieldId = scriptContext.fieldId;
       const sublistId = scriptContext.sublistId;
 
       if (sublistId === "item") {
-
         if (fieldId === "custcol_rxrs_price_level") {
           let priceLevelName = curRec.getCurrentSublistText({
             sublistId: "item",
@@ -42,7 +54,7 @@ define(["N/search"], function (search) {
             curRec.setCurrentSublistValue({
               sublistId: "item",
               fieldId: "rate",
-              value: rate
+              value: rate,
             });
         }
       }
@@ -72,7 +84,7 @@ define(["N/search"], function (search) {
         operator: search.Operator.IS,
         values: options.itemId,
       });
-      let columns =[];
+      let columns = [];
       columns[0] = search.createColumn({
         name: column,
       });
@@ -89,11 +101,12 @@ define(["N/search"], function (search) {
           name: column,
         });
       });
-      return rate
+      return rate;
     } catch (e) {
       log.error("getItemRate", e.message);
     }
   }
+
   return {
     fieldChanged: fieldChanged,
   };

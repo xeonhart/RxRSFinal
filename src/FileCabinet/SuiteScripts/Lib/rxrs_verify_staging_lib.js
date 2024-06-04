@@ -1923,7 +1923,7 @@ define([
   function getWACPrice(itemId) {
     try {
       return rxrs_util.getItemRate({
-        priceLevelName: 'Wholesale Acquisition Price "WAC" (input)',
+        priceLevelName: "WAC",
         itemId: itemId,
       });
     } catch (e) {
@@ -2008,6 +2008,7 @@ define([
    * @param {string} options.inDate
    * @param {string} options.title
    * @param {boolean} options.finalPaymentSched
+   * @param {string} options.csName
    * @returns  Updated Form.
    */
   const createReturnableSublist = (options) => {
@@ -2028,8 +2029,13 @@ define([
         inDate,
         title,
         finalPaymentSched,
+        csName,
       } = options;
-      form.clientScriptFileId = getFileId("rxrs_cs_verify_staging.js");
+      let ClientScriptName = "rxrs_cs_verify_staging.js";
+      if (csName) {
+        ClientScriptName = "rxrs_cs_viewedit_line.js";
+      }
+      form.clientScriptFileId = getFileId(ClientScriptName);
       let sublist;
       sublist = form.addSublist({
         id: "custpage_items_sublist",
@@ -2052,7 +2058,13 @@ define([
         });
         sublist.addMarkAllButtons();
       }
-
+      if (ClientScriptName == "rxrs_cs_viewedit_line.js") {
+        sublist.addButton({
+          id: "custpage_submitline",
+          label: "SUBMIT LAST MODIFIED LINE",
+          functionName: `submit()`,
+        });
+      }
       sublistFields.forEach((attri) => {
         log.audit("attri", attri);
 

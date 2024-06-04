@@ -210,6 +210,18 @@ define([
           case "updateRecordHeader":
             util.updateRecordHeader(params);
             break;
+          case "updateIRS":
+            let message = "";
+            let IRSID = custRecLib.updateItemReturnScan(params);
+            log.audit("IRSID", IRSID);
+            if (IRSID) {
+              message = `SUCCESSFULLY UPDATE ITEM RETURN SCAN ID : ${IRSID}`;
+            } else {
+              message = "ERROR: Please contact your administrator";
+            }
+
+            context.response.writeLine(message);
+            break;
         }
       } catch (e) {
         context.response.writeLine("ERROR:" + e.message);

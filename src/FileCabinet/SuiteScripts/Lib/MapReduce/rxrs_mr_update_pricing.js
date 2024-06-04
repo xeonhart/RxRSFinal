@@ -100,7 +100,8 @@ define([
               log.audit("data", data);
               const updatedItem = item_lib.updateItemPricing({
                 itemId: itemId,
-                newWacAmount: parseFloat(price),
+                rate: parseFloat(price),
+                priceLevel: 1,
               });
               if (updatedItem) {
                 let priceHistoryId = custom_rec.createPriceHistory({

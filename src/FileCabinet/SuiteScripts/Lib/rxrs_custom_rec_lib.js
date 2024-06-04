@@ -1,12 +1,19 @@
 /**
  * @NApiVersion 2.1
  */
-define(["N/record", "N/search", "./rxrs_transaction_lib", "./rxrs_util"], /**
+define([
+  "N/record",
+  "N/search",
+  "./rxrs_transaction_lib",
+  "./rxrs_util",
+  "./rxrs_item_lib",
+  "./rxrs_verify_staging_lib",
+], /**
  * @param{record} record
  * @param{search} search
  * @param tranlib
  * @param util
- */ (record, search, tranlib, util) => {
+ */ (record, search, tranlib, util, itemlib, vslib) => {
   const PRICINGMAP = {
     6: 4, //direct package price
     8: 3, // Suggested wholesale price
@@ -1252,6 +1259,168 @@ define(["N/record", "N/search", "./rxrs_transaction_lib", "./rxrs_util"], /**
     }
   }
 
+  /**
+   *
+   * @param options
+   */
+  function updateItemReturnScan(options) {
+    log.audit("updateItemReturnScan", options);
+    const MCONFIGURED = 8;
+    const MANUALINPUT = 12;
+    let newRec;
+    try {
+      let data = JSON.parse(options.values);
+      data.forEach(function (data) {
+        log.audit("data", data);
+        let {
+          itemId,
+          id,
+          pharmaProcessing,
+          rate,
+          updateCatalog,
+          nonReturnableReason,
+        } = data;
+        const irsRec = record.load({
+          type: "customrecord_cs_item_ret_scan",
+          id: id,
+          isDynamic: true,
+        });
+        if (pharmaProcessing) {
+          irsRec.setValue({
+            fieldId: "custrecord_cs_cb_orverride_phrm",
+            value: true,
+          });
+          irsRec.setValue({
+            fieldId: "custrecord_cs__rqstprocesing",
+            value: pharmaProcessing,
+          });
+          irsRec.setValue({
+            fieldId: "custrecord_cs_cb_or_non_ret_reason",
+            value: true,
+          });
+          nonReturnableReason &&
+            irsRec.setValue({
+              fieldId: "custrecord_scannonreturnreason",
+              value: nonReturnableReason,
+            });
+        }
+
+        if (rate) {
+          if (updateCatalog == true) {
+            itemlib.updateItemPricing({
+              itemId: itemId,
+              priceLevel: MCONFIGURED,
+              rate: rate,
+            });
+            irsRec.setValue({
+              fieldId: "custrecord_scanpricelevel",
+              value: MCONFIGURED,
+            });
+            irsRec.setValue({
+              fieldId: "custrecord_isc_overriderate",
+              value: false,
+            });
+            irsRec.setValue({
+              fieldId: "custrecord_isc_inputrate",
+              value: "",
+            });
+          } else {
+            itemlib.updateItemPricing({
+              itemId: itemId,
+              priceLevel: MANUALINPUT,
+              rate: rate,
+            });
+
+            irsRec.setValue({
+              fieldId: "custrecord_isc_overriderate",
+              value: true,
+            });
+            irsRec.setValue({
+              fieldId: "custrecord_isc_inputrate",
+              value: rate,
+            });
+            irsRec.setValue({
+              fieldId: "custrecord_scanpricelevel",
+              value: MANUALINPUT,
+            });
+          }
+          irsRec.setValue({
+            fieldId: "custrecord_scanrate",
+            value: rate,
+          });
+        }
+        newRec = updateIRSPrice(irsRec);
+      });
+      return newRec.save({
+        ignoreMandatoryFields: true,
+      });
+    } catch (e) {
+      log.error("updateItemReturnScan", e.message);
+    }
+  }
+
+  /**
+   * Update Item Return Scan Wac and Amount Price
+   * @param rec - Item Return Scan Object
+   */
+  function updateIRSPrice(rec) {
+    const fulPartialPackage = rec.getValue(
+      "custrecord_cs_full_partial_package",
+    );
+    const item = rec.getValue("custrecord_cs_return_req_scan_item");
+    const qty = rec.getValue("custrecord_cs_qty");
+    const packageSize = rec.getValue("custrecord_cs_package_size") || 0;
+    const partialCount = rec.getValue("custrecord_scanpartialcount") || 0;
+    const PACKAGESIZE = {
+      PARTIAL: 2,
+      FULL: 1,
+    };
+    try {
+      const rate = vslib.getWACPrice(item);
+      let amount = 0;
+      const isOverrideRate = rec.getValue("custrecord_isc_overriderate");
+      const inputRate = rec.getValue("custrecord_isc_inputrate")
+        ? rec.getValue("custrecord_isc_inputrate")
+        : 0;
+      const selectedRate = rec.getValue("custrecord_scanrate")
+        ? rec.getValue("custrecord_scanrate")
+        : 0;
+      let WACAmount = 0;
+      if (fulPartialPackage == PACKAGESIZE.FULL) {
+        WACAmount = +qty * +rate;
+        log.debug("values", { isOverrideRate, selectedRate, qty });
+        amount =
+          isOverrideRate == true ? +inputRate * +qty : +selectedRate * qty;
+      } else {
+        log.audit("else", {
+          isOverrideRate,
+          qty,
+          partialCount,
+          packageSize,
+          inputRate,
+        });
+        //[Quantity x (Partial Count/Std Pkg Size (Item Record))] * Rate
+        amount =
+          isOverrideRate == true
+            ? +qty * (partialCount / packageSize) * +inputRate
+            : +qty * (partialCount / packageSize) * +selectedRate;
+        WACAmount = qty * (partialCount / packageSize) * rate;
+      }
+      log.debug("beforeSubmit amount", { WACAmount, amount });
+      rec.setValue({
+        fieldId: "custrecord_wac_amount",
+        value: WACAmount || 0,
+      });
+      rec.setValue({
+        fieldId: "custrecord_irc_total_amount",
+        value: amount || 0,
+      });
+      return rec;
+    } catch (e) {
+      log.error("updateIRSPrice", e.message);
+    }
+  }
+
   return {
     lookForExistingCreditMemoRec,
     createCreditMemoRec,
@@ -1273,5 +1442,7 @@ define(["N/record", "N/search", "./rxrs_transaction_lib", "./rxrs_util"], /**
     getReturnRequestItemRequested,
     assignReturnItemRequested,
     getItemRequestedPerCategory,
+    updateItemReturnScan,
+    updateIRSPrice,
   };
 });

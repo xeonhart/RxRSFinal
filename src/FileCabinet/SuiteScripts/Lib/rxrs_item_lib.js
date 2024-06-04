@@ -8,32 +8,34 @@ define(["N/record", "N/search"] /**
   /**
    * Function Update Item Price
    * @param options.itemId
-   * @param options.newWacAmount
+   * @param options.rate
+   * @param options.priceLevel
+   * @return the update internal id of the item
    */
   function updateItemPricing(options) {
-    let { itemId, newWacAmount } = options;
+    log.audit("updateItemPricing", options);
+    let { itemId, rate, priceLevel } = options;
     const itemRec = record.load({
       type: record.Type.INVENTORY_ITEM,
       id: itemId,
       isDynamic: true,
     });
 
-    let priceLevel;
-
+    let priceLevelValue;
     for (let i = 0; i < itemRec.getLineCount("price1"); i++) {
       itemRec.selectLine({
         sublistId: "price1",
         line: i,
       });
-      priceLevel = itemRec.getCurrentSublistValue({
+      priceLevelValue = itemRec.getCurrentSublistValue({
         sublistId: "price1",
         fieldId: "pricelevel",
       });
-      if (priceLevel == 1) {
+      if (priceLevelValue == priceLevel) {
         itemRec.setCurrentSublistValue({
           sublistId: "price1",
           fieldId: "price_1_",
-          value: newWacAmount,
+          value: rate,
           ignoreFieldChange: true,
         });
       }

@@ -569,6 +569,7 @@ define([
                 mrrId: mrrRec.id,
                 edit: true,
                 paymentSchedId: 12,
+                pageTitle: "Approval & Completion",
               },
             });
             let mrrViewEditLineURL = {

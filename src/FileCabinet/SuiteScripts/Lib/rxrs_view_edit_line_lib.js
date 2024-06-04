@@ -14,6 +14,11 @@ define([
  * @param{serverWidget} serverWidget
  * @param{url} url
  */, (https, record, serverWidget, url, search, vsLib) => {
+  /**
+   * Get the master return requesst all item return scan
+   * @param options
+   * @returns {*[]}
+   */
   function getMRRIRSLine(options) {
     try {
       let itemScanList = [];
@@ -202,7 +207,7 @@ define([
       id: "custpage_change_processing",
       type: "CHECKBOX",
       label: "CHANGE PHARMA PROCESSING",
-      updateDisplayType: "ENTRY",
+      updateDisplayType: "DISABLED",
     },
 
     {
@@ -215,7 +220,7 @@ define([
       id: "custpage_notes",
       type: "TEXT",
       label: "NOTES",
-      updateDisplayType: "ENTRY",
+      updateDisplayType: "DISABLED",
     },
     {
       id: "custpage_rate",
@@ -228,7 +233,7 @@ define([
       id: "custpage_update_product_catalog",
       type: "CHECKBOX",
       label: "Update Product Catalog",
-      updateDisplayType: "ENTRY",
+      updateDisplayType: "DISABLED",
     },
   ];
 
@@ -273,7 +278,7 @@ define([
         total += +amount;
         results.push({
           name: pharmaProcessing == 2 ? "YES" : "NO",
-          value: amount,
+          value: +amount,
         });
         return true;
       });
@@ -318,7 +323,7 @@ define([
             name: "custrecord_final_payment_schedule",
             summary: "GROUP",
           }),
-          amount: result.getValue({
+          amount: +result.getValue({
             name: "custrecord_irc_total_amount",
             summary: "SUM",
           }),

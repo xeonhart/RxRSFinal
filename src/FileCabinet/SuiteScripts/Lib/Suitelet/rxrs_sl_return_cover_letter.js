@@ -63,14 +63,19 @@ define([
   function displayForms(params) {
     try {
       log.debug("objClientParams", params);
+      let title = "Return Cover Letter";
+      let csName = "rxrs_cs_verify_staging.js";
+      if (params.pageTitle) {
+        title = params.pageTitle;
+        csName = "rxrs_cs_viewedit_line.js";
+      }
+      log.audit("displayFrom csname", csName);
       let form = serverWidget.createForm({
-        title: "Return Cover Letter",
+        title: title,
         hideNavBar: true,
       });
       try {
-        form.clientScriptFileId = rxrs_vs_util.getFileId(
-          "rxrs_cs_verify_staging.js",
-        );
+        form.clientScriptFileId = rxrs_vs_util.getFileId(csName);
       } catch (e) {
         log.error("setting client script Id", e.message);
       }
@@ -116,7 +121,7 @@ define([
       isMFGProcessing,
       edit,
       nonReturnableFeeAmount,
-      viewEditLine,
+      pageTitle,
     } = options.params;
 
     try {
@@ -197,11 +202,11 @@ define([
               })
               .getContents();
           }
-
+          let all = "all";
           form.addButton({
             id: "custpage_create_update",
             label: "Save Changes",
-            functionName: `updateIRS()`,
+            functionName: `submitAll()`,
           });
 
           let sublistFields = veLib.viewEditLineSUBLIST;
@@ -215,6 +220,7 @@ define([
             value: itemsReturnScan,
             isMainInDated: false,
             inDate: true,
+            csName: "rxrs_cs_viewedit_line.js",
             returnList: itemsReturnScan,
             title: paymentSchedText,
           });
@@ -228,8 +234,8 @@ define([
           tableStr += `<table style="height:10%;border-style: solid; border-collapse: collapse;padding: 5px;  background-color: #fefefa">
                       
                       <tr>
-                        <th style="border-style: solid; padding-left: 10px;font-size: 20px;border-color:"#EEEEEE"><h5><b>Returnable</b></h5></th>
-                        <th style="border-style: solid;padding-left: 10px;font-size: 20px"><h5>Value</h5></th>
+                        <th style="border-style: solid; padding-left: 10px;padding-right: 10px;font-size: 20px;border-color:"#EEEEEE"><h5><b>Returnable</b></h5></th>
+                        <th style="border-style: solid;padding-left: 10px;padding-right: 10px;padding-bottom:-2px;font-size: 20px"><h5>Value</h5></th>
                        
                       </tr>`;
           result.forEach(function (data) {
