@@ -819,10 +819,12 @@ define([
    * @param options.irsId - Item Return Scan Internal Id
    * @param options.mfgProcessing - MFG Processing
    * @param options.pharmaProcessing - Pharma Processing
+   * @param options.pricelevel
    */
   function setIRSRelatedTranLineProcessing(options) {
     log.audit("setIRSRelatedTranLineProcessing", options);
-    let { irsId, mfgProcessing, pharmaProcessing, amount } = options;
+    let { irsId, mfgProcessing, pharmaProcessing, amount, priceLevel, rate } =
+      options;
     try {
       const transactionSearchObj = search.create({
         type: "transaction",
@@ -847,13 +849,15 @@ define([
         let recType = result.getValue({ name: "type" });
         let line = result.getValue({ name: "line" });
         try {
-          log.audit("setIRSRelatedTranLineProcessing", {
+          log.audit("setIRSRelatedTranLineProcessing line", {
             tranId,
             recType,
             line,
             mfgProcessing,
             pharmaProcessing,
             amount,
+            rate,
+            priceLevel,
           });
           let type;
           switch (recType) {
@@ -873,21 +877,36 @@ define([
             sublistId: "item",
             line: line - 1,
           });
-          rec.setCurrentSublistValue({
-            sublistId: "item",
-            fieldId: "custcol_kod_mfgprocessing",
-            value: mfgProcessing,
-          });
-          rec.setCurrentSublistValue({
-            sublistId: "item",
-            fieldId: "custcol_kod_rqstprocesing",
-            value: pharmaProcessing,
-          });
-          rec.setCurrentSublistValue({
-            sublistId: "item",
-            fieldId: "amount",
-            value: amount,
-          });
+          mfgProcessing &&
+            rec.setCurrentSublistValue({
+              sublistId: "item",
+              fieldId: "custcol_kod_mfgprocessing",
+              value: mfgProcessing,
+            });
+          priceLevel &&
+            rec.setCurrentSublistValue({
+              sublistId: "item",
+              fieldId: "custcol_rxrs_price_level",
+              value: priceLevel,
+            });
+          pharmaProcessing &&
+            rec.setCurrentSublistValue({
+              sublistId: "item",
+              fieldId: "custcol_kod_rqstprocesing",
+              value: pharmaProcessing,
+            });
+          rate &&
+            rec.setCurrentSublistValue({
+              sublistId: "item",
+              fieldId: "rate",
+              value: rate,
+            });
+          amount &&
+            rec.setCurrentSublistValue({
+              sublistId: "item",
+              fieldId: "amount",
+              value: amount,
+            });
           rec.commitLine({
             sublistId: "item",
           });
@@ -2198,6 +2217,7 @@ define([
    * @param {string}options.pharmaProcessing - Pharma processing
    * @param {string}options.mfgProcessing - MFG processing
    * @param {string} options.IRSId - Item Return Scan Id
+   * @param {number} options.priceLevel - Price Level updated
    */
   function updateProcessing(options) {
     log.audit("updateProcessing params", options);

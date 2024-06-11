@@ -41,8 +41,14 @@ define([
   const ACCRUEDPURCHASEITEM = 916;
   const beforeSubmit = (context) => {
     const rec = context.newRecord;
+    log.audit("beforeSubmit", context.type);
     try {
       rxrs_customRec.updateIRSPrice(rec);
+      log.audit(
+        "Update Related Transaction",
+        rec.getValue("custrecord_update_related_tran"),
+      );
+
       // const fulPartialPackage = rec.getValue(
       //   "custrecord_cs_full_partial_package",
       // );
@@ -178,25 +184,28 @@ define([
       /**
        *  Update PO, Bill and IR processing
        */
+      let updateRelatedTranParam = {
+        mfgProcessing: newMFGProcessing,
+        pharmaProcessing: newPharmaProcessing,
+        irsId: rec.id,
+        amount: rec.getValue("custrecord_irc_total_amount"),
+        priceLevel: rec.getValue("custrecord_scanpricelevel"),
+        action: "updateTranLineProcessing",
+      };
+
       if (
         oldPharmaProcessing != newPharmaProcessing ||
         newMFGProcessing != newMFGProcessing
       ) {
         log.audit("updating related tran line processing");
-        let params = {
-          mfgProcessing: newMFGProcessing,
-          pharmaProcessing: newPharmaProcessing,
-          irsId: rec.id,
-          amount: rec.getValue("custrecord_irc_total_amount"),
-          action: "updateTranLineProcessing",
-        };
+
         log.audit("updating related tran line processing", params);
 
         let functionSLURL = url.resolveScript({
           scriptId: "customscript_sl_cs_custom_function",
           deploymentId: "customdeploy_sl_cs_custom_function",
           returnExternalUrl: true,
-          params: params,
+          params: mfgProcessing,
         });
         let response = https.post({
           url: functionSLURL,

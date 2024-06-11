@@ -76,6 +76,12 @@ define([
         fieldId: MFGPROCESSINGFIELD,
         line: i,
       });
+      const rateFieldColumn = suitelet.getSublistField({
+        sublistId: SUBLIST,
+        fieldId: RATEFIELD,
+        line: i,
+      });
+      rateFieldColumn.isDisabled = true;
       const pharmaProcessing = suitelet.getSublistValue({
         sublistId: SUBLIST,
         fieldId: PHARMAPROCESSINGFIELD,
@@ -229,6 +235,12 @@ define([
               fieldId: NONRETURNABLEREASONFIELD,
               line: line,
             });
+            const RATEFIELDCOLUMN = suitelet.getSublistField({
+              sublistId: SUBLIST,
+              fieldId: RATEFIELD,
+              line: line,
+            });
+
             const notesFields = suitelet.getSublistField({
               sublistId: SUBLIST,
               fieldId: NOTESFIELD,
@@ -245,7 +257,12 @@ define([
             });
 
             console.table(changePharmaProcessing, pharmaProcessing);
-
+            if (changePharmaProcessing == true) {
+              console.log("enabling rate");
+              RATEFIELDCOLUMN.isDisabled = false;
+            } else {
+              RATEFIELDCOLUMN.isDisabled = true;
+            }
             if (
               changePharmaProcessing == true &&
               pharmaProcessing !== "Non-Returnable"
@@ -358,6 +375,7 @@ define([
         if (selectedLine == null || selectedLine == "null") {
           showMessage();
         } else {
+          console.table(selectedLine);
           let lineData = getLineDetailsToBeProcessed(selectedLine);
           itemToBeProcess.push(lineData);
 
@@ -382,30 +400,30 @@ define([
   }
 
   function submitAll() {
-    alert("submit All");
-    let itemsToProcess = [];
     if (lineTobeUpdated.length == 0) {
       showMessage();
     } else {
-      let itemsToProcess = [];
-      lineTobeUpdated.forEach((line) => {
-        itemsToProcess.push(getLineDetailsToBeProcessed(line));
-      });
-      let params = {
-        action: "updateIRS",
-        values: JSON.stringify(itemsToProcess),
-      };
-      console.table(params);
-      let stSuiteletUrl = url.resolveScript({
-        scriptId: "customscript_sl_cs_custom_function",
-        deploymentId: "customdeploy_sl_cs_custom_function",
-        returnExternalUrl: false,
-        params: params,
-      });
-      let response = https.post({
-        url: stSuiteletUrl,
-      });
-      console.table(itemsToProcess);
+      handleButtonClick("Please wait...");
+      setTimeout(function () {
+        let itemsToProcess = [];
+        lineTobeUpdated.forEach((line) => {
+          itemsToProcess.push(getLineDetailsToBeProcessed(line));
+        });
+        let params = {
+          action: "updateIRS",
+          values: JSON.stringify(itemsToProcess),
+        };
+        console.table(params);
+        let stSuiteletUrl = url.resolveScript({
+          scriptId: "customscript_sl_cs_custom_function",
+          deploymentId: "customdeploy_sl_cs_custom_function",
+          returnExternalUrl: false,
+          params: params,
+        });
+        postURL({
+          URL: stSuiteletUrl,
+        });
+      }, 200);
     }
   }
 

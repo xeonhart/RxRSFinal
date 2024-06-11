@@ -205,8 +205,13 @@ define([
           let all = "all";
           form.addButton({
             id: "custpage_create_update",
-            label: "Save Changes",
+            label: "Update Modified Lines",
             functionName: `submitAll()`,
+          });
+          form.addButton({
+            id: "custpage_create_update",
+            label: "Update From Catalog",
+            functionName: `updateFromCatalog()`,
           });
 
           let sublistFields = veLib.viewEditLineSUBLIST;
@@ -242,7 +247,7 @@ define([
             tableStr += `<tr>
                      <td style="border-bottom: 1px;padding-right: 30px;font-size: 15px;padding: 5px">${data.paymentName}</td>
 
-                     <td style="font-size: 15px;padding: 5px">$${+data.amount}</td>
+                     <td style="font-size: 15px;padding: 5px">$${+data.amount.toFixed(4)}</td>
                    </tr>`;
           });
 
@@ -251,7 +256,7 @@ define([
             tableStr += `<tr>
                      <td style="font-size: 15px;padding: 5px"><b>${data.name}</b></td>
 
-                     <td style="font-size: 15px;padding: 5px">$${+data.value}</td>
+                     <td style="font-size: 15px;padding: 5px">$${+data.value.toFixed(4)}</td>
                    </tr>`;
           });
           tableStr += `</table>`;

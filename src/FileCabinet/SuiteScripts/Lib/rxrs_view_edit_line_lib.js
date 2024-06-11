@@ -77,6 +77,10 @@ define([
             label: "Price Level",
           }),
           search.createColumn({
+            name: "custrecord_scanrate",
+            label: "Price Level",
+          }),
+          search.createColumn({
             name: "internalid",
             join: "CUSTRECORD_CS_RETURN_REQ_SCAN_ITEM",
             label: "Internal ID",
@@ -100,6 +104,7 @@ define([
         });
 
         itemScanList.push({
+          select: " ",
           itemId: itemId,
           internalId: result.id,
           ndc: `<a href=${ndcLink}>${ndcName}</a>`,
@@ -131,7 +136,9 @@ define([
               name: "custrecord_scannonreturnreason",
             }) || 8,
           note: "",
-          rate: result.getValue({ name: "custrecord_isc_inputrate" }) || 0,
+          rate:
+            result.getValue({ name: "custrecord_scanrate" }) ||
+            result.getValue({ name: "custrecord_isc_inputrate" }),
         });
         return true;
       });
@@ -143,6 +150,12 @@ define([
   }
 
   const viewEditLineSUBLIST = [
+    {
+      id: "custpage_select",
+      type: "CHECKBOX",
+      label: "SELECT",
+      updateDisplayType: "ENTRY",
+    },
     {
       id: "custpage_itemid",
       type: "TEXT",

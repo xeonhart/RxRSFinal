@@ -1267,9 +1267,12 @@ define([
     log.audit("updateItemReturnScan", options);
     const MCONFIGURED = 8;
     const MANUALINPUT = 12;
+    let updatedIRSIds = [];
     let newRec;
     try {
       let data = JSON.parse(options.values);
+      if (data.length > 1) {
+      }
       data.forEach(function (data) {
         log.audit("data", data);
         let {
@@ -1350,10 +1353,20 @@ define([
           });
         }
         newRec = updateIRSPrice(irsRec);
+        let Ids = newRec.save({
+          ignoreMandatoryFields: true,
+        });
+        let updateRelatedTranParam = {
+          pharmaProcessing: irsRec.getValue("custrecord_cs__rqstprocesing"),
+          irsId: Ids,
+          amount: irsRec.getValue("custrecord_irc_total_amount"),
+          priceLevel: irsRec.getValue("custrecord_scanpricelevel"),
+          rate: irsRec.getValue("custrecord_scanrate"),
+        };
+        tranlib.setIRSRelatedTranLineProcessing(updateRelatedTranParam);
+        updatedIRSIds.push(Ids);
       });
-      return newRec.save({
-        ignoreMandatoryFields: true,
-      });
+      return updatedIRSIds;
     } catch (e) {
       log.error("updateItemReturnScan", e.message);
     }
@@ -1366,6 +1379,10 @@ define([
   function updateIRSPrice(rec) {
     const fulPartialPackage = rec.getValue(
       "custrecord_cs_full_partial_package",
+    );
+    log.audit(
+      "Update Related Transaction",
+      rec.getValue("custrecord_update_related_tran"),
     );
     const item = rec.getValue("custrecord_cs_return_req_scan_item");
     const qty = rec.getValue("custrecord_cs_qty");
