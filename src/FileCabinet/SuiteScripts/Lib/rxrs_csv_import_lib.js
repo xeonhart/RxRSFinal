@@ -6,6 +6,29 @@ define(["N/file", "N/record", "N/search"] /**
  * @param{record} record
  * @param{search} search
  */, (file, record, search) => {
+
+
+  const ndcMapping = {
+    updateCode: 0,
+    NDC: 1,
+    PS: 4,
+    DF: 5,
+    control: 19,
+    type: 20,
+    DEA: 18,
+    OBSDTEC: 26,
+    CSP: 32,
+    PD: 48,
+    LN25I: 48,
+    INPCKI: 52,
+    OUTPCKI: 53,
+    description: 69,
+    BN: 8,
+    PNDC: 9,
+    REPNDC: 10,
+    NDCFI: 11
+  };
+
   /**
    * This function maps the column line for pricing and iterate each line and return the line object
    * @param {*} fileObj - CSV file Object
@@ -60,19 +83,13 @@ define(["N/file", "N/record", "N/search"] /**
       log.debug("iterator", iterator);
       for (let i = 0; i < 10; i++) {
         let val = iterator[i].split("|");
-        itemToProcess.push({
-          updateCode: val[0],
-          description: val[69],
-          packageSize: val[5],
-          type: val[20],
-          control: val[19],
-          PNDC: val[10],
-          REPNDC: val[11],
-          NDCFI: val[12],
-          DEA: val[19],
-          OBSDTEC: val[28],
-          CSP: val[34],
-        });
+        const item = {};
+
+        for (const [key, index] of Object.entries(ndcMapping)) {
+          item[key] = val[index];
+        }
+        
+        itemToProcess.push(item);
       }
       log.audit("itemToProcess", itemToProcess);
       //return object and remove the first element

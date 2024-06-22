@@ -11,10 +11,11 @@ define([
   "../rxrs_item_lib",
   "../rxrs_custom_rec_lib",
   "../rxrs_util",
+  "../FDB Scripts/rxrs_fdb_item_lib",
 ] /**
  * @param{record} record
  * @param{search} search
- */, (file, runtime, record, search, csv_lib, item_lib, custom_rec, util) => {
+ */, (file, runtime, record, search, csv_lib, item_lib, custom_rec, util, fdbItemLib) => {
   /**
    * Defines the function that is executed at the beginning of the map/reduce process and generates the input data.
    * @param {Object} inputContext
