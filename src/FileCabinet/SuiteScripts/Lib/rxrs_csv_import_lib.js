@@ -22,10 +22,7 @@ define(
       INPCKI: 55,
       OUTPCKI: 56,
       description: 69,
-      BN: 8,
-      PNDC: 9,
-      REPNDC: 10,
-      NDCFI: 11,
+
     };
 
     /**
