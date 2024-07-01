@@ -3,19 +3,20 @@
  * @NScriptType MapReduceScript
  */
 define([
-  "N/file",
-  "N/runtime",
-  "N/record",
-  "N/search",
-  "../rxrs_csv_import_lib.js",
-  "../rxrs_item_lib",
-  "../rxrs_custom_rec_lib",
-  "../rxrs_util",
-  "../FDB Scripts/rxrs_fdb_item_lib",
-] /**
+  'N/file',
+  'N/runtime',
+  'N/record',
+  'N/search',
+  '../rxrs_csv_import_lib.js',
+  '../rxrs_item_lib',
+  '../rxrs_custom_rec_lib',
+  '../rxrs_util',
+  '../FDB Scripts/lib/rxrs_fdb_item_lib',
+  'N/log',
+], /**
  * @param{record} record
  * @param{search} search
- */, (file, runtime, record, search, csv_lib, item_lib, custom_rec, util, fdbItemLib) => {
+ */ (file, runtime, record, search, csvLib, itemLib, customRec, util, fdbItemLib, log) => {
   /**
    * Defines the function that is executed at the beginning of the map/reduce process and generates the input data.
    * @param {Object} inputContext
@@ -30,26 +31,28 @@ define([
    */
 
   const getInputData = (inputContext) => {
-    const functionName = "getInputData";
+    const functionName = 'getInputData';
 
-    log.audit(functionName, "************ EXECUTION STARTED ************");
+    log.audit(functionName, '************ EXECUTION STARTED ************');
     try {
       const params = getParameters();
-      log.audit("params", params);
+      log.audit('params', params);
 
       const fileObj = file.load({
         id: util.getFileId(params.fileName),
       });
       switch (params.action) {
-        case "UPSERT_PRICING":
-          return csv_lib.getPricing(fileObj);
-          break;
-        case "UPSERT_ITEM":
-          return csv_lib.getItemDetails(fileObj.getContents());
-          break;
+      case 'UPSERT_PRICING':
+        return csvLib.getPricing(fileObj);
+        break;
+      case 'UPSERT_ITEM':
+        return csvLib.getItemDetails(fileObj.getContents());
+        break;
+      default:
+        log.error('default selected');
       }
     } catch (e) {
-      log.error("getInputData", e.message);
+      log.error('getInputData', e.message);
     }
   };
 
@@ -88,49 +91,54 @@ define([
    * @since 2015.2
    */
   const reduce = (reduceContext) => {
-    const functionName = "reduce";
+    const functionName = 'reduce';
     const data = JSON.parse(reduceContext.values);
 
     switch (getParameters().action) {
-      case "UPSERT_PRICING":
-        try {
-          let { updateCode, NDC, priceType, date, price } = data;
-          const itemId = item_lib.getItemId(parseFloat(NDC));
-          if (itemId) {
-            if (updateCode == "A") {
-              log.audit("data", data);
-              const updatedItem = item_lib.updateItemPricing({
-                itemId: itemId,
-                rate: parseFloat(price),
-                priceLevel: 1,
+    case 'UPSERT_PRICING':
+      try {
+        const {
+          updateCode, NDC, priceType, date, price,
+        } = data;
+        const itemId = itemLib.getItemId(parseFloat(NDC));
+        if (itemId) {
+          if (updateCode == 'A') {
+            log.audit('data', data);
+            const updatedItem = itemLib.updateItemPricing({
+              itemId,
+              rate: parseFloat(price),
+              priceLevel: 1,
+            });
+            if (updatedItem) {
+              const priceHistoryId = customRec.createPriceHistory({
+                itemId,
+                date,
+                priceType,
+                newPrice: parseFloat(price),
               });
-              if (updatedItem) {
-                let priceHistoryId = custom_rec.createPriceHistory({
-                  itemId: itemId,
-                  date: date,
-                  priceType: priceType,
-                  newPrice: parseFloat(price),
-                });
-                log.audit("Created Price History Id ", { priceHistoryId, NDC });
-              }
-            } else {
-              custom_rec.deletePriceHistory({
-                itemId: itemId,
-                date: date,
-                priceType: priceType,
-              });
+              log.audit('Created Price History Id ', { priceHistoryId, NDC });
             }
+          } else {
+            customRec.deletePriceHistory({
+              itemId,
+              date,
+              priceType,
+            });
           }
-        } catch (e) {
-          log.error("UPSERT_PRICING", e.message);
         }
-        break;
-      case "UPSERT_ITEM":
-        try {
-        } catch (e) {
-          log.error("UPSERT_ITEM", e.message);
-        }
-        break;
+      } catch (e) {
+        log.error('UPSERT_PRICING', e.message);
+      }
+      break;
+    case 'UPSERT_ITEM':
+      try {
+        fdbItemLib.updateCreateItemPricing(data);
+      } catch (e) {
+        log.error('UPSERT_ITEM', e.message);
+      }
+      break;
+    default:
+      log.error('DEFAULT');
     }
   };
 
@@ -154,18 +162,18 @@ define([
    * @since 2015.2
    */
   const summarize = (summaryContext) => {
-    let params = getParameters();
+    const params = getParameters();
     util.moveFolderToDone({
       fileId: util.getFileId(params.fileName),
       folderId: params.doneFolderId,
     });
-    const functionName = "summarize";
+    const functionName = 'summarize';
     log.audit(functionName, {
       UsageConsumed: summaryContext.usage,
       NumberOfQueues: summaryContext.concurrency,
       NumberOfYields: summaryContext.yields,
     });
-    log.audit(functionName, "************ EXECUTION COMPLETED ************");
+    log.audit(functionName, '************ EXECUTION COMPLETED ************');
   };
   /**
    * Get Script Parameters
@@ -173,19 +181,19 @@ define([
   const getParameters = () => {
     let objParams = {};
 
-    let objScript = runtime.getCurrentScript();
+    const objScript = runtime.getCurrentScript();
     objParams = {
       doneFolderId: objScript.getParameter({
-        name: "custscript_processed_folder_id",
+        name: 'custscript_processed_folder_id',
       }),
       fileName: objScript.getParameter({
-        name: "custscript_filename",
+        name: 'custscript_filename',
       }),
       pendingFolderId: objScript.getParameter({
-        name: "custscript_folder_id",
+        name: 'custscript_folder_id',
       }),
       action: objScript.getParameter({
-        name: "custscript_rxrs_fileimportaction",
+        name: 'custscript_rxrs_fileimportaction',
       }),
     };
 
@@ -194,15 +202,15 @@ define([
 
   function isEmpty(stValue) {
     return (
-      stValue === "" ||
-      stValue == null ||
-      false ||
-      (stValue.constructor === Array && stValue.length == 0) ||
-      (stValue.constructor === Object &&
-        (function (v) {
-          for (var k in v) return false;
+      stValue === ''
+      || stValue == null
+      || false
+      || (stValue.constructor === Array && stValue.length == 0)
+      || (stValue.constructor === Object
+        && (function (v) {
+          for (const k in v) return false;
           return true;
-        })(stValue))
+        }(stValue)))
     );
   }
 
