@@ -40,7 +40,7 @@ define(
       const firstResult = resultSet.getRange({ start: 0, end: 1 });
 
       if (firstResult && firstResult.length > 0) {
-        return firstResult[0].getValue(fieldToFind);
+        return firstResult.id;
       }
       return '';
     }
