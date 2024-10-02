@@ -1,0 +1,25 @@
+<suitelet scriptid="customscript_rxrs_sl_bin_transfer_ui">
+  <description>UI for selection of line items from return request to do automated transfering of bins to specific preset of locations</description>
+  <isinactive>F</isinactive>
+  <name>RXRS SL Bin Transfer UI</name>
+  <notifyadmins>F</notifyadmins>
+  <notifyemails></notifyemails>
+  <notifyowner>T</notifyowner>
+  <notifyuser>F</notifyuser>
+  <scriptfile>[/SuiteScripts/RXRS/Bin Transfer Solution/rxrs_sl_bintransfer_ui.js]</scriptfile>
+  <scriptdeployments>
+    <scriptdeployment scriptid="customdeploy_rxrs_sl_bin_transfer_ui_d1">
+      <allemployees>F</allemployees>
+      <allpartners>F</allpartners>
+      <allroles>T</allroles>
+      <audslctrole></audslctrole>
+      <eventtype></eventtype>
+      <isdeployed>T</isdeployed>
+      <isonline>F</isonline>
+      <loglevel>DEBUG</loglevel>
+      <runasrole>ADMINISTRATOR</runasrole>
+      <status>RELEASED</status>
+      <title>RXRS SL Bin Transfer UI Main</title>
+    </scriptdeployment>
+  </scriptdeployments>
+</suitelet>
