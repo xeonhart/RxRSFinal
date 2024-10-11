@@ -10,7 +10,7 @@ define(
     'N/url',
     'N/runtime',
     'N/log',
-    '/lib/rxrs_bintransfer_lib',
+    './lib/rxrs_bintransfer_lib',
   ],
   /**
  * @param{search} search

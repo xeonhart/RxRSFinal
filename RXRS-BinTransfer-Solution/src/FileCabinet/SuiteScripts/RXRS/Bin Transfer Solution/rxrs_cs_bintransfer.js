@@ -236,7 +236,7 @@ define(
             fieldId: 'custcol_kod_controlnumid',
             line: i,
           });
-          objToPass.prodCalocationtegId = rec.getSublistValue({
+          objToPass.locationId = rec.getSublistValue({
             sublistId: mainSublist,
             fieldId: 'location',
             line: i,

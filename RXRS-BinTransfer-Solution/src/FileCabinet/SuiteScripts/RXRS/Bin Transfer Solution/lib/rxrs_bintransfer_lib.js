@@ -41,16 +41,17 @@ define(
     const mainBinTransferLib = {};
 
     const getYearInFiscalYearId = (parsedYear) => {
+      let fiscalYearId;
       Object.keys(inDateYearList).forEach((key) => {
         const fiscalYearString = inDateYearList[key].fiscalYear;
         const fiscalYear = parseInt(fiscalYearString.split(' ')[1], 10);
 
         if (parsedYear === fiscalYear) {
-          return inDateYearList[key].internalId;
+          fiscalYearId = inDateYearList[key].internalId;
         }
       });
 
-      return null; // Return null if no match is found
+      return fiscalYearId; // Return null if no match is found
     };
 
     function getCurrentMonthAndYear(inputDate) {
@@ -114,12 +115,19 @@ define(
       return serialNumberId;
     };
 
-    const findBinLocationId = (prodCategoryVal, inDate) => {
+    const findBinLocationId = (prodCategoryVal, inDate, prodCategId) => {
+      const logTitle = 'findBinLocationId';
       let correctBinId = '';
       const monthYearObj = getCurrentMonthAndYear(inDate);
       const binIndateMonthId = getInternalIdFromMonth(monthYearObj.month);
       const binFiscalYearId = getYearInFiscalYearId(monthYearObj.year);
-
+      log.debug({
+        title: logTitle,
+        details: {
+          binIndateMonthId,
+          binFiscalYearId,
+        },
+      });
       const mySearch = search.load({
         type: search.Type.BIN,
         id: 'customsearch_rxrs_bts_custom_binsearch',
@@ -134,6 +142,11 @@ define(
         name: 'custrecord_bin_indate_year',
         operator: search.Operator.ANYOF,
         values: binFiscalYearId,
+      })));
+      mySearch.filters.push((search.createFilter({
+        name: 'custrecord_bin_product_category',
+        operator: search.Operator.ANYOF,
+        values: prodCategId,
       })));
       const mySearchCount = mySearch.runPaged().count;
       if (mySearchCount === 0) {
@@ -152,7 +165,8 @@ define(
         details: objToProcess,
       });
       const {
-        serialNumber, itemId, prodCategoryVal, inDate, location, quantity, binIntId,
+        serialNumber, itemId, prodCategoryVal, inDate,
+        locationId, quantity, binIntId, prodCategId,
       } = objToProcess;
 
       /* - Sample Data
@@ -173,78 +187,98 @@ define(
       // Lookup Serial Number ID
       const serialNumberId = findSerialNumberId(serialNumber, itemId);
       // Lookup Correct Bin Location for Transferring
-      const correctBinLocationId = findBinLocationId(prodCategoryVal, inDate);
+      const correctBinLocationId = findBinLocationId(prodCategoryVal, inDate, prodCategId);
 
       // Process Bin Transfer Record
 
-      try {
-        const binTransfer = record.create({
-          type: record.Type.BIN_TRANSFER,
-          isDynamic: true,
-        });
+      log.debug({
+        title: logTitle,
+        details: {
+          serialNumber,
+          itemId,
+          prodCategoryVal,
+          inDate,
+          locationId,
+          quantity,
+          binIntId,
+          serialNumberId,
+          correctBinLocationId,
+          prodCategId,
+        },
+      });
 
-        binTransfer.setValue({
-          fieldId: 'location',
-          value: location,
-        });
+      // try {
+      const binTransfer = record.create({
+        type: record.Type.BIN_TRANSFER,
+        isDynamic: true,
+      });
 
-        binTransfer.selectNewLine({ sublistId: 'inventory' });
+      binTransfer.setValue({
+        fieldId: 'location',
+        value: locationId,
+      });
+      binTransfer.setValue({
+        fieldId: 'memo',
+        value: 'Generated via Bin Transfer Solution',
+      });
 
-        binTransfer.setCurrentSublistValue({
-          sublistId: 'inventory',
-          fieldId: 'item',
-          value: itemId,
-        });
+      binTransfer.selectNewLine({ sublistId: 'inventory' });
 
-        binTransfer.setCurrentSublistValue({
-          sublistId: 'inventory',
-          fieldId: 'quantity',
-          value: quantity,
-        });
+      binTransfer.setCurrentSublistValue({
+        sublistId: 'inventory',
+        fieldId: 'item',
+        value: itemId,
+      });
 
-        const inventoryDetail = binTransfer.getCurrentSublistSubrecord({
-          sublistId: 'inventory',
-          fieldId: 'inventorydetail',
-        });
+      binTransfer.setCurrentSublistValue({
+        sublistId: 'inventory',
+        fieldId: 'quantity',
+        value: quantity,
+      });
 
-        inventoryDetail.selectNewLine({ sublistId: 'inventoryassignment' });
+      const inventoryDetail = binTransfer.getCurrentSublistSubrecord({
+        sublistId: 'inventory',
+        fieldId: 'inventorydetail',
+      });
 
-        inventoryDetail.setCurrentSublistValue({
-          sublistId: 'inventoryassignment',
-          fieldId: 'issueinventorynumber',
-          value: serialNumberId,
-        });
+      inventoryDetail.selectNewLine({ sublistId: 'inventoryassignment' });
 
-        inventoryDetail.setCurrentSublistValue({
-          sublistId: 'inventoryassignment',
-          fieldId: 'binnumber',
-          value: binIntId,
-        });
+      inventoryDetail.setCurrentSublistValue({
+        sublistId: 'inventoryassignment',
+        fieldId: 'issueinventorynumber',
+        value: serialNumberId,
+      });
 
-        inventoryDetail.setCurrentSublistValue({
-          sublistId: 'inventoryassignment',
-          fieldId: 'tobinnumber',
-          value: correctBinLocationId,
-        });
+      inventoryDetail.setCurrentSublistValue({
+        sublistId: 'inventoryassignment',
+        fieldId: 'binnumber',
+        value: binIntId,
+      });
 
-        inventoryDetail.setCurrentSublistValue({
-          sublistId: 'inventoryassignment',
-          fieldId: 'quantity',
-          value: quantity,
-        });
-        inventoryDetail.setCurrentSublistValue({
-          sublistId: 'inventorystatus',
-          fieldId: 'quantity',
-          value: 1, // Always GOOD
-        });
-        inventoryDetail.commitLine({ sublistId: 'inventoryassignment' });
-        binTransfer.commitLine({ sublistId: 'inventory' });
-        const recordId = binTransfer.save();
+      inventoryDetail.setCurrentSublistValue({
+        sublistId: 'inventoryassignment',
+        fieldId: 'tobinnumber',
+        value: correctBinLocationId,
+      });
 
-        log.debug('Success', `Bin Transfer Record ID: ${recordId}`);
-      } catch (error) {
-        log.error('Error Creating Bin Transfer', error.message);
-      }
+      inventoryDetail.setCurrentSublistValue({
+        sublistId: 'inventoryassignment',
+        fieldId: 'quantity',
+        value: quantity,
+      });
+      // inventoryDetail.setCurrentSublistValue({
+      //   sublistId: 'inventorystatus',
+      //   fieldId: 'quantity',
+      //   value: 1, // Always GOOD
+      // });
+      inventoryDetail.commitLine({ sublistId: 'inventoryassignment' });
+      binTransfer.commitLine({ sublistId: 'inventory' });
+      const recordId = binTransfer.save();
+
+      log.debug('Success', `Bin Transfer Record ID: ${recordId}`);
+      // } catch (error) {
+      //   log.error('Error Creating Bin Transfer', error.message);
+      // }
     };
 
     return mainBinTransferLib;
