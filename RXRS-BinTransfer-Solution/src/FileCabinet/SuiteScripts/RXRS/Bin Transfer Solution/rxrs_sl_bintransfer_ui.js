@@ -211,8 +211,8 @@ define(
         const getQuantityField = form.getSublist({ id: sublistId }).getField({ id: 'binnumberquantity' });
         getQuantityField.updateDisplayType({
           displayType: serverWidget.FieldDisplayType.HIDDEN,
-        }); 
-        
+        });
+
         const getLocationField = form.getSublist({ id: sublistId }).getField({ id: 'location' });
         getLocationField.updateDisplayType({
           displayType: serverWidget.FieldDisplayType.HIDDEN,
@@ -379,11 +379,14 @@ define(
           title: 'Post to Process',
           details: arrToProcess,
         });
+
+        const combineResponseObj = [];
         for (let i = 0; i < arrToProcess.length; i += 1) {
-          rxrsBtsLib.processBinTransfer(arrToProcess[i]);
+          const objResult = rxrsBtsLib.processBinTransfer(arrToProcess[i]);
+          combineResponseObj.push(objResult);
         }
 
-        return { message: 'Processed Successfully' };
+        scriptContext.response.write(JSON.stringify(combineResponseObj));
       }
     };
 

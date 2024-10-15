@@ -282,7 +282,7 @@ define(
       //   message: `Processing these package IDs: ${JSON.stringify(trackingNumbers)}`,
       // });
       console.log(JSON.stringify(sletResposne));
-      alert('Processed Succesfully, Page Reloading');
+      alert((sletResposne.body));
       window.location.reload();
     }
 
