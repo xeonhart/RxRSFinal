@@ -17,6 +17,11 @@ define(
  * @param{serverWidget} serverWidget
  */
   (search, record, serverWidget, url, runtime, log, rxrsBtsLib) => {
+    const mainSearchRec = 'customrecord_kd_taglabel';
+    const scanBagTagRec = 'custrecord_scanbagtaglabel';
+
+    const findIndexByName = (arr, searchString) => arr.findIndex((item) => item.name === searchString);
+
     const checkIfNotEmpty = (data) => {
       const returnData = false;
       if (data) {
@@ -86,7 +91,7 @@ define(
 
       if (checkIfNotEmpty(mrrId)) {
         mySearch.filters.push((search.createFilter({
-          name: 'custbody_kd_master_return_id',
+          name: 'custrecord_kd_mrr_link',
           operator: search.Operator.ANYOF,
           values: mrrId,
         })));
@@ -176,7 +181,7 @@ define(
         });
 
         const mySearch = search.load({
-          type: search.Type.TRANSACTION,
+          type: mainSearchRec,
           id: getBinTransferSearch,
         });
         checkIfAddFilters({ mySearch, allParams });
@@ -184,7 +189,6 @@ define(
 
         const searchColumns = mySearch.columns;
         const newColumns = [];
-
 
         searchColumns.forEach((column) => {
           newColumns.push(`${(column.name).replace('custrecord_', '')}`.substring(0, 35));
@@ -204,11 +208,11 @@ define(
         getInternalIdField.updateDisplayType({
           displayType: serverWidget.FieldDisplayType.HIDDEN,
         });
-        const getItemField = form.getSublist({ id: sublistId }).getField({ id: 'item' });
+        const getItemField = form.getSublist({ id: sublistId }).getField({ id: 'cs_return_req_scan_item' });
         getItemField.updateDisplayType({
           displayType: serverWidget.FieldDisplayType.HIDDEN,
         });
-        const getQuantityField = form.getSublist({ id: sublistId }).getField({ id: 'binnumberquantity' });
+        const getQuantityField = form.getSublist({ id: sublistId }).getField({ id: 'cs_qty' });
         getQuantityField.updateDisplayType({
           displayType: serverWidget.FieldDisplayType.HIDDEN,
         });
@@ -264,37 +268,26 @@ define(
               sublist.setSublistValue({
                 id: 'custcol_kod_controlnumid',
                 line: counter,
-                value: result.getValue({
-                  name: 'custitem_kod_itemcontrol',
-                  join: 'item',
-                }) || ' - ',
+                value: result.getValue(result.columns[findIndexByName(searchColumns, 'custbody_kd_rr_category')])
+                || ' - ',
               });
               sublist.setSublistValue({
                 id: 'custcol_binnumberintid',
                 line: counter,
                 value: result.getValue({
                   name: 'internalid',
-                  join: 'binNumber',
+                  join: 'CUSTRECORD_KD_PUTAWAY_LOC',
+                  summary: 'GROUP',
                 }) || ' - ',
               });
-              if (column.name === 'custbody_kd_master_return_id' || column.name === 'tranid'
-                || column.name === 'custbody_kd_return_request') {
-                sublist.setSublistValue({
-                  id: `${(column.name).replace('custrecord_', '')}`.substring(0, 35),
-                  line: counter,
-                  value: result.getText({
-                    name: column.name,
-                  }) || ' - ',
-                });
-              } else if (column.name === 'custitem_kod_mfgsegment' || column.name === 'custitem_kod_itemcontrol'
+              if (column.name === 'custrecord_kd_mrr_link'
+              || column.name === 'custrecord_kd_mfgname'
+              || column.name === 'custbody_kd_rr_category'
               ) {
                 sublist.setSublistValue({
                   id: `${(column.name).replace('custrecord_', '')}`.substring(0, 35),
                   line: counter,
-                  value: result.getText({
-                    name: column.name,
-                    join: 'item',
-                  }) || ' - ',
+                  value: result.getText(result.columns[findIndexByName(searchColumns, column.name)]) || ' - ',
                 });
               } else if (column.name === 'internalid') {
                 sublist.setSublistValue({
@@ -302,25 +295,16 @@ define(
                   line: counter,
                   value: result.getValue({
                     name: column.name,
-                    join: 'binNumber',
-                  }) || ' - ',
-                });
-              } else if (column.name === 'custrecord_bin_stored_form') {
-                sublist.setSublistValue({
-                  id: `${(column.name).replace('custrecord_', '')}`.substring(0, 35),
-                  line: counter,
-                  value: result.getText({
-                    name: column.name,
-                    join: 'binNumber',
+                    join: 'CUSTRECORD_KD_PUTAWAY_LOC',
+                    summary: search.Summary.GROUP,
                   }) || ' - ',
                 });
               } else {
                 sublist.setSublistValue({
                   id: `${(column.name).replace('custrecord_', '')}`.substring(0, 35),
                   line: counter,
-                  value: result.getValue({
-                    name: column.name,
-                  }) || ' - ',
+                  value: result.getValue(result.columns[findIndexByName(searchColumns, column.name)])
+                  || ' - ',
                 });
               }
             });

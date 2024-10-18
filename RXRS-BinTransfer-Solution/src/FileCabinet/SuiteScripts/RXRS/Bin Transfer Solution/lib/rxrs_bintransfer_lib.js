@@ -115,7 +115,7 @@ define(
       return serialNumberId;
     };
 
-    const findBinLocationId = (prodCategoryVal, inDate, prodCategId) => {
+    const findBinLocationId = (inDate, prodCategId) => {
       const logTitle = 'findBinLocationId';
       let correctBinId = '';
       const monthYearObj = getCurrentMonthAndYear(inDate);
@@ -150,7 +150,8 @@ define(
       })));
       const mySearchCount = mySearch.runPaged().count;
       if (mySearchCount === 0) {
-        return correctBinId;
+        throw `Error for finding correct Bin Location id for Auto Transfer Date \n
+         inDate: ${inDate} prodCategId: ${prodCategId}`;
       }
       mySearch.run().each((result) => {
         correctBinId = result.id;
@@ -160,56 +161,52 @@ define(
     };
     mainBinTransferLib.processBinTransfer = (objToProcess) => {
       const logTitle = 'processBinTransfer';
+      const returnObj = {};
       log.debug({
         title: logTitle,
         details: objToProcess,
       });
-
-      const returnObj = {};
-      const {
-        serialNumber, itemId, prodCategoryVal, inDate,
-        locationId, quantity, binIntId, prodCategId,
-      } = objToProcess;
-
-      /* - Sample Data
-        custbody_kd_master_return_id: "MRR1287",
-        prodCategoryVal: "RX",
-        inDate: "7/31/2024",
-        binStoredForm: "Bag",
-        binIntId: "396",
-        manufIntId: "Baxter-Clintec Nutrition 2",
-        itemId: "4053",
-        quantity: "10",
-        serialNumber: "0420",
-        prodCategId: "1",
-        binNum: "CONTAS1-A2"
-        location: internalid
-    */
-
-      // Lookup Serial Number ID
-      const serialNumberId = findSerialNumberId(serialNumber, itemId);
-      // Lookup Correct Bin Location for Transferring
-      const correctBinLocationId = findBinLocationId(prodCategoryVal, inDate, prodCategId);
-
-      // Process Bin Transfer Record
-
-      log.debug({
-        title: logTitle,
-        details: {
-          serialNumber,
-          itemId,
-          prodCategoryVal,
-          inDate,
-          locationId,
-          quantity,
-          binIntId,
-          serialNumberId,
-          correctBinLocationId,
-          prodCategId,
-        },
-      });
-
       try {
+        const {
+          serialNumber, itemId, inDate,
+          locationId, quantity, binIntId, prodCategId,
+        } = objToProcess;
+
+        /* - Final Data
+      custcol_kd_baglabel_link: "37812",
+      custbody_kd_master_return_id: "20000-10018",
+      custcol_item_manufacturer: "PAR PHARMACEUTICALS",
+      inDate: "12/3/2024",
+      binIntId: "227",
+      itemId: "74217",
+      serialNumber: "RRPO172_720",
+      prodCategId: "4",
+      locationId: "1",
+      binNum: "CONTAS1-C1"
+    */
+        // Lookup Serial Number ID
+        const serialNumberId = findSerialNumberId(serialNumber, itemId);
+        // Lookup Correct Bin Location for Transferring
+        const correctBinLocationId = findBinLocationId(inDate, prodCategId);
+
+        // Process Bin Transfer Record
+
+        log.debug({
+          title: logTitle,
+          details: {
+            serialNumber,
+            itemId,
+            inDate,
+            locationId,
+            quantity,
+            binIntId,
+            serialNumberId,
+            correctBinLocationId,
+            prodCategId,
+          },
+        });
+
+
         const binTransfer = record.create({
           type: record.Type.BIN_TRANSFER,
           isDynamic: true,
@@ -280,7 +277,7 @@ define(
         returnObj.message = `Bin Transfer Record ID: ${recordId}`;
       } catch (error) {
         returnObj.success = false;
-        returnObj.message = `Error Creating Bin Transfer: ${error.message}`;
+        returnObj.message = `Error Creating Bin Transfer: ${error}`;
       }
       log.debug({
         title: logTitle,

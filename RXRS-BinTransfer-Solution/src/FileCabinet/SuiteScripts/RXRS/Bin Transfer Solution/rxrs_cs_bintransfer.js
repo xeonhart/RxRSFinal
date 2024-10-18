@@ -10,7 +10,26 @@ define(
     const mainSublist = 'custpage_search_results';
     const BIN_TS_SL_SCRIPT_ID = 'customscript_rxrs_sl_bin_transfer_ui';
     const BIN_TS_SL_DEP_ID = 'customdeploy_rxrs_sl_bin_transfer_ui_d1';
+    const processPackages = async (selectedIds, suiteletUrl) => {
+      try {
+        // Send the post request
+        const sletResposne = await https.post({
+          body: JSON.stringify(selectedIds),
+          url: suiteletUrl,
+        });
 
+        // Log the response and show the alert
+        console.log(JSON.stringify(sletResposne));
+        alert(sletResposne.body);
+
+        // Wait for the alert to finish, then reload the window
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        window.location.reload();
+      } catch (error) {
+        console.error('Error processing packages:', error);
+        alert('Failed to process packages.');
+      }
+    };
     const fieldChanged = (scriptContext) => {
 
     };
@@ -177,17 +196,17 @@ define(
           const objToPass = {};
           objToPass.custcol_kd_baglabel_link = rec.getSublistValue({
             sublistId: mainSublist,
-            fieldId: 'custcol_kd_baglabel_link',
+            fieldId: 'id',
             line: i,
           });
           objToPass.custbody_kd_master_return_id = rec.getSublistValue({
             sublistId: mainSublist,
-            fieldId: 'custbody_kd_master_return_id',
+            fieldId: 'kd_mrr_link',
             line: i,
           });
           objToPass.custcol_item_manufacturer = rec.getSublistValue({
             sublistId: mainSublist,
-            fieldId: 'custcol_item_manufacturer',
+            fieldId: 'kd_mfgname',
             line: i,
           });
           objToPass.prodCategoryVal = rec.getSublistValue({
@@ -197,38 +216,33 @@ define(
           });
           objToPass.inDate = rec.getSublistValue({
             sublistId: mainSublist,
-            fieldId: 'custcol_rxrs_indate_itrs_po',
+            fieldId: 'ret_start_date',
             line: i,
           });
-          objToPass.binStoredForm = rec.getSublistValue({
-            sublistId: mainSublist,
-            fieldId: 'bin_stored_form',
-            line: i,
-          });
+          // objToPass.binStoredForm = rec.getSublistValue({
+          //   sublistId: mainSublist,
+          //   fieldId: 'bin_stored_form',
+          //   line: i,
+          // });
           objToPass.binIntId = rec.getSublistValue({
             sublistId: mainSublist,
             fieldId: 'internalid',
             line: i,
           });
-          objToPass.manufIntId = rec.getSublistValue({
-            sublistId: mainSublist,
-            fieldId: 'custitem_kod_mfgsegment',
-            line: i,
-          });
           objToPass.itemId = rec.getSublistValue({
             sublistId: mainSublist,
-            fieldId: 'item',
+            fieldId: 'cs_return_req_scan_item',
             line: i,
           });
 
           objToPass.quantity = rec.getSublistValue({
             sublistId: mainSublist,
-            fieldId: 'binnumberquantity',
+            fieldId: 'cs_qty',
             line: i,
           });
           objToPass.serialNumber = rec.getSublistValue({
             sublistId: mainSublist,
-            fieldId: 'serialnumber',
+            fieldId: 'cs_lotnum',
             line: i,
           });
           objToPass.prodCategId = rec.getSublistValue({
@@ -272,19 +286,22 @@ define(
         scriptId: BIN_TS_SL_SCRIPT_ID,
         deploymentId: BIN_TS_SL_DEP_ID,
       });
-      const sletResposne = https.post({
-        body: JSON.stringify(selectedIds),
-        url: suiteletUrl,
-      });
-      // if ()
-      // dialog.alert({
-      //   title: 'Process Packages',
-      //   message: `Processing these package IDs: ${JSON.stringify(trackingNumbers)}`,
+
+      processPackages(selectedIds, suiteletUrl);
+      // const sletResposne = https.post({
+      //   body: JSON.stringify(selectedIds),
+      //   url: suiteletUrl,
       // });
-      console.log(JSON.stringify(sletResposne));
-      alert((sletResposne.body));
-      window.location.reload();
+      // // if ()
+      // // dialog.alert({
+      // //   title: 'Process Packages',
+      // //   message: `Processing these package IDs: ${JSON.stringify(trackingNumbers)}`,
+      // // });
+      // console.log(JSON.stringify(sletResposne));
+      // alert((sletResposne.body));
+      // window.location.reload();
     }
+
 
     return {
       searchWithFilters,
