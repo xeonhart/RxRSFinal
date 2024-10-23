@@ -20,18 +20,67 @@ define(
 
         // Log the response and show the alert
         console.log(JSON.stringify(sletResposne));
-        alert(sletResposne.body);
 
+        const mainBody = JSON.parse(sletResposne.body);
+        dialog.alert({
+          title: `Success ${JSON.stringify(mainBody.success)}`,
+          message: JSON.stringify(mainBody.binTransferObj),
+        });
+        if (mainBody.success === true) {
         // Wait for the alert to finish, then reload the window
-        await new Promise((resolve) => setTimeout(resolve, 0));
-        window.location.reload();
+          window.location.reload();
+        }
       } catch (error) {
         console.error('Error processing packages:', error);
         alert('Failed to process packages.');
       }
     };
-    const fieldChanged = (scriptContext) => {
 
+    const fieldChanged = (context) => {
+      const rec = currentRecord.get();
+      const { fieldId } = context;
+
+      if (fieldId === 'custpage_date') {
+        // Notify the user
+        alert('Clearing INDATE YEAR AND IN DATE MONTH since "Date (As of)" was filled.');
+        rec.setValue({
+          fieldId: 'custpage_indateyear',
+          value: '',
+        });
+        rec.setValue({
+          fieldId: 'custpage_indatemonth',
+          value: '',
+        });
+      }
+      console.log(context.sublistId, context.fieldId);
+      if (context.sublistId === 'custpage_search_results' && context.fieldId === 'custpage_select_bin') {
+        const selectBinBool = rec.getCurrentSublistValue({
+          sublistId: 'custpage_search_results',
+          fieldId: 'custpage_select_bin',
+        });
+        if (selectBinBool) {
+          const productCategory = rec.getCurrentSublistValue({
+            sublistId: 'custpage_search_results',
+            fieldId: 'custcol_kod_controlnumid',
+          });
+
+
+          const lineIndex = context.line;
+
+
+          // Resolve the URL for the second Suitelet (popup)
+          const binSelectorUrl = url.resolveScript({
+            scriptId: 'customscript_rxrs_sl_bin_picker_filtered', // The scriptId of the second Suitelet
+            deploymentId: 'customdeploy_rxrs_sl_bin_picker_filtered',
+          });
+
+          // Open popup for bin selection
+          const popupUrl = `${binSelectorUrl}&productCategory=${productCategory}&line=${lineIndex}`;
+          window.open(popupUrl, 'BinSelector', 'width=600,height=400,scrollbars=yes');
+        }
+      }
+
+      return true;
     };
 
     const pageInit = (scriptContext) => {
@@ -56,7 +105,7 @@ define(
 
       if (urlParams.get('rrPoId')) {
         currRec.setValue({
-          fieldId: 'custpage_binnumber',
+          fieldId: 'custpage_retreq_po',
           value: urlParams.get('rrPoId'),
         });
       }
@@ -65,6 +114,18 @@ define(
         currRec.setValue({
           fieldId: 'custpage_manufacturer',
           value: urlParams.get('manufId'),
+        });
+      }
+      if (urlParams.get('indateYear')) {
+        currRec.setValue({
+          fieldId: 'custpage_indateyear',
+          value: urlParams.get('indateYear'),
+        });
+      }
+      if (urlParams.get('indateMonth')) {
+        currRec.setValue({
+          fieldId: 'custpage_indatemonth',
+          value: urlParams.get('indateMonth'),
         });
       }
 
@@ -85,15 +146,22 @@ define(
     const searchWithFilters = () => {
       const currRec = currentRecord.get();
 
+
       const binNumber = checkIfEmpty(currRec.getValue({
         fieldId: 'custpage_binnumber',
       }), 'binNumber');
-      const indateYear = checkIfEmpty(currRec.getText({
+      const indateYear = checkIfEmpty(currRec.getValue({
         fieldId: 'custpage_indateyear',
       }), 'indateYear');
-      const indateMonth = checkIfEmpty(currRec.getText({
+      const indateMonth = checkIfEmpty(currRec.getValue({
         fieldId: 'custpage_indatemonth',
       }), 'indateMonth');
+      const indateYearText = checkIfEmpty(currRec.getText({
+        fieldId: 'custpage_indateyear',
+      }), 'indateYearText');
+      const indateMonthText = checkIfEmpty(currRec.getText({
+        fieldId: 'custpage_indatemonth',
+      }), 'indateMonthText');
       const mrrId = checkIfEmpty(currRec.getValue({
         fieldId: 'custpage_masterretreq',
       }), 'mrrId');
@@ -110,7 +178,26 @@ define(
         fieldId: 'custpage_date',
       }), 'dateAsOf');
 
-      const buildDataToPass = `${binNumber}${indateYear}${indateMonth}${mrrId}${rrPoId}${manufId}${prodCateg}${dateAsOf}`;
+      // Add Field validation for processing
+      if ((indateMonth === '' && indateYear) || (indateYear === '' && indateMonth)) {
+        alert('If Indate Month/ Indate Year was filled, both data should be filled');
+        return;
+      }
+
+      if (indateYear && indateMonth) {
+        alert('Prioritizing indate Month and Indate Year for search parameters');
+      }
+
+
+      // if (binNumber === '' && indateYear === '' && indateMonth === '' && mrrId === ''
+      //   && rrPoId === '' && manufId === '' && prodCateg === '' && dateAsOf === ''
+      // ) {
+      //   alert('No search data was filled, fill appropriate search Parameters first');
+      //   return;
+      // }
+
+
+      const buildDataToPass = `${binNumber}${indateYear}${indateMonth}${mrrId}${rrPoId}${manufId}${prodCateg}${dateAsOf}${indateMonthText}${indateYearText}`;
 
       const suiteletUrl = url.resolveScript({
         scriptId: BIN_TS_SL_SCRIPT_ID,
@@ -166,12 +253,56 @@ define(
         });
       }
     }
+    const clearFilters = () => {
+      const record = currentRecord.get();
+      record.setValue({
+        fieldId: 'custpage_binnumber',
+        value: '',
+      });
+
+      record.setValue({
+        fieldId: 'custpage_indateyear',
+        value: '',
+      });
+
+      record.setValue({
+        fieldId: 'custpage_indatemonth',
+        value: '',
+      });
+
+      record.setValue({
+        fieldId: 'custpage_masterretreq',
+        value: '',
+      });
+
+      record.setValue({
+        fieldId: 'custpage_retreq_po',
+        value: '',
+      });
+
+      record.setValue({
+        fieldId: 'custpage_manufacturer',
+        value: '',
+      });
+
+      record.setValue({
+        fieldId: 'custpage_prodcategory',
+        value: '',
+      });
+
+      record.setValue({
+        fieldId: 'custpage_date',
+        value: '',
+      });
+    };
+
 
     function processButton() {
       const rec = currentRecord.get();
       const lineCount = rec.getLineCount({ sublistId: mainSublist });
       const selectedIds = [];
       const binNumbers = [];
+
       for (let i = 0; i < lineCount; i += 1) {
         const isSelected = rec.getSublistValue({
           sublistId: mainSublist,
@@ -226,7 +357,12 @@ define(
           // });
           objToPass.binIntId = rec.getSublistValue({
             sublistId: mainSublist,
-            fieldId: 'internalid',
+            fieldId: 'internalid0',
+            line: i,
+          });
+          objToPass.bagLabelIntId = rec.getSublistValue({
+            sublistId: mainSublist,
+            fieldId: 'internalid1',
             line: i,
           });
           objToPass.itemId = rec.getSublistValue({
@@ -301,9 +437,22 @@ define(
       // alert((sletResposne.body));
       // window.location.reload();
     }
+    // This function will be called from the popup when the bin is selected
+    function setSelectedBin(binId, lineIndex) {
+      console.log({ binId, lineIndex });
+      const rec = currentRecord.get();
+      rec.selectLine({ sublistId: 'custpage_search_results', line: lineIndex });
+      rec.setCurrentSublistValue({
+        sublistId: 'custpage_search_results',
+        fieldId: 'custpage_final_bin',
+        value: binId,
+      });
+      rec.commitLine({ sublistId: 'custpage_search_results' });
+    }
 
-
+    window.setSelectedBin = setSelectedBin;
     return {
+      setSelectedBin,
       searchWithFilters,
       fieldChanged,
       pageInit,
@@ -311,6 +460,7 @@ define(
       markAll,
       unselectAll,
       processButton,
+      clearFilters,
     };
   },
 );

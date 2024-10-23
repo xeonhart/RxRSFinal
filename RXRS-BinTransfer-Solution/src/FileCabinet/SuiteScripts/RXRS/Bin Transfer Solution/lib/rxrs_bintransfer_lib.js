@@ -159,6 +159,47 @@ define(
       });
       return correctBinId;
     };
+
+    mainBinTransferLib.updateBagLabel = (boxLabelIntId, bagLabelIntId) => {
+      const logTitle = 'updateBagLabel';
+      const subFldId = record.submitFields({
+        type: 'customrecord_kd_taglabel',
+        id: bagLabelIntId,
+        values: {
+          custrecord_bagtag_box_label: boxLabelIntId,
+        },
+      });
+      log.audit({
+        title: logTitle,
+        details: `Updated Tag Label Int Id: ${subFldId}`,
+      });
+    };
+
+    mainBinTransferLib.createBoxRecord = (inDate) => {
+      const logTitle = 'createBoxRecord';
+
+      const boxRec = record.create({
+        type: 'customrecord_box_label',
+        isDynamic: false,
+      });
+      const objKeyValPair = {
+        custrecord_box_type: 2,
+        custrecord_box_indate: new Date(inDate),
+      };
+      Object.keys(objKeyValPair).forEach((key) => {
+        boxRec.setValue({
+          fieldId: key,
+          value: objKeyValPair[key],
+        });
+      });
+      const boxRecId = boxRec.save();
+      log.audit({
+        title: logTitle,
+        details: `New Box Record Int Id: ${boxRecId} was created`,
+      });
+      return boxRecId;
+    };
+
     mainBinTransferLib.processBinTransfer = (objToProcess) => {
       const logTitle = 'processBinTransfer';
       const returnObj = {};
@@ -169,7 +210,8 @@ define(
       try {
         const {
           serialNumber, itemId, inDate,
-          locationId, quantity, binIntId, prodCategId,
+          locationId, quantity, binIntId,
+          prodCategId, bagLabelIntId,
         } = objToProcess;
 
         /* - Final Data
@@ -274,6 +316,8 @@ define(
         binTransfer.commitLine({ sublistId: 'inventory' });
         const recordId = binTransfer.save();
         returnObj.success = true;
+        returnObj.bagLabelIntId = bagLabelIntId;
+        returnObj.inDate = inDate;
         returnObj.message = `Bin Transfer Record ID: ${recordId}`;
       } catch (error) {
         returnObj.success = false;
